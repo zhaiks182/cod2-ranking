@@ -27,6 +27,7 @@ class ConsoleController extends Controller
         }
 
         $client->command('clientkick '.$data['slot']);
+        usleep(300000);
 
         return back()->with('status', 'Jugador expulsado.');
     }
@@ -52,6 +53,7 @@ class ConsoleController extends Controller
         } else {
             $client->command('tell '.$data['slot'].' "^6'.$admin.' (Privado): ^7'.$text.'"');
         }
+        usleep(300000);
 
         return back()->with('status', 'Mensaje enviado.');
     }
@@ -66,6 +68,7 @@ class ConsoleController extends Controller
         }
 
         $client->command('map '.$data['map']);
+        usleep(300000);
 
         return back()->with('status', 'Cambiando de mapa…');
     }
@@ -87,6 +90,14 @@ class ConsoleController extends Controller
      * Confirmed directly via tinker: back-to-back with no delay, the second
      * command's reply came back empty; with 300ms in between, both came back
      * with real content.
+     *
+     * A second 300ms pause is also needed AFTER the real command (see kick/
+     * message/changeMap below) for the same reason, one packet later: the
+     * redirect this controller returns makes the browser immediately reload the
+     * console page, and show()'s own status() call for that reload is close
+     * enough to the just-sent command to get flood-protected too — without that
+     * second pause, the page reloads into a false "No se pudo conectar por RCON"
+     * even though the action itself went through fine.
      */
     private function isReachable(Cod2RconClient $client): bool
     {
