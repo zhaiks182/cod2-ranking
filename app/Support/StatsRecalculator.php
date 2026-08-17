@@ -11,6 +11,15 @@ class StatsRecalculator
      * table ground truth. Used after deleting a match (or any other operation that
      * removes kills directly) since those cached aggregates aren't tied by foreign key
      * to the rows that fed them and won't adjust themselves.
+     *
+     * Zeroes only the kill-derived columns on existing rows — NOT a delete()+rebuild
+     * of the whole row. player_server_stats/player_map_stats also carry damage_dealt,
+     * damage_taken, bomb_plants, bomb_defuses and mid_round_disconnects, which are
+     * pure running counters bumped directly off Damage;/Bomb;/Disconnected; log lines
+     * (see ParseCod2Log) with no detail table backing them — unlike kills, there's
+     * nothing to recompute them FROM, so wiping the row destroys that data
+     * permanently. Confirmed this happened for real: a match deletion zeroed damage/
+     * bomb stats server-wide when this used delete()+rebuild.
      */
     public static function recalculateAll(): void
     {
@@ -19,8 +28,12 @@ class StatsRecalculator
                 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0,
                 'grenade_kills_total' => 0, 'suicides_total' => 0,
             ]);
-            DB::table('player_map_stats')->delete();
-            DB::table('player_server_stats')->delete();
+            DB::table('player_map_stats')->update([
+                'kills' => 0, 'deaths' => 0, 'headshots' => 0, 'grenade_kills' => 0, 'teamkills' => 0,
+            ]);
+            DB::table('player_server_stats')->update([
+                'kills' => 0, 'deaths' => 0, 'headshots' => 0, 'grenade_kills' => 0, 'teamkills' => 0, 'suicides' => 0,
+            ]);
 
             self::applyPlayerTotals();
             self::applyMapStats();
