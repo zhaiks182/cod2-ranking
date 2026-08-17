@@ -125,6 +125,19 @@ class ParseCod2Log extends Command
                 $currentRound->update(['ended_at' => now()]);
             }
         } elseif (str_starts_with($rest, 'RoundStart;')) {
+            // "strat" is zPAM's pre-round strategy/planning phase, not real gameplay —
+            // confirmed a "strat" RoundStart; on Railyard created a 1-round "match" that
+            // was just clutter, not an actual game played. Don't track it as a match at
+            // all (unlike "dm", which IS a real, supported gametype — see recordKill()'s
+            // fallback). $currentRound is cleared too, so any stray Kill;/Damage; lines
+            // during the strat phase don't get misattributed to whatever real round was
+            // open before it.
+            if ($pendingGametype === 'strat') {
+                $currentRound = null;
+
+                return;
+            }
+
             // Only a real RoundStart; creates a match/round — InitGame: alone just means
             // the lobby loaded, which happens on every ready-up cycle and would otherwise
             // spam a match per cycle even if nobody ever readies up.
