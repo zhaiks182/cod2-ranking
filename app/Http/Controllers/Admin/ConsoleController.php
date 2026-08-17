@@ -45,12 +45,12 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — el mensaje probablemente NO se envió.');
         }
 
-        $admin = Auth::user()->name;
         $text = str_replace('"', '', $data['text']);
 
         if ($data['mode'] === 'all') {
-            $client->command('say "^6'.$admin.' (Todos): ^7'.$text.'"');
+            $client->command('say "^7'.$text.'"');
         } else {
+            $admin = Auth::user()->name;
             $client->command('tell '.$data['slot'].' "^6'.$admin.' (Privado): ^7'.$text.'"');
         }
         usleep(300000);
