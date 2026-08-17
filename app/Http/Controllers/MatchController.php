@@ -108,6 +108,6 @@ class MatchController extends Controller
         $axisChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'axis')->values();
         $alliesChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'allies')->values();
 
-        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents'));
+        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents', 'topBash'));
     }
 }
