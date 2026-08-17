@@ -1,0 +1,15 @@
+*
+!.gitignore
+
+# Map screenshots uploaded via /adm_cod2/maps — tracked on purpose (2026-08-15,
+# explicit owner request) so a fresh install elsewhere already has them instead of
+# needing every map re-uploaded by hand. Overrides the blanket ignore above, which
+# is why this needs both the directory and its contents unignored.
+!maps/
+!maps/*
+
+# Weapon icons (transparent PNG cutouts, one per weapon code) shown next to each
+# weapon's name on /armas — same reasoning as maps/ above, tracked on purpose so a
+# fresh install has them without needing to reprocess screenshots.
+!weapons/
+!weapons/*

@@ -1,0 +1,413 @@
+# CoD2 Stats — Pug Latam
+
+Dashboard de estadísticas para uno o más servidores de Call of Duty 2 (mod CoD2x +
+zPAM): rankings de jugadores, historial de partidas por mapa/fecha, estado del
+servidor en vivo, y un panel de administración con consola RCON. Corre en el mismo
+VPS y LAMP que otros proyectos de 4LivePro (`167.148.33.82`, alias SSH `iptvwatch`).
+
+**Sitio público:** https://cod2.4livepro.com
+**Panel admin:** https://cod2.4livepro.com/adm_cod2 (login por usuario, no email — no
+enlazado desde el menú público a propósito)
+
+## Stack
+
+- Laravel 13 (PHP 8.3), Blade + Tailwind (CDN, sin build step — ver "Decisiones" más abajo)
+- MySQL/MariaDB (`cod2_stats`)
+- `geoip2/geoip2` para geolocalización de jugadores conectados (ver "Pendientes")
+
+## Cómo llegan los datos
+
+El gameserver de CoD2 (`/home/gameserver/1.3/puG/main/games_mp.log`) escribe eventos
+de juego en texto plano. `cod2:parse-log` (cron cada minuto, ver `routes/console.php`)
+parsea el log completo y guarda kills/rondas/partidas/jugadores en la base de datos.
+Guarda su posición de lectura (`log_parser_state.byte_offset`) para no releer todo
+cada vez.
+
+**El mensaje de bienvenida automático (`cod2:watch-connects` + servicio systemd
+`cod2-watch-connects`) se eliminó** (2026-08-10, a pedido del dueño) — ya no existe
+`WatchConnects.php`, ni la columna `servers.welcome_message`, ni el servicio en el
+VPS. Si se reintroduce esta idea en el futuro, el código de referencia (regex de
+`Connected;`, dedupe por guid, etc.) está en el historial de git antes de ese commit.
+
+### Cuándo se crea una "partida" (`matches`)
+
+Una partida se crea solo cuando llega `RoundStart;`, **no** en cada `InitGame:`. CoD2
+manda un `InitGame:` cada vez que se recarga el lobby de ready-up de zPAM, así que
+crear una partida ahí generaba registros vacíos por cada ciclo de espera. El mapa y
+gametype de la próxima partida se leen del `InitGame:` más reciente pero se guardan en
+`log_parser_state.pending_map/pending_gametype` — porque `RoundStart;` no trae esa
+info, y el parser corre en procesos separados cada minuto, así que hay que recordarlo
+entre corridas.
+
+**Deathmatch no manda `RoundStart;` en absoluto** (no tiene rondas). Para ese caso,
+`recordKill()` tiene un respaldo: si llega un `Kill;` sin ronda abierta, abre una
+usando el mapa/gametype pendiente. Verificado en vivo con una partida real de
+`wawa_3daim` (DM) — funcionó correctamente.
+
+Un mismo `match` agrupa rondas consecutivas del mismo mapa+gametype. Cambia el mapa o
+el gametype → partida nueva. El cambio de bando a medio tiempo (swap de equipos en SD)
+**no** crea una partida nueva, porque solo se compara mapa+gametype, no equipos.
+
+### Identidad del jugador (HWID, no nombre)
+
+CoD2x reemplaza el GUID de PunkBuster por un HWID de 32 bits (hash de componentes de
+hardware), y el servidor lo escribe como el campo `guid` en cada línea del log. Ese
+valor es estable entre sesiones/reconexiones — por eso los jugadores se identifican
+por `guid`, no por nombre (`players.guid`, único). El nombre visible se guarda aparte
+en `player_aliases`, dedupeado por `name_plain` (sin códigos de color `^N`), porque un
+mismo nombre puede llegar con distintos códigos de color según venga del log o de una
+consulta RCON en vivo.
+
+**Bots siempre tienen `guid=0`** — son indistinguibles entre sí, así que nunca se les
+crea una fila en `players` (`upsertPlayer()` devuelve `null` para guid=0). Sus kills
+igual se guardan en `kills` (con `attacker_guid=0`/`attacker_name` tal cual), pero con
+`attacker_player_id` nulo, así que no aparecen en los rankings.
+
+### Cambios de nombre en vivo
+
+El motor no escribe nada al log cuando alguien cambia de nombre a mitad de partida sin
+reconectarse — solo eventos de juego (connect, kill, ...). Por eso `cod2:parse-log`,
+además de leer el log, también consulta `status` por RCON en cada corrida
+(`syncLiveNames()`) y actualiza el nombre de cualquier jugador conectado ahora mismo,
+sin importar si generó algún evento en el log.
+
+## Multi-servidor
+
+`servers` (tabla) reemplaza la config fija de `.env`/`config/cod2.php` — cada fila
+tiene su propio `log_path`, credenciales RCON (`rcon_password` encriptado con el
+cast `encrypted` de Laravel), IP/puerto público, contraseña de conexión opcional
+(`join_password`, para servidores con clave). Administrable desde
+`/adm_cod2/servers`.
+
+Los jugadores (`players`) son **globales**, no por servidor — el HWID es del hardware,
+no del servidor. Las estadísticas sí son por servidor: `player_server_stats` (totales
+por servidor) y `player_map_stats` (totales por servidor+mapa). `players.kills_total`
+etc. son el acumulado de por vida across todos los servidores.
+
+**Si algún día se agrega un servidor en otra VPS** (no esta misma): el parser hace
+`fopen()` directo al `log_path`, así que necesita que el archivo esté en este
+filesystem. Para un servidor remoto habría que sincronizar el log primero (rsync por
+SSH antes de parsear, o un agente que empuje líneas por HTTP) — no implementado, solo
+diseñado en conversación.
+
+## Mapas: nombres bonitos e imágenes
+
+`app/Support/MapCatalog.php` tiene el catálogo mapa→nombre bonito. Las versiones
+"parche comunitario" de un mapa (`mp_burgundy_fix`, `mp_dawnville_fix`, etc.) se
+normalizan al mapa base (`MapCatalog::normalize()`, quita sufijos `_fixN`/`_vN`) antes
+de buscar el nombre — así que un mapa nuevo con sufijo `_fix` que no esté en el
+catálogo cae al fallback genérico (nombre generado del código), pero uno que SÍ está
+en el catálogo (como Burgundy) muestra el nombre correcto automáticamente.
+
+Las imágenes de mapa se suben a mano desde `/adm_cod2/maps`. Se guardan en
+`storage/app/public/maps/{código}.{ext}` y se sirven vía el symlink `public/storage`
+(`php artisan storage:link`, ya corrido en el VPS). Si no hay imagen subida, el widget
+usa un degradado de color generado determinísticamente del código de mapa.
+
+**Están versionadas en el repo a propósito (2026-08-15).** La decisión original era
+NO commitearlas (evitar reproducir assets con copyright de Activision en el repo) —
+se revirtió a pedido explícito del dueño, una vez que subió capturas para todos los
+mapas, para que una instalación nueva en otro servidor ya las tenga sin tener que
+volver a subir cada una a mano. `storage/app/public/.gitignore` (el `.gitignore` por
+defecto de Laravel ahí ignora *todo* el directorio) tiene una excepción específica
+para `maps/`. Si se sube una imagen nueva desde el panel admin, hay que acordarse de
+`git add`la a mano — el upload en sí no la agrega al repo, solo la deja en el
+filesystem del VPS.
+
+## GeoIP y banderas de país
+
+Las tablas de jugadores del sitio muestran la bandera del país de origen (según la
+última IP vista por RCON). Resumen de cómo funciona, para no tener que releer todo
+el historial de commits.
+
+### Fuente de datos: DB-IP, no MaxMind
+
+El plan original era usar `geoip2/geoip2` (ya en `composer.json`) con la base
+GeoLite2 de MaxMind. Se probaron **cuatro license keys distintas** de la cuenta
+MaxMind 1391854, todas fallando con "Invalid license key" / "could not be
+authenticated" — confirmado tanto con curl manual como con el binario oficial
+`geoipupdate` v6.1.0, incluso probando una key recién generada al instante. Es un
+problema del lado de la cuenta MaxMind (verificación/EULA pendiente, algo que solo
+su soporte puede destrabar) — no vale la pena seguir generando keys nuevas sin
+resolver eso primero.
+
+En su lugar se usa **DB-IP Country Lite** (`https://db-ip.com`, licencia CC BY 4.0,
+sin cuenta ni API key, publica una edición nueva cada mes). Usa el mismo formato
+`.mmdb` que GeoLite2, así que `app/Services/GeoIp.php` no necesitó cambiar su
+lógica de lectura — solo el path del archivo local
+(`storage/app/geoip/country.mmdb`, nombre deliberadamente genérico, sin
+"GeoLite2" ni "dbip", por si se vuelve a cambiar de proveedor más adelante).
+
+Si algún día se resuelve el problema de la cuenta MaxMind y se quiere volver a
+GeoLite2 (algo más preciso que DB-IP Lite en general), basta con reemplazar
+`storage/app/geoip/country.mmdb` por el `.mmdb` de MaxMind con el mismo nombre de
+archivo — el código no distingue la fuente.
+
+### Actualización mensual automática
+
+`app/Console/Commands/UpdateGeoIp.php` (`geoip:update`) descarga la edición del mes
+desde `download.db-ip.com/free/dbip-country-lite-{YYYY-MM}.mmdb.gz`, la
+descomprime, y solo reemplaza el archivo si la descarga fue exitosa y de un tamaño
+razonable (nunca deja el sitio sin base de datos por una descarga fallida a mitad
+de mes). Corre vía `Schedule::command('geoip:update')->monthly()` en
+`routes/console.php` — el cron de Laravel (`php artisan schedule:run`) ya corre
+cada minuto en este VPS para otros comandos, así que no hizo falta tocar el
+crontab del sistema.
+
+### Cómo se captura el IP de cada jugador
+
+El IP **no viene del log** (`Kill;`/`Connected;` no lo traen) — solo se conoce vía
+RCON `status`, que `cod2:parse-log` ya consultaba cada minuto para
+`syncLiveNames()` (sincronizar nombres de jugadores conectados). Se agregó una
+columna `players.ip` (migración `2026_08_12_010000_add_ip_to_players.php`) que se
+actualiza en cada corrida para cualquier jugador conectado en ese momento — así que
+el país de un jugador solo se conoce si estuvo conectado *después* de 2026-08-12
+(cuando se agregó esto). Jugadores que no han vuelto a conectarse desde entonces no
+tienen `ip` y por lo tanto no muestran bandera hasta que vuelvan a jugar.
+
+### Por qué banderas como imagen, no emoji
+
+`GeoIp::flagEmoji()` (el método original) devuelve el emoji Unicode de bandera (dos
+"regional indicator symbols"). Se ve bien en iOS/Android/macOS, pero **Windows no
+tiene glifo para esos pares** — Chrome/Edge en Windows cae al *fallback* de
+mostrar el código de dos letras como texto plano en vez de la bandera (confirmado
+por el dueño con capturas: celular sí, PC con Windows no).
+
+`GeoIp::flagIconHtml($isoCode)` es el reemplazo — devuelve un `<img>` que apunta a
+`flagcdn.com` (SVG, gratis, sin API key). Es HTML crudo: hay que usarlo con
+`{!! !!}` en Blade, no `{{ }}`. Tiene ancho y alto **fijos** (no solo alto con
+`width:auto`) porque cada bandera real tiene una proporción oficial distinta
+(EE.UU. ~1.9:1, México ~1.75:1, Colombia ~1.5:1) — con solo el alto fijo, las
+banderas más "anchas" se veían visiblemente más grandes que las demás.
+`object-cover` recorta cada SVG para llenar la misma caja sin importar el país.
+
+### Dónde aparece
+
+Todas las tablas de jugadores del sitio: dashboard (jugadores conectados y top
+jugadores), `/ranking` (tabla general y paneles Axis/Allies), `/partidas/{id}`
+(tabla general y paneles Axis/Allies), consola de admin, y las páginas de
+`/especialidades` (granadas, headshots, fuego amigo, suicidios, eficiencia, mapas
+ganados, reyes de mapa, racha de mapas, horas jugadas, actividad reciente, ranking
+por arma, rivalidades). La única página dedicada exclusivamente a esto es
+`/paises` (`SpecialtyController::countries()`), que agrupa a todos los jugadores
+con IP conocida por país y lista sus nombres completos, no solo un top.
+
+### Atribución de DB-IP
+
+Su licencia CC BY 4.0 pide atribución visible. Se agregó un link en el footer ("IP
+Geolocation by DB-IP") y luego se quitó a pedido explícito del dueño (2026-08-12)
+— es una decisión consciente, no un olvido. Si en algún momento importa el
+cumplimiento estricto de la licencia, habría que reconsiderarlo.
+
+## Chat y eventos de partida (2026-08-13)
+
+`games_mp.log` trae muchos más tipos de evento de los que se parsean para
+kills/rondas. Dos tablas nuevas los capturan:
+
+- **`chat_messages`** — solo chat público (`say;`), no de equipo (`sayteam;`
+  se descarta a propósito). Formato: `say;<guid>;<slot>;<name>;<mensaje>`
+  (`ParseCod2Log::recordChat()`). Dos gotchas ya resueltos ahí: el juego
+  antepone un byte de control (`0x15`, ícono del globo de diálogo) a cada
+  mensaje que hay que quitar, y los acentos llegan en Windows-1252 (no
+  UTF-8) — `mb_convert_encoding()` solo cuando el string no es UTF-8 válido
+  ya, para no tocar mensajes que sí vienen bien. Se muestra con un botón
+  "💬 Chats" en `/partidas/{id}` (solo aparece si esa partida tiene mensajes),
+  usando el nombre con color guardado del jugador (`Player::last_name`) en
+  vez del nombre plano de la línea de chat, que no trae códigos `^N`.
+
+  **Backfill histórico:** se intentó reconstruir a qué partida pertenecía
+  cada mensaje viejo del log ya parseado, y costó dos intentos fallidos antes
+  de acertar — ver bitácora de bugs más abajo (entrada 7) antes de repetir
+  este ejercicio para cualquier otro backfill retroactivo basado en posición
+  del log.
+
+- **`match_events`** — `event_type`: `halftime`, `overtime`, `match_end`,
+  `timeout_call`, `timeout_cancel`, `bash_call`. Los tres últimos traen
+  `side`/`name` (formato log `<side>;<name>`, sin guid); los primeros tres
+  son marcadores sin jugador asociado. `BASH_CALL;` solo se vio una vez en
+  todo el historial — significado exacto sin confirmar, se captura igual por
+  si acaso pero no tiene su propia página, solo aparece en la línea de
+  tiempo de la partida.
+
+  **`HalfTime;` reemplazó la heurística de "ronda 13 = cambio de bando".**
+  Antes se asumía por posición (verificado empíricamente contra 2 partidas
+  reales, documentado en la bitácora). Ahora el server manda un evento
+  `HalfTime;` explícito — confirmado que fires justo después del
+  `RoundEnd;`/`Winners;`/`Score;` de la ronda 12 y antes del `InitGame:` de
+  la ronda 13, así que en `MatchController::show()` la ronda de cambio de
+  bando se busca como "la primera ronda con `started_at` posterior al
+  evento", con la heurística vieja (`$rounds->get(12)`) como *fallback* para
+  partidas parseadas antes de este cambio (no se hizo backfill de esto, solo
+  aplica hacia adelante).
+
+- **`Damage;`** (cada disparo, no solo bajas) y `Weapon;` (cambios/recogidas
+  de arma) se relevaron pero **no se implementaron** — `Damage;` tiene un
+  volumen mucho mayor que `Kill;` (10-20x más líneas), decisión de
+  costo/beneficio pendiente si en algún momento se quiere precisión real
+  (%acierto) en vez de solo bajas.
+
+## Bitácora de bugs encontrados y arreglados (2026-08-09/10)
+
+Vale la pena leer esto antes de tocar el parser — son bugs no obvios que ya costaron
+tiempo de debug una vez.
+
+1. **Regex del parser no aceptaba espacios al inicio de línea.** CoD2 rellena el campo
+   de tiempo transcurrido con espacios para uptimes bajo 100 minutos (`"  2:37"` vs
+   `"247:56"`). El regex estaba anclado a `^\d+`, así que **toda línea con menos de
+   100 minutos de uptime se descartaba en silencio** — sin error, sin log, solo se
+   perdía. Esto costó dos partidas completas (Burgundy, mitad de wawa) antes de
+   encontrarse. Fix: `^\s*\d+:\d+...`. En su momento aplicaba también a
+   `WatchConnects.php` (eliminado desde 2026-08-10, ver arriba) — si se agrega otro
+   proceso que lea el log línea por línea, revisar que use el mismo regex.
+
+2. **`fgets()` se "atasca" en EOF en procesos de larga duración.** Esto se descubrió en
+   `WatchConnects` (eliminado desde 2026-08-10), que abría el archivo una sola vez y
+   hacía loop indefinido. Una vez que `fgets()` llega al final del archivo, PHP marca
+   un flag interno de EOF que no se resetea solo — el proceso sigue vivo pero nunca
+   vuelve a leer nada nuevo, aunque el archivo siga creciendo. PHP **no tiene**
+   `clearerr()` (es de C, no está expuesto); el fix es `fseek($handle, 0, SEEK_CUR)`
+   después de cada pasada. Sigue siendo relevante si se agrega otro proceso
+   long-running que lea el log en loop — `cod2:parse-log` no lo sufre porque abre un
+   handle nuevo en cada corrida (proceso corto, vía cron).
+
+3. **`g_logsync 0` en `server.cfg` bufferea la escritura del log.** Con eso en 0, el
+   motor puede dejar de escribir al archivo por varios minutos aunque el juego siga
+   activo (mapas cambiando, jugadores conectados) — sin ningún error visible.
+   Cambiarlo a 1 por RCON en caliente **no alcanza** una vez que el proceso ya está
+   trabado en ese estado; hace falta **reiniciar el proceso del gameserver** para que
+   tome el cambio. Ya está en 1 tanto en `server.cfg` (persistente) como aplicado en
+   caliente. Si vuelve a pasar que el log deja de crecer sin razón aparente, este es el
+   primer sospechoso — comparar `stat -c '%s' games_mp.log` en dos momentos.
+
+4. **Atacante/víctima invertidos en `Kill;`.** La validación inicial (un bot matando a
+   un jugador real) sugería atacante-primero, víctima-segundo — pero confirmado contra
+   dos partidas reales completas (marcador final en pantalla) que es al revés:
+   **víctima primero, atacante segundo**. Ya corregido en `recordKill()` — el
+   comentario en el código explica el porqué. Si algún día vuelve a haber sospecha de
+   esto, la forma de verificarlo es comparar el marcador final in-game (kills/muertes
+   por jugador) contra `SELECT attacker_name, COUNT(*) FROM kills WHERE match_id=X
+   GROUP BY attacker_name`, no confiar en pruebas con bots (el mod puede tratarlos
+   distinto).
+
+5. **Timezone de Laravel en UTC, no en la del VPS.** `config/app.php` traía
+   `'timezone' => 'UTC'` por defecto — el sistema operativo del VPS ya estaba bien
+   (`America/Guayaquil`, -05), pero eso no afecta a Laravel/Carbon, que tiene su propia
+   config. Resultado: toda la web mostraba fechas/horas 5 horas adelantadas. Ya
+   corregido (`env('APP_TIMEZONE', 'America/Guayaquil')`). Los datos guardados
+   *antes* de este fix (todo el backfill inicial y las primeras pruebas de esta noche)
+   quedaron con la hora vieja — no se corrigieron retroactivamente, no vale la pena.
+
+6. **`matches.is_backfilled`** — el backfill inicial (`--from-start` sobre el log
+   histórico completo) procesó ~5900 líneas en segundos, así que todo ese historial
+   quedó con `started_at`/`ended_at` pegados al momento del backfill, no a cuándo se
+   jugó realmente (el log no trae reloj absoluto confiable). Esas partidas se marcan
+   `is_backfilled=true` y la UI las muestra en una sección "Historial importado" sin
+   fecha, en vez de mostrar una fecha falsa como si fuera real.
+
+7. **Backfill de `chat_messages` por posición en el log — dos intentos fallidos antes
+   de acertar (2026-08-13).** Al agregar la tabla de chat, se quiso reconstruir a qué
+   partida pertenecía cada mensaje `say;` ya presente en el log (histórico).
+
+   - *Intento 1:* emparejar cada `RoundStart;` del log, en orden, contra las filas de
+     `rounds` de la BD, en orden de `id`. Falló porque el log actual **todavía
+     contiene el contenido del backfill histórico original** (`--from-start`, el que
+     generó las partidas `is_backfilled=true`) — Toujane y Railyard se jugaron tanto
+     ahí como en partidas reales posteriores, así que había 196 `RoundStart;` de
+     Toujane en el log pero solo 76 rondas reales en la BD para ese mapa. El desfase
+     corrió la asignación y mezcló mensajes entre partidas.
+   - *Intento 2:* agrupar por cambios de mapa en vez de por ronda individual, y saltar
+     el prefijo histórico viejo. Mejor, pero **sin validar contra la BD antes de
+     insertar** — una transición de mapa "fantasma" (el log creció entre que se
+     diagnosticó el offset y que se corrió el insert, ambos por separado) corrió el
+     índice en un punto intermedio y un mensaje terminó en la partida siguiente a la
+     correcta (detectado porque el dueño notó a un jugador que "no jugó ese día" en
+     el chat de esa partida).
+   - *Fix real:* la versión que funcionó calcula los bloques de mapa **y valida cada
+     uno contra la BD (mapa + cantidad de rondas) en el mismo script, antes de
+     insertar nada** — si algo no cuadra, aborta sin tocar la tabla. La lección para
+     cualquier backfill futuro basado en reconstruir posición-en-el-log: nunca
+     confiar en un diagnóstico corrido por separado del insert (el log y la tabla de
+     partidas siguen cambiando en vivo), y siempre validar (round count, no solo
+     orden) antes de escribir.
+
+8. **Marcador final (`GameMatch::final_score`) mal calculado en partidas con rondas
+   espurias — arreglado parcialmente (2026-08-13).** El dueño reportó la partida 21
+   (Toujane) mostrando "12-10" cuando debía ser "13-9". Diagnóstico:
+
+   - El algoritmo original comparaba **cada ronda contra la ronda 1 fija** para
+     decidir a qué roster pertenece (por solapamiento de `winner_guids`) — funciona
+     mal en partidas largas donde el roster fue cambiando (conexiones/desconexiones)
+     y la ronda 1 deja de ser representativa. Fix aplicado: cada cluster ahora
+     compara contra **su propia referencia más reciente**, no contra un snapshot
+     fijo (`TeamSideAnalyzer::clusterRoundWinners()`, usado ahora por
+     `GameMatch::final_score`, `TeamSideAnalyzer::sideScores()` y
+     `winningRosterGuids()` — antes era la misma lógica duplicada 3 veces).
+   - Además se agregó un corte: apenas un roster llega a 13 rondas (el umbral real
+     de victoria en MR12), se deja de contar — una ronda con `winner_guids` válido
+     *después* de ese punto es ruido del ready-up/lobby post-partida (mismo tipo de
+     bug que las bajas del aim-trainer, ver `recordKill()`).
+   - Estos dos cambios corrigieron 12 de 13 partidas reales (por ejemplo la partida
+     13 pasaba de "16-14", imposible en MR12, a "13-12", correcto).
+   - **La partida 21 específicamente sigue mostrando "12-10" en vez de "13-9".**
+     Investigado a fondo: no es el algoritmo — a una de sus 21 rondas "reales" le
+     falta el `winner_guids` correcto en la BD. Contando directamente los
+     `winner_guids` guardados, el roster ganador solo tiene 12 rondas, pero la
+     propia línea `Score;` del servidor (autoridad final) confirma que llegó a 13 —
+     falta una ronda en algún punto del log/parseo de esa noche específica. Además
+     hay una ronda extra (`rounds.id=386`) con `winner_guids` del roster perdedor,
+     creada varios minutos después de que la partida ya había terminado (¿un
+     `RoundStart;` residual antes del cambio a Dawnville?) que tampoco se explicó
+     del todo. Encontrarlo exactamente requeriría revisar línea por línea el log
+     crudo de esa partida puntual — el dueño decidió dejarlo así por ahora en vez de
+     seguir invirtiendo tiempo en un caso único. Si se retoma, arrancar revisando
+     los `Winners;`/`RoundStart;` crudos entre las rondas 365 y 386 de esa partida.
+
+## Panel admin (`/adm_cod2`)
+
+- Login por `username` (no email) — tabla `users` con columna `username` agregada.
+- Usuario actual: `adm_cod2` (contraseña la definió el dueño, no está en este archivo).
+- CRUD de servidores, subida de imágenes de mapa, consola RCON en vivo (kick, mensaje
+  privado/general, cambio de mapa, comando libre) — reconstruye el panel del script
+  PHP original de 2007 que se usó como punto de partida, pero limitado a
+  administradores autenticados (el script original no tenía login real).
+- `bootstrap/app.php` tiene `redirectGuestsTo('/adm_cod2/login')` — si se cambia el
+  prefijo de rutas admin, hay que actualizar esto también (es un string, no una ruta
+  con nombre, porque corre antes de que el router esté disponible).
+
+## Deploy
+
+`deploy.sh` — mismo patrón que `desarrollo.4livepro.com`: `git archive HEAD | ssh
+iptvwatch "tar -x -C /var/www/cod2.4livepro.com"`, seguido de `composer install`
+(opcional, `--composer`), `migrate` (opcional, `--migrate`), y `php artisan optimize`.
+
+**Importante:** el `chown -R www-data:www-data` corre *antes y después* de `optimize`
+— `optimize` corre como root (vía SSH) y recrea `storage/framework/views/*` como root,
+lo que bloqueaba a Apache/PHP (www-data) para tocar esos archivos y causaba 500s
+intermitentes en páginas no visitadas todavía. Si se edita `deploy.sh`, no quitar el
+segundo `chown`.
+
+
+## Pendientes / conocido-roto
+
+- **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
+  DB-IP en vez de MaxMind — ver sección "GeoIP y banderas de país" más arriba para
+  el detalle completo y cómo volver a MaxMind si algún día se resuelve.
+- **Tailwind vía CDN, no compilado.** Decisión deliberada para no depender de un build
+  step de Vite/npm en cada deploy — razonable para un sitio de este tamaño, pero si
+  crece mucho valdría la pena migrar al pipeline de assets estándar de Laravel.
+- **Asistencias no se registran** (decisión explícita del dueño) — el log no las trae
+  nativamente y no se intentó inferirlas con heurísticas de daño previo.
+- **La fórmula exacta del "Score" en pantalla de zPAM para los team-kills sigue sin
+  confirmarse.** Dos pruebas contra el marcador real dieron resultados distintos: con
+  `sherlockgen` un team-kill con rifle pareció sumar normalmente al Score (+1, como
+  cualquier baja). Con `Jao` en la partida de Carentan del 2026-08-09 (`match_id=11`,
+  ronda con marcador 8:3), el log confirmó 8 bajas reales suyas (una de ellas un
+  team-kill contra `ZHAIKS`, mismo equipo), pero el Score en pantalla mostraba 6 — un
+  déficit de 2 que cuadraría si esa vez el team-kill restó 1 punto en vez de sumar 1
+  (7 bajas válidas − 1 = 6), no si simplemente se excluyera del conteo (7) ni si
+  contara normal (8). Las dos pruebas se contradicen; no se tocó la lógica de
+  `kills_total` por esto — el sitio sigue mostrando el conteo real de bajas (no el
+  Score interno de zPAM), con los team-kills marcados aparte en rojo `(-N)` y su
+  detalle (compañero + arma) disponible al hacer click. Decisión explícita del dueño
+  de dejarlo así en vez de intentar imitar la fórmula de zPAM sin confirmarla del
+  todo — ver conversación del 2026-08-09/10.

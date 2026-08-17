@@ -1,0 +1,1194 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\ChatMessage;
+use App\Models\GameMatch;
+use App\Models\Kill;
+use App\Models\MatchEvent;
+use App\Models\Player;
+use App\Models\PlayerMapStat;
+use App\Models\PlayerServerStat;
+use App\Models\Round;
+use App\Models\Server;
+use App\Services\GeoIp;
+use App\Support\TeamSideAnalyzer;
+use Illuminate\Http\Request;
+
+class SpecialtyController extends Controller
+{
+    public function grenades(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalGrenadeKills = 0;
+        $totalKills = 0;
+        $favoriteGrenade = null;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('grenade_kills', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('grenade_kills')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->grenade_kills;
+                    $row->share = $row->kills > 0 ? round($row->grenade_kills / $row->kills * 100, 1) : 0;
+
+                    return $row;
+                });
+
+            $totals = PlayerServerStat::where('server_id', $server->id)
+                ->selectRaw('sum(grenade_kills) as g, sum(kills) as k')
+                ->first();
+            $totalGrenadeKills = (int) ($totals->g ?? 0);
+            $totalKills = (int) ($totals->k ?? 0);
+
+            $favoriteGrenade = $this->sdKills($server->id)
+                ->where('kills.is_grenade', true)
+                ->selectRaw('kills.weapon, count(*) as uses')
+                ->groupBy('kills.weapon')
+                ->orderByDesc('uses')
+                ->first();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.grenades', 'icon' => '💣', 'title' => 'Especialistas en Granadas',
+            'subtitle' => 'Ranking de bajas con granada — Search and Destroy, '.($server?->name ?? 'servidor'),
+            'valueLabel' => 'granadas', 'valueColor' => 'text-amber-400',
+            'shareLabel' => '% de sus bajas',
+            'statCards' => [
+                ['label' => 'Bajas con granada', 'value' => $totalGrenadeKills, 'color' => 'text-amber-400'],
+                ['label' => '% del total de bajas', 'value' => $totalKills > 0 ? round($totalGrenadeKills / $totalKills * 100, 1).'%' : '0%'],
+                ['label' => 'Granada favorita', 'value' => $favoriteGrenade ? \App\Support\WeaponCatalog::label($favoriteGrenade->weapon) : '—'],
+            ],
+        ]);
+    }
+
+    public function headshots(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalHeadshots = 0;
+        $totalKills = 0;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('headshots', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('headshots')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->headshots;
+                    $row->share = $row->kills > 0 ? round($row->headshots / $row->kills * 100, 1) : 0;
+
+                    return $row;
+                });
+
+            $totals = PlayerServerStat::where('server_id', $server->id)
+                ->selectRaw('sum(headshots) as h, sum(kills) as k')
+                ->first();
+            $totalHeadshots = (int) ($totals->h ?? 0);
+            $totalKills = (int) ($totals->k ?? 0);
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.headshots', 'icon' => '🎯', 'title' => 'Headshots',
+            'subtitle' => 'Ranking de headshots — Search and Destroy, '.($server?->name ?? 'servidor'),
+            'valueLabel' => 'headshots', 'valueColor' => 'text-rose-400',
+            'shareLabel' => '% de sus bajas',
+            'statCards' => [
+                ['label' => 'Total de headshots', 'value' => $totalHeadshots, 'color' => 'text-rose-400'],
+                ['label' => '% del total de bajas', 'value' => $totalKills > 0 ? round($totalHeadshots / $totalKills * 100, 1).'%' : '0%'],
+            ],
+        ]);
+    }
+
+    public function friendlyFire(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalTeamkills = 0;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('teamkills', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('teamkills')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->teamkills;
+                    $row->share = $row->kills > 0 ? round($row->teamkills / $row->kills * 100, 1) : 0;
+
+                    return $row;
+                });
+
+            $totalTeamkills = (int) PlayerServerStat::where('server_id', $server->id)->sum('teamkills');
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.friendly-fire', 'icon' => '💀', 'title' => 'Fuego amigo',
+            'subtitle' => 'Los que más matan a sus propios compañeros — con cariño',
+            'valueLabel' => 'compañeros', 'valueColor' => 'text-red-400',
+            'shareLabel' => '% de sus bajas',
+            'statCards' => [
+                ['label' => 'Total de fuego amigo', 'value' => $totalTeamkills, 'color' => 'text-red-400'],
+            ],
+        ]);
+    }
+
+    public function suicides(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalSuicides = 0;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('suicides', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('suicides')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->suicides;
+                    $row->share = null;
+
+                    return $row;
+                });
+
+            $totalSuicides = (int) PlayerServerStat::where('server_id', $server->id)->sum('suicides');
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.suicides', 'icon' => '🤡', 'title' => 'Suicidios',
+            'subtitle' => 'Los que más se matan solos (granada en la mano, caídas, etc.)',
+            'valueLabel' => 'suicidios', 'valueColor' => 'text-fuchsia-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Total de suicidios', 'value' => $totalSuicides, 'color' => 'text-fuchsia-400'],
+            ],
+        ]);
+    }
+
+    /** Died to someone else's grenade — self-frags are already covered by suicides()/sdKills() excludes them. */
+    public function grenadeDeaths(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalGrenadeDeaths = 0;
+
+        if ($server) {
+            $counts = $this->sdKills($server->id)
+                ->where('kills.is_grenade', true)
+                ->whereNotNull('kills.victim_player_id')
+                ->selectRaw('kills.victim_player_id as player_id, count(*) as c')
+                ->groupBy('kills.victim_player_id')
+                ->orderByDesc('c')
+                ->limit(50)
+                ->get();
+
+            $stats = PlayerServerStat::where('server_id', $server->id)
+                ->whereIn('player_id', $counts->pluck('player_id'))
+                ->get()->keyBy('player_id');
+            $players = Player::whereIn('id', $counts->pluck('player_id'))->get()->keyBy('id');
+
+            $rows = $counts->map(function ($row) use ($players, $stats) {
+                $player = $players[$row->player_id] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) [
+                    'player' => $player,
+                    'value' => $row->c,
+                    'share' => null,
+                    'kills' => $stats[$row->player_id]->kills ?? null,
+                ];
+            })->filter()->values();
+
+            $totalGrenadeDeaths = (int) $counts->sum('c');
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.grenade-deaths', 'icon' => '🪦', 'title' => 'Muertes por granada',
+            'subtitle' => 'Los que más mueren por granadas ajenas (no cuenta autoeliminarse) — Search and Destroy',
+            'valueLabel' => 'muertes por nade', 'valueColor' => 'text-lime-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Total de muertes por nade', 'value' => $totalGrenadeDeaths, 'color' => 'text-lime-400'],
+            ],
+        ]);
+    }
+
+    public function efficiency(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $minKills = 20;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('kills', '>=', $minKills)
+                ->whereHas('player')
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->kd_ratio;
+                    $row->share = null;
+
+                    return $row;
+                })
+                ->sortByDesc('value')
+                ->values()
+                ->take(50);
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.efficiency', 'icon' => '⚔️', 'title' => 'Los Más Eficientes',
+            'subtitle' => "Mejor ratio kills/muertes (K/D) — mínimo {$minKills} bajas para entrar al ranking",
+            'valueLabel' => 'K/D', 'valueColor' => 'text-emerald-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Mínimo de bajas para calificar', 'value' => $minKills],
+            ],
+        ]);
+    }
+
+    public function mapsWon(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalMaps = 0;
+
+        if ($server) {
+            $matches = GameMatch::where('server_id', $server->id)
+                ->where('is_backfilled', false)
+                ->where('gametype', 'sd')
+                ->whereNotNull('ended_at')
+                ->with('rounds:id,match_id,winner_guids')
+                ->get();
+
+            $tally = [];
+            foreach ($matches as $match) {
+                $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
+                if (! $winningGuids) {
+                    continue;
+                }
+
+                $totalMaps++;
+                foreach ($winningGuids as $guid) {
+                    $tally[$guid] = ($tally[$guid] ?? 0) + 1;
+                }
+            }
+
+            arsort($tally);
+            $tally = array_slice($tally, 0, 50, true);
+
+            $players = Player::whereIn('guid', array_keys($tally))->get()->keyBy('guid');
+
+            $rows = collect($tally)->map(function ($count, $guid) use ($players) {
+                $player = $players[$guid] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) ['player' => $player, 'value' => $count, 'share' => null];
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.maps-won', 'icon' => '🏆', 'title' => 'Mapas Ganados',
+            'subtitle' => "Partidas completas ganadas por jugador (de {$totalMaps} mapas jugados y decididos)",
+            'valueLabel' => 'mapas', 'valueColor' => 'text-yellow-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Mapas jugados y decididos', 'value' => $totalMaps],
+            ],
+        ]);
+    }
+
+    public function weapons(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $weapons = collect();
+
+        if ($server) {
+            $totals = $this->sdKills($server->id)
+                ->selectRaw('kills.weapon, count(*) as uses')
+                ->groupBy('kills.weapon')
+                ->orderByDesc('uses')
+                ->limit(20)
+                ->get();
+
+            $killersByWeapon = $this->sdKills($server->id)
+                ->whereNotNull('kills.attacker_player_id')
+                ->selectRaw('kills.weapon, kills.attacker_player_id, count(*) as uses')
+                ->groupBy('kills.weapon', 'kills.attacker_player_id')
+                ->get()
+                ->groupBy('weapon')
+                ->map(fn ($rows) => $rows->sortByDesc('uses')->values());
+
+            $players = Player::whereIn('id', $killersByWeapon->flatten(1)->pluck('attacker_player_id')->unique())
+                ->get()->keyBy('id');
+
+            $weapons = $totals->map(function ($row) use ($killersByWeapon, $players) {
+                $killers = $killersByWeapon->get($row->weapon, collect());
+                $top = $killers->first();
+                $topPlayer = $top ? ($players[$top->attacker_player_id] ?? null) : null;
+
+                // Full breakdown for the "click to see everyone" popup — not just the
+                // top killer shown in the table row.
+                $allKillers = $killers->map(function ($k) use ($players) {
+                    $player = $players[$k->attacker_player_id] ?? null;
+
+                    return $player ? ['guid' => $player->guid, 'name' => $player->last_name_plain, 'uses' => $k->uses] : null;
+                })->filter()->values();
+
+                return (object) [
+                    'weapon' => $row->weapon,
+                    'uses' => $row->uses,
+                    'topPlayer' => $topPlayer,
+                    'topUses' => $top->uses ?? 0,
+                    'allKillers' => $allKillers,
+                ];
+            });
+        }
+
+        return view('specialties.weapons', compact('servers', 'server', 'weapons'));
+    }
+
+    public function rivalries(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rivalries = collect();
+
+        if ($server) {
+            $pairs = $this->sdKills($server->id)
+                ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
+                ->selectRaw('kills.attacker_player_id, kills.victim_player_id, count(*) as kills_count')
+                ->groupBy('kills.attacker_player_id', 'kills.victim_player_id')
+                ->having('kills_count', '>=', 3)
+                ->get();
+
+            // A vs B and B vs A are the same matchup — group by the *unordered* pair
+            // so each rivalry appears once, with whichever direction has more kills as
+            // "the" verdugo/víctima and the other direction kept as the reverse count
+            // (shown in the click-to-expand detail).
+            $deduped = $pairs->groupBy(function ($row) {
+                $ids = [$row->attacker_player_id, $row->victim_player_id];
+                sort($ids);
+
+                return implode('-', $ids);
+            })->map(function ($group) {
+                $sorted = $group->sortByDesc('kills_count')->values();
+                $dominant = $sorted[0];
+
+                return (object) [
+                    'attacker_player_id' => $dominant->attacker_player_id,
+                    'victim_player_id' => $dominant->victim_player_id,
+                    'kills_count' => $dominant->kills_count,
+                    'reverse_count' => $sorted->get(1)->kills_count ?? 0,
+                ];
+            })->sortByDesc('kills_count')->take(50)->values();
+
+            $playerIds = $deduped->pluck('attacker_player_id')->merge($deduped->pluck('victim_player_id'))->unique();
+            $players = Player::whereIn('id', $playerIds)->get()->keyBy('id');
+
+            // Favorite weapon in each dominant matchup — a different cut of the same
+            // kills already queried above, grouped one level finer (by weapon too).
+            $topWeaponByPair = $this->sdKills($server->id)
+                ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
+                ->selectRaw('kills.attacker_player_id, kills.victim_player_id, kills.weapon, count(*) as c')
+                ->groupBy('kills.attacker_player_id', 'kills.victim_player_id', 'kills.weapon')
+                ->get()
+                ->groupBy(fn ($r) => $r->attacker_player_id.'-'.$r->victim_player_id)
+                ->map(fn ($g) => $g->sortByDesc('c')->first());
+
+            $rivalries = $deduped->map(function ($row) use ($players, $topWeaponByPair) {
+                $topWeapon = $topWeaponByPair->get($row->attacker_player_id.'-'.$row->victim_player_id);
+
+                return (object) [
+                    'nemesis' => $players[$row->attacker_player_id] ?? null,
+                    'victim' => $players[$row->victim_player_id] ?? null,
+                    'count' => $row->kills_count,
+                    'reverseCount' => $row->reverse_count,
+                    'weapon' => $topWeapon?->weapon,
+                ];
+            })->filter(fn ($r) => $r->nemesis && $r->victim)->values();
+        }
+
+        return view('specialties.rivalries', compact('servers', 'server', 'rivalries'));
+    }
+
+    public function mapKings(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $maps = collect();
+
+        if ($server) {
+            $totals = PlayerMapStat::where('server_id', $server->id)
+                ->selectRaw('map, sum(kills) as uses')
+                ->groupBy('map')
+                ->orderByDesc('uses')
+                ->get();
+
+            $topByMap = PlayerMapStat::with('player')
+                ->where('server_id', $server->id)
+                ->whereHas('player')
+                ->get()
+                ->groupBy('map')
+                ->map(fn ($rows) => $rows->sortByDesc('kills')->first());
+
+            $maps = $totals->map(function ($row) use ($topByMap) {
+                $top = $topByMap->get($row->map);
+
+                return (object) [
+                    'map' => $row->map,
+                    'mapLabel' => \App\Support\MapCatalog::mapLabel($row->map),
+                    'uses' => $row->uses,
+                    'topPlayer' => $top?->player,
+                    'topKills' => $top->kills ?? 0,
+                    'topDeaths' => $top->deaths ?? 0,
+                ];
+            })->filter(fn ($m) => $m->topPlayer)->values();
+        }
+
+        return view('specialties.map-kings', compact('servers', 'server', 'maps'));
+    }
+
+    public function playtime(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalSeconds = 0;
+
+        if ($server) {
+            $rounds = Round::where('server_id', $server->id)
+                ->where('gametype', 'sd')
+                ->whereNotNull('ended_at')
+                ->get(['id', 'started_at', 'ended_at'])
+                ->keyBy('id');
+
+            $kills = Kill::whereIn('round_id', $rounds->keys())
+                ->where(function ($q) {
+                    $q->whereNotNull('attacker_player_id')->orWhereNotNull('victim_player_id');
+                })
+                ->get(['attacker_player_id', 'victim_player_id', 'round_id']);
+
+            $roundPlayers = [];
+            foreach ($kills as $kill) {
+                if ($kill->attacker_player_id) {
+                    $roundPlayers[$kill->round_id][$kill->attacker_player_id] = true;
+                }
+                if ($kill->victim_player_id) {
+                    $roundPlayers[$kill->round_id][$kill->victim_player_id] = true;
+                }
+            }
+
+            $seconds = [];
+            foreach ($roundPlayers as $roundId => $playerIds) {
+                $round = $rounds->get($roundId);
+                if (! $round) {
+                    continue;
+                }
+                $duration = $round->started_at->diffInSeconds($round->ended_at);
+                foreach (array_keys($playerIds) as $playerId) {
+                    $seconds[$playerId] = ($seconds[$playerId] ?? 0) + $duration;
+                }
+            }
+
+            arsort($seconds);
+            $totalSeconds = array_sum($seconds);
+            $totalPlayers = count($seconds);
+            $seconds = array_slice($seconds, 0, 50, true);
+
+            $players = Player::whereIn('id', array_keys($seconds))->get()->keyBy('id');
+
+            $rows = collect($seconds)->map(function ($sec, $playerId) use ($players) {
+                $player = $players[$playerId] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) ['player' => $player, 'value' => $this->formatDuration($sec), 'share' => null];
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.playtime', 'icon' => '⏱️', 'title' => 'Más Horas Jugadas',
+            'subtitle' => 'Tiempo estimado en partida — suma la duración de las rondas SD en las que participó cada jugador',
+            'valueLabel' => 'tiempo', 'valueColor' => 'text-sky-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Tiempo total registrado', 'value' => $this->formatDuration($totalSeconds), 'color' => 'text-sky-400'],
+                ['label' => 'Jugadores con tiempo registrado', 'value' => $totalPlayers],
+            ],
+        ]);
+    }
+
+    public function streaks(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $longestEver = null;
+
+        if ($server) {
+            $matches = GameMatch::where('server_id', $server->id)
+                ->where('is_backfilled', false)
+                ->where('gametype', 'sd')
+                ->whereNotNull('ended_at')
+                ->orderBy('started_at')
+                ->with('rounds:id,match_id,winner_guids')
+                ->get();
+
+            $current = [];
+            $best = [];
+
+            foreach ($matches as $match) {
+                $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
+                if (! $winningGuids) {
+                    continue;
+                }
+                $winningGuids = array_flip($winningGuids);
+
+                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
+                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
+                    ->filter(fn ($g) => $g && $g !== '0')->unique();
+
+                foreach ($participantGuids as $guid) {
+                    if (isset($winningGuids[$guid])) {
+                        $current[$guid] = ($current[$guid] ?? 0) + 1;
+                        $best[$guid] = max($best[$guid] ?? 0, $current[$guid]);
+                    } else {
+                        $current[$guid] = 0;
+                    }
+                }
+            }
+
+            arsort($best);
+            $best = array_filter($best, fn ($v) => $v >= 2);
+            $best = array_slice($best, 0, 50, true);
+
+            $players = Player::whereIn('guid', array_keys($best))->get()->keyBy('guid');
+
+            $rows = collect($best)->map(function ($bestStreak, $guid) use ($players, $current) {
+                $player = $players[$guid] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) [
+                    'player' => $player,
+                    'best' => $bestStreak,
+                    'current' => $current[$guid] ?? 0,
+                ];
+            })->filter()->values();
+
+            $longestEver = $rows->first();
+        }
+
+        return view('specialties.streaks', compact('servers', 'server', 'rows', 'longestEver'));
+    }
+
+    public function recentActivity(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $since = now()->subDays(7);
+        $totalKills = 0;
+
+        if ($server) {
+            $tally = $this->sdKills($server->id)
+                ->whereNotNull('kills.attacker_player_id')
+                ->where('kills.occurred_at', '>=', $since)
+                ->selectRaw('kills.attacker_player_id as player_id, count(*) as kills_count')
+                ->groupBy('kills.attacker_player_id')
+                ->orderByDesc('kills_count')
+                ->limit(50)
+                ->get();
+
+            $totalKills = (int) $this->sdKills($server->id)->where('kills.occurred_at', '>=', $since)->count();
+
+            $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+
+            $rows = $tally->map(function ($row) use ($players) {
+                $player = $players[$row->player_id] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) ['player' => $player, 'value' => $row->kills_count, 'share' => null, 'kills' => $row->kills_count];
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.recent-activity', 'icon' => '📈', 'title' => 'Actividad Reciente',
+            'subtitle' => 'Más bajas (Search and Destroy) en los últimos 7 días — '.$since->translatedFormat('d M').' a hoy',
+            'valueLabel' => 'bajas', 'valueColor' => 'text-lime-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Bajas en los últimos 7 días', 'value' => $totalKills, 'color' => 'text-lime-400'],
+                ['label' => 'Jugadores activos', 'value' => $rows->count()],
+            ],
+        ]);
+    }
+
+    public function countries(Request $request)
+    {
+        // Players are global (not per-server, see CLAUDE.md), and IP is only known
+        // from live RCON polls (not per-server log lines), so this page — unlike the
+        // rest of specialties — has no server switcher, it's a global breakdown.
+        $players = Player::whereNotNull('ip')->get(['id', 'guid', 'last_name', 'last_name_plain', 'ip', 'kills_total']);
+
+        $grouped = [];
+        foreach ($players as $player) {
+            $country = GeoIp::countryFor($player->ip);
+            if (! $country) {
+                continue;
+            }
+            $grouped[$country['code']]['name'] ??= $country['name'];
+            $grouped[$country['code']]['players'][] = $player;
+        }
+
+        $totalWithCountry = array_sum(array_map(fn ($g) => count($g['players']), $grouped));
+
+        $countries = collect($grouped)->map(function ($g, $code) use ($totalWithCountry) {
+            $players = collect($g['players'])->sortByDesc('kills_total')->values();
+
+            return (object) [
+                'code' => $code,
+                'name' => $g['name'],
+                'flag' => GeoIp::flagIconHtml($code),
+                'count' => $players->count(),
+                'share' => $totalWithCountry > 0 ? round($players->count() / $totalWithCountry * 100, 1) : 0,
+                'players' => $players,
+            ];
+        })->sortByDesc('count')->values();
+
+        return view('specialties.countries', [
+            'countries' => $countries,
+            'totalWithCountry' => $totalWithCountry,
+            'totalPlayers' => $players->count(),
+        ]);
+    }
+
+    public function clutches(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalClutches = 0;
+
+        if ($server) {
+            $rounds = Round::where('server_id', $server->id)->where('gametype', 'sd')
+                ->whereNotNull('winner_guids')
+                ->whereHas('match', fn ($q) => $q->where('is_backfilled', false))
+                ->get(['id', 'winner_guids']);
+
+            // winner_guids is the WHOLE winning roster from the round's Winners; line
+            // (confirmed against real matches: 7 guids, one per player on that side),
+            // not just who was still alive when the round ended — so "count===1" (the
+            // original check here) only ever fires if nearly the whole team had
+            // DISCONNECTED before the round finished, which is why it found exactly 1
+            // round in the server's entire history despite players clearly clutching
+            // rounds in-game. A real clutch is the roster minus whoever on it died
+            // *during* that round (a Kill row with them as victim, round_id-scoped)
+            // leaving exactly one survivor — re-running this against a single day's
+            // matches found 17 genuine 1vX rounds the old check missed entirely.
+            $deathsByRound = Kill::whereIn('round_id', $rounds->pluck('id'))
+                ->whereNotNull('victim_guid')
+                ->get(['round_id', 'victim_guid'])
+                ->groupBy('round_id');
+
+            $tally = [];
+            foreach ($rounds as $round) {
+                $roster = collect($round->winner_guids);
+                // A roster that already had only 1-2 people before the round even
+                // started (mass disconnects) isn't a clutch — there's no "X" to have
+                // been alone against. Needs a real team whittled down mid-round.
+                if ($roster->count() < 3) {
+                    continue;
+                }
+
+                $deaths = $deathsByRound->get($round->id, collect())->pluck('victim_guid')->unique();
+                $survivors = $roster->diff($deaths);
+
+                if ($survivors->count() === 1) {
+                    $guid = $survivors->first();
+                    $tally[$guid] = ($tally[$guid] ?? 0) + 1;
+                    $totalClutches++;
+                }
+            }
+
+            arsort($tally);
+            $tally = array_slice($tally, 0, 50, true);
+            $players = Player::whereIn('guid', array_keys($tally))->get()->keyBy('guid');
+
+            $rows = collect($tally)->map(function ($count, $guid) use ($players) {
+                $player = $players[$guid] ?? null;
+
+                return $player ? (object) ['player' => $player, 'value' => $count, 'share' => null] : null;
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.clutches', 'icon' => '🥶', 'title' => 'Clutches 1vX',
+            'subtitle' => 'Rondas ganadas siendo el único sobreviviente de su equipo',
+            'valueLabel' => 'clutches', 'valueColor' => 'text-cyan-300',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Clutches totales', 'value' => $totalClutches, 'color' => 'text-cyan-300'],
+            ],
+        ]);
+    }
+
+    public function killStreaks(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+
+        if ($server) {
+            $killRows = Kill::join('rounds', 'rounds.id', '=', 'kills.round_id')
+                ->where('rounds.server_id', $server->id)->where('rounds.gametype', 'sd')
+                ->whereNotNull('kills.attacker_player_id')->where('kills.is_suicide', false)
+                ->selectRaw("kills.attacker_player_id as player_id, kills.occurred_at, 'kill' as event_type")
+                ->get()->all();
+
+            $deathRows = Kill::join('rounds', 'rounds.id', '=', 'kills.round_id')
+                ->where('rounds.server_id', $server->id)->where('rounds.gametype', 'sd')
+                ->whereNotNull('kills.victim_player_id')
+                ->selectRaw("kills.victim_player_id as player_id, kills.occurred_at, 'death' as event_type")
+                ->get()->all();
+
+            // Plain array_merge (not Eloquent Collection::merge()) — that merges by
+            // primary key when `id` isn't selected, which silently collapses rows
+            // with no `id` column into one (see the 2026-08 "Horas Jugadas" bug).
+            $events = collect(array_merge($killRows, $deathRows))->groupBy('player_id');
+
+            $streaks = [];
+            foreach ($events as $playerId => $playerEvents) {
+                $current = 0;
+                $best = 0;
+                foreach ($playerEvents->sortBy('occurred_at') as $e) {
+                    if ($e->event_type === 'kill') {
+                        $current++;
+                        $best = max($best, $current);
+                    } else {
+                        $current = 0;
+                    }
+                }
+                if ($best > 0) {
+                    $streaks[$playerId] = $best;
+                }
+            }
+
+            arsort($streaks);
+            $streaks = array_slice($streaks, 0, 50, true);
+            $players = Player::whereIn('id', array_keys($streaks))->get()->keyBy('id');
+
+            $rows = collect($streaks)->map(function ($best, $playerId) use ($players) {
+                $player = $players[$playerId] ?? null;
+
+                return $player ? (object) ['player' => $player, 'value' => $best, 'share' => null] : null;
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.streaks-kills', 'icon' => '🔥', 'title' => 'Rachas de Bajas',
+            'subtitle' => 'Mejor racha histórica de bajas sin morir (Search and Destroy)',
+            'valueLabel' => 'racha', 'valueColor' => 'text-orange-400',
+            'shareLabel' => null,
+            'statCards' => [],
+        ]);
+    }
+
+    public function chattiest(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalMessages = 0;
+
+        if ($server) {
+            $tally = ChatMessage::where('server_id', $server->id)
+                ->whereNotNull('player_id')
+                ->selectRaw('player_id, count(*) as c')
+                ->groupBy('player_id')->orderByDesc('c')->limit(50)->get();
+
+            $totalMessages = (int) ChatMessage::where('server_id', $server->id)->count();
+
+            $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+
+            $rows = $tally->map(function ($row) use ($players) {
+                $player = $players[$row->player_id] ?? null;
+
+                return $player ? (object) ['player' => $player, 'value' => $row->c, 'share' => null] : null;
+            })->filter()->values();
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.chattiest', 'icon' => '💬', 'title' => 'Jugador Más Hablador',
+            'subtitle' => 'Más mensajes de chat público enviados',
+            'valueLabel' => 'mensajes', 'valueColor' => 'text-lime-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Mensajes totales', 'value' => $totalMessages, 'color' => 'text-lime-400'],
+            ],
+        ]);
+    }
+
+    public function peakTimes(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $byHour = collect();
+        $byWeekday = collect();
+
+        if ($server) {
+            $hourRows = $this->sdKills($server->id)
+                ->selectRaw('hour(kills.occurred_at) as h, count(*) as c')
+                ->groupBy('h')->pluck('c', 'h');
+            $byHour = collect(range(0, 23))->map(fn ($h) => (object) ['label' => sprintf('%02d:00', $h), 'value' => $hourRows[$h] ?? 0]);
+
+            // DAYOFWEEK: 1=Sunday..7=Saturday — reorder to a Monday-first week for display.
+            $weekdayRows = $this->sdKills($server->id)
+                ->selectRaw('dayofweek(kills.occurred_at) as d, count(*) as c')
+                ->groupBy('d')->pluck('c', 'd');
+            $labels = [2 => 'Lun', 3 => 'Mar', 4 => 'Mié', 5 => 'Jue', 6 => 'Vie', 7 => 'Sáb', 1 => 'Dom'];
+            $byWeekday = collect($labels)->map(fn ($label, $d) => (object) ['label' => $label, 'value' => $weekdayRows[$d] ?? 0])->values();
+        }
+
+        $maxHour = $byHour->max('value') ?: 1;
+        $maxWeekday = $byWeekday->max('value') ?: 1;
+
+        return view('specialties.peak-times', compact('servers', 'server', 'byHour', 'byWeekday', 'maxHour', 'maxWeekday'));
+    }
+
+    public function timeouts(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+
+        if ($server) {
+            $rows = MatchEvent::where('server_id', $server->id)
+                ->where('event_type', 'timeout_call')->whereNotNull('name')
+                ->selectRaw('name, side, count(*) as c')
+                ->groupBy('name', 'side')->orderByDesc('c')->limit(50)
+                ->get();
+        }
+
+        return view('specialties.timeouts', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.timeouts', 'icon' => '⏸️', 'title' => 'Timeouts',
+            'subtitle' => 'Quién más pide tiempo fuera durante una partida',
+            'valueLabel' => 'Timeouts pedidos', 'emptyText' => 'Todavía no hay timeouts registrados.',
+        ]);
+    }
+
+    /**
+     * "Bash" here means an actual melee kill (mod=MOD_MELEE) — the rifle-butt/knife
+     * hit players call "bash" in-game. Originally built on the log's BASH_CALL; event
+     * instead, which turned out to be a red herring: it's an unrelated, extremely
+     * rare directive (seen once in the server's entire history) with no confirmed
+     * meaning, while real melee kills happen regularly and were sitting unused in
+     * kills.mod the whole time.
+     */
+    public function bashCalls(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalBashes = 0;
+
+        if ($server) {
+            $counts = $this->sdKills($server->id)
+                ->where('kills.mod', 'MOD_MELEE')
+                ->whereNotNull('kills.attacker_player_id')
+                ->selectRaw('kills.attacker_player_id as player_id, count(*) as c')
+                ->groupBy('kills.attacker_player_id')
+                ->orderByDesc('c')
+                ->limit(50)
+                ->get();
+
+            $stats = PlayerServerStat::where('server_id', $server->id)
+                ->whereIn('player_id', $counts->pluck('player_id'))
+                ->get()->keyBy('player_id');
+            $players = Player::whereIn('id', $counts->pluck('player_id'))->get()->keyBy('id');
+
+            $rows = $counts->map(function ($row) use ($players, $stats) {
+                $player = $players[$row->player_id] ?? null;
+                if (! $player) {
+                    return null;
+                }
+
+                return (object) [
+                    'player' => $player,
+                    'value' => $row->c,
+                    'share' => null,
+                    'kills' => $stats[$row->player_id]->kills ?? null,
+                ];
+            })->filter()->values();
+
+            $totalBashes = (int) $counts->sum('c');
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.bash', 'icon' => '🥊', 'title' => 'Bash',
+            'subtitle' => 'Más bajas cuerpo a cuerpo (bash) — Search and Destroy',
+            'valueLabel' => 'bash', 'valueColor' => 'text-orange-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Total de bash', 'value' => $totalBashes, 'color' => 'text-orange-400'],
+            ],
+        ]);
+    }
+
+    public function winRate(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $minMaps = 3;
+
+        if ($server) {
+            $matches = GameMatch::where('server_id', $server->id)
+                ->where('is_backfilled', false)
+                ->where('gametype', 'sd')
+                ->whereNotNull('ended_at')
+                ->with('rounds:id,match_id,winner_guids')
+                ->get();
+
+            $played = [];
+            $won = [];
+
+            foreach ($matches as $match) {
+                // "Played" has no direct participant list stored per match — same
+                // proxy used by "Racha de Mapas": a player counts as having played a
+                // match if they appear as attacker or victim in at least one of its
+                // kills.
+                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
+                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
+                    ->filter(fn ($g) => $g && $g !== '0')->unique();
+
+                foreach ($participantGuids as $guid) {
+                    $played[$guid] = ($played[$guid] ?? 0) + 1;
+                }
+
+                $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
+                if ($winningGuids) {
+                    foreach ($winningGuids as $guid) {
+                        $won[$guid] = ($won[$guid] ?? 0) + 1;
+                    }
+                }
+            }
+
+            $players = Player::whereIn('guid', array_keys($played))->get()->keyBy('guid');
+
+            $rows = collect($played)
+                ->map(function ($playedCount, $guid) use ($won, $players, $minMaps) {
+                    if ($playedCount < $minMaps) {
+                        return null;
+                    }
+                    $player = $players[$guid] ?? null;
+                    if (! $player) {
+                        return null;
+                    }
+                    $wonCount = $won[$guid] ?? 0;
+
+                    return (object) [
+                        'player' => $player,
+                        'won' => $wonCount,
+                        'played' => $playedCount,
+                        'rate' => round(min($wonCount, $playedCount) / $playedCount * 100, 1),
+                    ];
+                })
+                ->filter()
+                ->sortByDesc('rate')
+                ->take(50)
+                ->values();
+        }
+
+        return view('specialties.win-rate', compact('servers', 'server', 'rows', 'minMaps'));
+    }
+
+    public function bombs(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalPlants = 0;
+        $totalDefuses = 0;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('bomb_plants', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('bomb_plants')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->bomb_plants;
+                    $row->share = null;
+
+                    return $row;
+                });
+
+            $totals = PlayerServerStat::where('server_id', $server->id)
+                ->selectRaw('sum(bomb_plants) as p, sum(bomb_defuses) as d')->first();
+            $totalPlants = (int) ($totals->p ?? 0);
+            $totalDefuses = (int) ($totals->d ?? 0);
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.bombs', 'icon' => '💣', 'title' => 'Especialistas en Bombas',
+            'subtitle' => 'Más bombas plantadas (Search and Destroy)',
+            'valueLabel' => 'plantadas', 'valueColor' => 'text-red-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Bombas plantadas', 'value' => $totalPlants, 'color' => 'text-red-400'],
+                ['label' => 'Bombas desactivadas', 'value' => $totalDefuses, 'color' => 'text-emerald-400'],
+            ],
+        ]);
+    }
+
+    public function damage(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $totalDamage = 0;
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('damage_dealt', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('damage_dealt')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = number_format($row->damage_dealt);
+                    $row->share = null;
+
+                    return $row;
+                });
+
+            $totalDamage = (int) PlayerServerStat::where('server_id', $server->id)->sum('damage_dealt');
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.damage', 'icon' => '💥', 'title' => 'Especialistas en Daño',
+            'subtitle' => 'Más daño infligido en total (Search and Destroy)',
+            'valueLabel' => 'daño', 'valueColor' => 'text-amber-400',
+            'shareLabel' => null,
+            'statCards' => [
+                ['label' => 'Daño total infligido', 'value' => number_format($totalDamage), 'color' => 'text-amber-400'],
+            ],
+        ]);
+    }
+
+    public function disconnects(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+
+        if ($server) {
+            $rows = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('mid_round_disconnects', '>', 0)
+                ->whereHas('player')
+                ->orderByDesc('mid_round_disconnects')
+                ->limit(50)
+                ->get()
+                ->map(function ($row) {
+                    $row->value = $row->mid_round_disconnects;
+                    $row->share = null;
+
+                    return $row;
+                });
+        }
+
+        return view('specialties.ranking', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'routeName' => 'specialties.disconnects', 'icon' => '🔌', 'title' => 'Se Fueron a Media Ronda',
+            'subtitle' => 'Desconexiones mientras la ronda seguía activa (Search and Destroy)',
+            'valueLabel' => 'desconexiones', 'valueColor' => 'text-rose-400',
+            'shareLabel' => null,
+            'statCards' => [],
+        ]);
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        $minutes = intdiv($seconds, 60);
+        if ($minutes < 60) {
+            return "{$minutes} min";
+        }
+
+        $hours = intdiv($minutes, 60);
+        $remaining = $minutes % 60;
+
+        return "{$hours}h {$remaining}min";
+    }
+
+    /** @return array{0: \Illuminate\Support\Collection, 1: ?Server} */
+    private function resolveServer(Request $request): array
+    {
+        $servers = Server::where('is_active', true)->orderBy('name')->get();
+        $server = $servers->firstWhere('slug', $request->query('server')) ?? $servers->first();
+
+        return [$servers, $server];
+    }
+
+    /**
+     * Base query for "real" kills on a server: Search & Destroy only (same rule as the
+     * main ranking), joined to rounds, suicides excluded.
+     */
+    private function sdKills(int $serverId)
+    {
+        return Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
+            ->where('rounds.server_id', $serverId)
+            ->where('rounds.gametype', 'sd')
+            ->where('kills.is_suicide', false);
+    }
+}
