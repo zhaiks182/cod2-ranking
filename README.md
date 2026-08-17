@@ -99,7 +99,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Editar `.env` con al menos:
+Editar `.env` con al menos la conexión a la base de datos y la zona horaria:
 
 ```env
 DB_CONNECTION=mysql
@@ -110,13 +110,6 @@ DB_USERNAME=tu_usuario
 DB_PASSWORD=tu_password
 
 APP_TIMEZONE=America/Guayaquil   # o la zona horaria de tu comunidad — ver nota abajo
-
-COD2_LOG_PATH=/ruta/a/games_mp.log
-COD2_CONNECT_IP=IP_publica_del_server
-COD2_CONNECT_PORT=28960
-COD2_RCON_HOST=127.0.0.1
-COD2_RCON_PORT=28960
-COD2_RCON_PASSWORD=tu_password_rcon
 ```
 
 > **Sobre `APP_TIMEZONE`:** Laravel usa su propia configuración de zona horaria,
@@ -124,14 +117,20 @@ COD2_RCON_PASSWORD=tu_password_rcon
 > todas las fechas/horas del sitio van a aparecer adelantadas respecto a la hora
 > real de tu comunidad.
 
-Correr las migraciones (esto crea el esquema, un servidor inicial con los
-valores `COD2_*` de arriba, y un usuario admin con contraseña generada al
-azar — **copiá esa contraseña de la salida de la consola**, no queda guardada
-en ningún otro lado):
+Correr las migraciones (esto crea el esquema y un usuario admin con contraseña
+generada al azar — **copiá esa contraseña de la salida de la consola**, no
+queda guardada en ningún otro lado):
 
 ```bash
 php artisan migrate
 ```
+
+Los datos del servidor de CoD2 (ruta del log, IP/puerto de conexión, RCON) **no
+se configuran en `.env`** — se cargan desde el panel de administración una vez
+logueado, en `/adm_cod2/servers` (podés agregar más de un servidor ahí, ver
+"Multi-servidor" arriba). La migración crea un primer servidor de ejemplo con
+valores genéricos; entrá a editarlo con los datos reales antes de usar el
+sitio.
 
 Enlazar el storage público (necesario para que se sirvan las imágenes de mapa y
 los íconos de arma):
