@@ -8,32 +8,32 @@ todo se calcula a partir del propio `games_mp.log`.
 
 ## Qué incluye
 
-- **Estado en vivo del servidor** — mapa actual, jugadores conectados con su
+- 📡 **Estado en vivo del servidor** — mapa actual, jugadores conectados con su
   puntaje/muertes/headshots en tiempo real (consulta RCON), y comando de conexión
   con un click para copiar.
-- **Ranking general** — global, por mapa, y filtrable por rango de fechas.
+- 🏆 **Ranking general** — global, por mapa, y filtrable por rango de fechas.
   Tabla de posiciones Axis/Allies con el marcador de cada partida.
-- **Historial de partidas** — detalle por partida con línea de tiempo de eventos
+- 🗂️ **Historial de partidas** — detalle por partida con línea de tiempo de eventos
   (inicio, cambio de bando, tiempo extra, timeouts), chat general y chat de
   equipo (separado por Axis/Allies), y desglose de kills por jugador.
-- **+20 páginas de "Especialidades"** (leaderboards temáticos), agrupadas en:
-  - **Combate** — headshots, granadas, ranking por arma, eficiencia K/D,
+- ⭐ **+20 páginas de "Especialidades"** (leaderboards temáticos), agrupadas en:
+  - ⚔️ **Combate** — headshots, granadas, ranking por arma, eficiencia K/D,
     especialistas en bombas/daño, clutches 1vX, rachas de bajas, bash (bajas
     cuerpo a cuerpo).
-  - **Mapas y partidas** — mapas ganados, reyes de cada mapa, racha de mapas,
+  - 🗺️ **Mapas y partidas** — mapas ganados, reyes de cada mapa, racha de mapas,
     win rate por mapa.
-  - **Salón de la vergüenza** — muertes por granada, fuego amigo, suicidios,
+  - 🙈 **Salón de la vergüenza** — muertes por granada, fuego amigo, suicidios,
     desconexiones a media ronda.
-  - **Social** — jugador más hablador, timeouts pedidos.
-  - **Actividad** — horas jugadas, actividad reciente, hora pico, países de
+  - 💬 **Social** — jugador más hablador, timeouts pedidos.
+  - 📊 **Actividad** — horas jugadas, actividad reciente, hora pico, países de
     los jugadores (geolocalización por IP).
-- **Perfiles de jugador** — historial completo, arma favorita, rivalidades
+- 🪪 **Perfiles de jugador** — historial completo, arma favorita, rivalidades
   cara-a-cara contra cualquier otro jugador.
-- **Panel de administración** (`/adm_cod2`) — login propio (no OAuth), CRUD de
+- 🛠️ **Panel de administración** (`/adm_cod2`) — login propio (no OAuth), CRUD de
   servidores (soporta más de un servidor CoD2 a la vez), consola RCON en vivo
   (kick, mensaje, cambio de mapa, comando libre), subida de imágenes de mapa,
   gestión de partidas y de países/IP de jugadores.
-- **Multi-servidor** — cada servidor CoD2 configurado tiene su propio log,
+- 🌐 **Multi-servidor** — cada servidor CoD2 configurado tiene su propio log,
   credenciales RCON e IP pública; los jugadores son globales (identificados por
   hardware ID, no por nombre) pero las estadísticas se llevan por servidor.
 
