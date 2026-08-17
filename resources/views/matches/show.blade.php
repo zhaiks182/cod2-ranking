@@ -53,27 +53,6 @@
 
     @if($matchStartKill || $halftimeKill || $overtimeEvent || $timeoutEvents->isNotEmpty() || $topBash || $topHeadshots || $topGrenades)
         <div class="flex flex-wrap gap-2 text-xs">
-            @if($topBash)
-                <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
-                    👊 Más bash ·
-                    {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
-                    ({{ $topBash->bash }})
-                </span>
-            @endif
-            @if($topHeadshots)
-                <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
-                    🎯 Más headshots ·
-                    {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
-                    ({{ $topHeadshots->headshots }})
-                </span>
-            @endif
-            @if($topGrenades)
-                <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
-                    💣 Más granadas ·
-                    {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
-                    ({{ $topGrenades->grenade_kills }})
-                </span>
-            @endif
             @if($matchStartKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
                     🏁 Inicio ·
@@ -90,6 +69,27 @@
                     →
                     {{ \App\Support\Cod2Colors::stripColors($halftimeKill->victim_name) }}
                     ({{ \App\Support\WeaponCatalog::label($halftimeKill->weapon) }})
+                </span>
+            @endif
+            @if($topHeadshots)
+                <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
+                    🎯 Más headshots ·
+                    {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
+                    ({{ $topHeadshots->headshots }})
+                </span>
+            @endif
+            @if($topGrenades)
+                <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
+                    💣 Más granadas ·
+                    {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
+                    ({{ $topGrenades->grenade_kills }})
+                </span>
+            @endif
+            @if($topBash)
+                <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
+                    👊 Más bash ·
+                    {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
+                    ({{ $topBash->bash }})
                 </span>
             @endif
             @if($overtimeEvent)
