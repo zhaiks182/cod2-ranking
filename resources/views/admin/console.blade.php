@@ -32,6 +32,7 @@
                 <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                     <th class="px-4 py-2 font-medium">Slot</th>
                     <th class="px-4 py-2 font-medium">Nombre</th>
+                    <th class="px-4 py-2 font-medium">IP</th>
                     <th class="px-4 py-2 font-medium text-right">Puntaje</th>
                     <th class="px-4 py-2 font-medium text-right">Ping</th>
                     <th class="px-4 py-2 font-medium text-right">Acciones</th>
@@ -46,6 +47,7 @@
                             @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                             {!! \App\Support\Cod2Colors::toHtml($p['name'] ?: '(sin nombre)') !!}
                         </td>
+                        <td class="px-4 py-2 text-slate-400 font-mono text-xs">{{ $p['ip'] ?? '—' }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $p['score'] }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $p['ping'] }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap space-x-2">
@@ -60,7 +62,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Servidor vacío.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Servidor vacío.</td></tr>
                 @endforelse
             </tbody>
         </table>

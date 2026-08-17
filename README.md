@@ -6,8 +6,6 @@ jugadores, historial de partidas, estado del servidor en vivo, y un panel de
 administración con consola RCON — sin depender de ninguna API externa del juego,
 todo se calcula a partir del propio `games_mp.log`.
 
-Sitio de referencia (instancia en producción): **https://cod2.4livepro.com**
-
 ## Qué incluye
 
 - **Estado en vivo del servidor** — mapa actual, jugadores conectados con su
@@ -76,6 +74,22 @@ nombres y el país (por IP) de los jugadores conectados.
 > corrida del parser) — no viene resuelto de fábrica.
 
 ## Instalación
+
+### Opción rápida: `install.sh`
+
+```bash
+git clone https://github.com/zhaiks182/cod2-ranking.git
+cd cod2-ranking
+chmod +x install.sh && ./install.sh
+```
+
+Pide por prompts todo lo necesario (dominio, base de datos, datos del server de
+CoD2, usuario/contraseña del panel admin) y hace el resto: `composer install`,
+`.env`, creación de la base de datos, migraciones, `storage:link`, permisos,
+el cron del parser, y la descarga inicial de GeoIP. Al final imprime un
+resumen con las credenciales — el panel queda en `/adm_cod2/login`.
+
+### Manual, paso a paso
 
 ```bash
 git clone https://github.com/zhaiks182/cod2-ranking.git
