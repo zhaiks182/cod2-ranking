@@ -51,8 +51,15 @@
       </div>
     </div>
 
-    @if($matchStartKill || $halftimeKill || $overtimeEvent || $timeoutEvents->isNotEmpty())
+    @if($matchStartKill || $halftimeKill || $overtimeEvent || $timeoutEvents->isNotEmpty() || $topBash)
         <div class="flex flex-wrap gap-2 text-xs">
+            @if($topBash)
+                <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
+                    👊 Más bash ·
+                    {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
+                    ({{ $topBash->bash }})
+                </span>
+            @endif
             @if($matchStartKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
                     Inicio ·
@@ -88,7 +95,7 @@
         </div>
     @endif
 
-    @php $tkParams = http_build_query(['match' => $match->id]); @endphp
+    @php $tkParams = http_build_query(['match' => $match->id]); $showBash = $leaderboard->sum('bash') > 0; @endphp
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -101,6 +108,7 @@
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
                     <th class="px-4 py-2 font-medium text-right">Granadas</th>
+                    @if($showBash)<th class="px-4 py-2 font-medium text-right">Bash</th>@endif
                 </tr>
             </thead>
             <tbody>
@@ -124,9 +132,10 @@
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->headshots }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->grenade_kills }}</td>
+                        @if($showBash)<td class="px-4 py-2 text-right tabular-nums {{ $row->bash > 0 ? 'text-orange-300' : '' }}">{{ $row->bash }}</td>@endif
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin bajas registradas en esta partida.</td></tr>
+                    <tr><td colspan="{{ $showBash ? 8 : 7 }}" class="px-4 py-6 text-center text-slate-500">Sin bajas registradas en esta partida.</td></tr>
                 @endforelse
             </tbody>
         </table>

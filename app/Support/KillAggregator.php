@@ -20,7 +20,7 @@ class KillAggregator
     public static function aggregate(Closure $baseQuery): Collection
     {
         $kills = $baseQuery()->where('kills.is_suicide', false)->whereNotNull('kills.attacker_player_id')
-            ->selectRaw('kills.attacker_player_id as player_id, count(*) as kills, sum(kills.is_headshot) as headshots, sum(kills.is_grenade) as grenade_kills, sum(kills.is_teamkill) as teamkills')
+            ->selectRaw("kills.attacker_player_id as player_id, count(*) as kills, sum(kills.is_headshot) as headshots, sum(kills.is_grenade) as grenade_kills, sum(kills.is_teamkill) as teamkills, sum(kills.mod = 'MOD_MELEE') as bash")
             ->groupBy('kills.attacker_player_id')
             ->get()->keyBy('player_id');
 
@@ -42,6 +42,7 @@ class KillAggregator
                 'headshots' => (int) ($k->headshots ?? 0),
                 'grenade_kills' => (int) ($k->grenade_kills ?? 0),
                 'teamkills' => (int) ($k->teamkills ?? 0),
+                'bash' => (int) ($k->bash ?? 0),
                 'deaths' => (int) ($d->deaths ?? 0),
             ];
         })->sortByDesc('kills')->values();

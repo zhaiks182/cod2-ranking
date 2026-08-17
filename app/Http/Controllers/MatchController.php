@@ -82,6 +82,11 @@ class MatchController extends Controller
         $overtimeEvent = $matchEvents->firstWhere('event_type', 'overtime');
         $timeoutEvents = $matchEvents->whereIn('event_type', ['timeout_call', 'timeout_cancel', 'bash_call'])->values();
 
+        // "Bash" here is the melee kill (mod=MOD_MELEE), not the bash_call; log event
+        // above (a red herring — see SpecialtyController::bashCalls()) — whoever has
+        // the most in THIS match, shown as a quick callout next to the other badges.
+        $topBash = $leaderboard->where('bash', '>', 0)->sortByDesc('bash')->first();
+
         [$axisRows, $alliesRows, $sideByPlayerId] = TeamSideAnalyzer::splitByCurrentSide($rounds, $leaderboard);
         $sideScores = TeamSideAnalyzer::sideScores($rounds, $sideByPlayerId);
 
