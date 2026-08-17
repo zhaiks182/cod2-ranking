@@ -141,6 +141,9 @@ php artisan storage:link
 
 ### Poner el parser a correr
 
+> Si usaste `install.sh`, este paso ya quedó hecho — el script configura el
+> cron por vos. Es solo para el camino manual.
+
 El scheduler de Laravel necesita correr cada minuto vía el cron del sistema:
 
 ```cron
@@ -152,6 +155,9 @@ vez al mes.
 
 ### GeoIP (opcional, para las banderas de país)
 
+> `install.sh` ya corre esto al final de la instalación. Es solo para el
+> camino manual, o para volver a correrlo más adelante.
+
 ```bash
 php artisan geoip:update
 ```
@@ -161,10 +167,11 @@ Sin este paso, el sitio funciona igual pero no muestra banderas de país.
 
 ### Panel de administración
 
-Entrar a `/adm_cod2/login` con el usuario `adm_cod2` y la contraseña que
-imprimió `php artisan migrate` (ver arriba). Cambiarla cuanto antes desde
-`/adm_cod2/password`. Desde ahí se pueden agregar más servidores CoD2 (además
-del que quedó configurado por defecto con las variables `COD2_*` del `.env`).
+Entrar a `/adm_cod2/login`. Con `install.sh`, el usuario y la contraseña son
+los que elegiste durante la instalación. Por el camino manual, el usuario es
+`adm_cod2` y la contraseña es la que imprimió `php artisan migrate` — cambiala
+cuanto antes desde `/adm_cod2/password`. Desde ahí se agregan y editan los
+servidores CoD2 (ver "Multi-servidor" arriba), incluido el primero.
 
 ## Servir la aplicación
 
