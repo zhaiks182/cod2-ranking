@@ -51,7 +51,7 @@ nombres y el país (por IP) de los jugadores conectados.
 
 ## Stack
 
-- **Backend:** Laravel 13 (PHP 8.3+)
+- **Backend:** Servidor LAMP (Laravel 13, PHP 8.3+)
 - **Frontend:** Blade + Tailwind CSS (vía CDN, sin paso de build)
 - **Base de datos:** MySQL / MariaDB
 - **GeoIP:** [DB-IP Country Lite](https://db-ip.com) (`.mmdb`, licencia CC BY 4.0,
