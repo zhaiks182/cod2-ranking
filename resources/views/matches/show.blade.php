@@ -76,7 +76,7 @@
             @endif
             @if($matchStartKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
-                    Inicio ·
+                    🏁 Inicio ·
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->attacker_name) }}
                     →
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->victim_name) }}
@@ -85,7 +85,7 @@
             @endif
             @if($halftimeKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-amber-900 bg-amber-950/40 text-amber-300">
-                    Cambio de bando ·
+                    🔄 Cambio de bando ·
                     {{ \App\Support\Cod2Colors::stripColors($halftimeKill->attacker_name) }}
                     →
                     {{ \App\Support\Cod2Colors::stripColors($halftimeKill->victim_name) }}
