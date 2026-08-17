@@ -86,6 +86,8 @@ class MatchController extends Controller
         // above (a red herring — see SpecialtyController::bashCalls()) — whoever has
         // the most in THIS match, shown as a quick callout next to the other badges.
         $topBash = $leaderboard->where('bash', '>', 0)->sortByDesc('bash')->first();
+        $topHeadshots = $leaderboard->where('headshots', '>', 0)->sortByDesc('headshots')->first();
+        $topGrenades = $leaderboard->where('grenade_kills', '>', 0)->sortByDesc('grenade_kills')->first();
 
         [$axisRows, $alliesRows, $sideByPlayerId] = TeamSideAnalyzer::splitByCurrentSide($rounds, $leaderboard);
         $sideScores = TeamSideAnalyzer::sideScores($rounds, $sideByPlayerId);
@@ -108,6 +110,6 @@ class MatchController extends Controller
         $axisChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'axis')->values();
         $alliesChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'allies')->values();
 
-        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents', 'topBash'));
+        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents', 'topBash', 'topHeadshots', 'topGrenades'));
     }
 }
