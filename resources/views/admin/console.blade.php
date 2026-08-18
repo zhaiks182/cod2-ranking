@@ -13,7 +13,9 @@
         <a href="{{ route('admin.servers.index') }}" class="text-xs text-slate-500 hover:text-slate-300">← Servidores</a>
     </div>
 
-    @if(!$status)
+    @if(!$status && session('mapChanging'))
+        <div class="rounded-xl border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-300">El servidor está cargando el mapa nuevo — puede tardar varios segundos en volver a responder por RCON. Actualizá la página en un momento.</div>
+    @elseif(!$status)
         <div class="rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">No se pudo conectar por RCON a este servidor.</div>
     @endif
 

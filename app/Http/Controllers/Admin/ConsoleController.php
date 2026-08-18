@@ -70,7 +70,14 @@ class ConsoleController extends Controller
         $client->command('map '.$data['map']);
         usleep(300000);
 
-        return back()->with('status', 'Cambiando de mapa…');
+        // El cambio de mapa en si (cargar assets, reconectar jugadores) tarda mucho
+        // mas que los 300ms de espera anti flood-protect de arriba — la consulta
+        // status() que show() hace en el reload inmediato de esta misma request
+        // case casi siempre falla porque el server todavia esta transicionando, no
+        // porque la conexion RCON este realmente caida. 'mapChanging' le dice a la
+        // vista que muestre un aviso neutral en vez del error rojo de "no se pudo
+        // conectar", que quedaba contradictorio al lado del mensaje verde de exito.
+        return back()->with('status', 'Cambiando de mapa…')->with('mapChanging', true);
     }
 
     /**
