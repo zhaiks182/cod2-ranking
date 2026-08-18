@@ -38,7 +38,7 @@
     <header class="bg-panel">
         <div class="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-3">
             <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 shrink-0">
-                <span class="font-display text-lg tracking-wide text-slate-200">CoD2<span class="text-gsaccent">STATS</span></span>
+                <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
             </a>
             <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
                 <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
