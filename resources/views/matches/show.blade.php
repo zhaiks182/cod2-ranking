@@ -7,7 +7,7 @@
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div class="flex items-start gap-3">
         @if($mapImageUrl = \App\Support\MapImage::url($match->map))
-            <img src="{{ $mapImageUrl }}" alt="" class="h-20 w-20 rounded-lg object-cover shrink-0">
+            <img src="{{ $mapImageUrl }}" alt="" class="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover shrink-0">
         @endif
         <div>
             <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← Volver a partidas</a>
