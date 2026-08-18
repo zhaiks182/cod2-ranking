@@ -76,11 +76,21 @@ class ConsoleController extends Controller
      * Un solo boton para las dos condiciones (mapa + gametype) — el dueño pidio
      * explicitamente esto en vez de dos formularios/botones separados, mismo
      * patron que el menu "Teams" in-game de zPAM (Map + Gametype + un Apply).
-     * El propio menu "Apply" de zPAM confirma el formato exacto (captura del
-     * dueño, 2026-08-18): un unico comando encadenado con ";" —
-     * `g_gametype dm; map mp_trainstation_bhg` — no dos comandos RCON
-     * separados como se probo primero (eso enviaba el cvar y el mapa en dos
-     * paquetes UDP distintos, y el cambio de mapa no terminaba de aplicarse).
+     *
+     * Formato de los comandos RCON confirmado dos veces, ambas contra fuentes
+     * reales del propio mod (2026-08-18):
+     *  1. Captura del menu "Apply" de zPAM mostrando el string que arma:
+     *     "/rcon g_gametype dm; /rcon map mp_trainstation_bhg;" — parecia un
+     *     solo comando encadenado con ";", se probo asi primero y no funciono.
+     *  2. El .iwd del mod (zpam408.iwd, que el dueño tambien paso) tiene el
+     *     script fuente real: maps/mp/gametypes/_menu_rcon_map.gsc, funcion
+     *     mapOptions_updateRconCommand(). Ahi se ve que arma DOS strings
+     *     "/rcon ..." SEPARADOS (uno por linea con su propio prefijo
+     *     "/rcon"), no uno solo — cada "/rcon X" que el cliente ejecuta en su
+     *     consola dispara su PROPIO paquete RCON independiente al server. El
+     *     ";" en la captura es solo el separador de comandos de consola del
+     *     cliente, no parte de un unico payload RCON. Por eso van como dos
+     *     llamadas a command() separadas, no una sola con ";" en el medio.
      */
     public function changeMap(Request $request, Server $server)
     {
@@ -94,7 +104,9 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — el mapa/gametype probablemente NO cambiaron.');
         }
 
-        $client->command('g_gametype '.$data['gametype'].'; map '.$data['map']);
+        $client->command('g_gametype '.$data['gametype']);
+        usleep(300000);
+        $client->command('map '.$data['map']);
         usleep(300000);
 
         // El cambio de mapa en si (cargar assets, reconectar jugadores) tarda mucho
