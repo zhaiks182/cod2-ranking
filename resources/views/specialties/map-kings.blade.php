@@ -41,7 +41,7 @@
                     @foreach($maps as $i => $m)
                         @php $country = \App\Services\GeoIp::countryFor($m->topPlayer->ip); @endphp
                         <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                            <td class="px-4 py-2 text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">{{ $m->mapLabel }}</td>
                             <td class="px-4 py-2">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif

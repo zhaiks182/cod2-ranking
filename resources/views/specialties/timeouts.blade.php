@@ -38,7 +38,7 @@
                 <tbody>
                     @foreach($rows as $i => $row)
                         <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                            <td class="px-4 py-2 text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">{!! \App\Support\Cod2Colors::toHtml($row->name) !!}</td>
                             <td class="px-4 py-2 text-slate-400">{{ ucfirst($row->side) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-300 font-medium">{{ $row->c }}</td>

@@ -100,7 +100,7 @@
                         @foreach($rest as $i => $row)
                             @php $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                                <td class="px-4 py-2 text-slate-500">{{ $i + 4 }}</td>
+                                <td class="px-4 py-2 text-cyan-400">{{ $i + 4 }}</td>
                                 <td class="px-4 py-2 font-medium">
                                     @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                     <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>

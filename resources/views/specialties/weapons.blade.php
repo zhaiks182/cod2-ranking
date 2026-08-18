@@ -40,7 +40,7 @@
                     @foreach($weapons as $i => $w)
                         @php $country = $w->topPlayer ? \App\Services\GeoIp::countryFor($w->topPlayer->ip) : null; @endphp
                         <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                            <td class="px-4 py-2 text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">
                                 <button type="button"

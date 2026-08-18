@@ -49,7 +49,7 @@
                             data-reverse="{{ $r->reverseCount }}"
                             data-weapon="{{ $r->weapon ? \App\Support\WeaponCatalog::label($r->weapon) : '' }}"
                             onclick="showRivalryDetail(this)">
-                            <td class="px-4 py-2 text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2">
                                 @if($victimCountry)<span class="mr-1" title="{{ $victimCountry['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($victimCountry['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $r->victim->guid) }}" onclick="event.stopPropagation()" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($r->victim->last_name) !!}</a>

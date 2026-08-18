@@ -51,7 +51,7 @@
                             $i === 0 => 'text-amber-400',
                             $i === 1 => 'text-slate-400',
                             $i === 2 => 'text-orange-400/80',
-                            default => 'text-slate-600',
+                            default => 'text-cyan-400',
                         } }}">{{ $i + 1 }}</td>
                         <td class="px-4 py-3 font-medium">
                             @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
