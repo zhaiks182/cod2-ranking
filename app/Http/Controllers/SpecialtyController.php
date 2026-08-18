@@ -1140,12 +1140,13 @@ class SpecialtyController extends Controller
                 };
 
                 $kdPct = $percentiles('kd');
-                $hsPctPct = $percentiles('hsPct');
-                $nadePctPct = $percentiles('nadePct');
-                $winPctPct = $percentiles('winPct');
 
-                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $hsPctPct, $nadePctPct, $winPctPct) {
-                    $row->score = round(($kdPct[$i] + $hsPctPct[$i] + $nadePctPct[$i] + $winPctPct[$i]) / 4, 1);
+                // PRUEBA (2026-08-18): score = solo el percentil de K/D, las otras
+                // tres metricas se siguen calculando y mostrando en la tabla pero no
+                // entran en el promedio — comparar contra la version de 4 metricas
+                // antes de decidir cual se queda.
+                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct) {
+                    $row->score = $kdPct[$i];
 
                     return $row;
                 })->sortByDesc('score')->values();
