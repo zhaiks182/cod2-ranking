@@ -7,6 +7,7 @@ use App\Models\Server;
 use App\Services\Cod2RconClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ConsoleController extends Controller
 {
@@ -78,6 +79,46 @@ class ConsoleController extends Controller
         // vista que muestre un aviso neutral en vez del error rojo de "no se pudo
         // conectar", que quedaba contradictorio al lado del mensaje verde de exito.
         return back()->with('status', 'Cambiando de mapa…')->with('mapChanging', true);
+    }
+
+    /**
+     * Los 7 gametypes jugables de zPAM 4.08 que un admin razonablemente querria
+     * poder setear desde ac (confirmado 2026-08-18 contra maps/mp/gametypes/*.txt
+     * dentro de zpam408.iwd) — "strat" queda afuera a proposito, es un modo de
+     * planeamiento previo a la ronda real, no algo que se elija manualmente (ver
+     * el fix de ParseCod2Log que ya lo excluye de crear partidas).
+     */
+    public const GAMETYPES = [
+        'sd' => 'Search and Destroy', 'tdm' => 'Team Deathmatch', 'dm' => 'Deathmatch',
+        'hq' => 'Headquarters', 'ctf' => 'Capture the Flag', 'htf' => 'Hold the Flag',
+        're' => 'Retrieval',
+    ];
+
+    public function changeGametype(Request $request, Server $server)
+    {
+        $data = $request->validate(['gametype' => ['required', 'string', Rule::in(array_keys(self::GAMETYPES))]]);
+
+        $client = Cod2RconClient::forServer($server);
+        if (! $this->isReachable($client)) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — el gametype probablemente NO cambió.');
+        }
+
+        // g_gametype es un cvar de serverinfo — CoD2 solo lo relee con seguridad en
+        // una carga completa de mapa (`map <code>`), no con `map_restart` (que en
+        // algunos mods no siempre releen todas las reglas del gametype nuevo). Por
+        // eso se recarga el mapa actual en vez de mandar solo el cvar suelto.
+        $currentMap = $client->status()['map'] ?? null;
+        if (! $currentMap) {
+            return back()->with('error', 'No se pudo leer el mapa actual — el gametype NO cambió.');
+        }
+        usleep(300000);
+
+        $client->command('g_gametype '.$data['gametype']);
+        usleep(300000);
+        $client->command('map '.$currentMap);
+        usleep(300000);
+
+        return back()->with('status', 'Cambiando de gametype…')->with('mapChanging', true);
     }
 
     /**

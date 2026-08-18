@@ -152,6 +152,28 @@
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
+        <h2 class="text-xs uppercase tracking-wide text-slate-400">Cambiar gametype</h2>
+        <p class="text-xs text-slate-500">Recarga el mapa actual con el gametype nuevo — no hace falta elegir mapa aparte.</p>
+        <form method="POST" action="{{ route('admin.console.gametype', $server) }}" class="space-y-3">
+            @csrf
+            <input type="hidden" name="gametype" id="gametype-select-value">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                @foreach(\App\Http\Controllers\Admin\ConsoleController::GAMETYPES as $code => $label)
+                    <button type="button" data-gametype-option data-code="{{ $code }}" data-label="{{ $label }}"
+                        class="px-3 py-2 rounded-lg border border-slate-700 text-left hover:border-cyan-500 hover:text-cyan-400 transition-colors">
+                        <span class="block text-xs font-medium text-slate-200">{{ $label }}</span>
+                        <span class="block text-[10px] text-slate-500">{{ $code }}</span>
+                    </button>
+                @endforeach
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+                <span class="text-xs text-slate-500">Seleccionado: <span id="gametype-select-label" class="text-cyan-400 font-medium">ninguno</span></span>
+                <button type="submit" id="gametype-select-submit" disabled class="ml-auto px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium">Cambiar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
         <h2 class="text-xs uppercase tracking-wide text-slate-400">Comando RCON libre</h2>
         <form method="POST" action="{{ route('admin.console.command', $server) }}" class="flex gap-2">
             @csrf
@@ -195,6 +217,18 @@
             document.getElementById('map-select-value').value = btn.dataset.code;
             document.getElementById('map-select-label').textContent = btn.dataset.label;
             document.getElementById('map-select-submit').disabled = false;
+        });
+    });
+
+    document.querySelectorAll('[data-gametype-option]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('[data-gametype-option]').forEach(function (b) {
+                b.classList.remove('border-cyan-500', 'text-cyan-400', 'bg-cyan-950/30');
+            });
+            btn.classList.add('border-cyan-500', 'text-cyan-400', 'bg-cyan-950/30');
+            document.getElementById('gametype-select-value').value = btn.dataset.code;
+            document.getElementById('gametype-select-label').textContent = btn.dataset.label;
+            document.getElementById('gametype-select-submit').disabled = false;
         });
     });
 

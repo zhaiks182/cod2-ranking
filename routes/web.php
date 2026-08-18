@@ -77,6 +77,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
         Route::post('/console/{server}/message', [ConsoleController::class, 'message'])->name('console.message');
         Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
+        Route::post('/console/{server}/gametype', [ConsoleController::class, 'changeGametype'])->name('console.gametype');
         Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
         Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
     });

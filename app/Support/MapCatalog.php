@@ -59,12 +59,17 @@ class MapCatalog
         return self::MAPS[$code] ?? ucwords(str_replace(['mp_', '_'], ['', ' '], $code));
     }
 
+    // Los 8 gametypes que trae zPAM 4.08 (confirmado 2026-08-18 contra los .txt de
+    // maps/mp/gametypes/ dentro de zpam408.iwd — uno por codigo, sin mas variantes).
     private const GAMETYPES = [
         'dm' => 'Deathmatch',
         'tdm' => 'Team Deathmatch',
         'ctf' => 'Capture the Flag',
         'hq' => 'Headquarters',
         'sd' => 'Search and Destroy',
+        'htf' => 'Hold the Flag',
+        're' => 'Retrieval',
+        'strat' => 'Strategy Planning',
     ];
 
     public static function gametypeLabel(?string $code): string
