@@ -17,10 +17,10 @@
             <span>🎖️</span> Rango
         </h1>
         <p class="text-xs text-slate-500 mt-0.5">
-            Categoría A-E según un score que combina K/D, % de headshots y % de partidas ganadas
-            (Search and Destroy) — cada métrica se compara contra el resto de jugadores calificados
-            y el score final es el promedio de esos tres percentiles. Mínimo {{ $minMatches }} partidas
-            jugadas y {{ $minKills }} bajas para entrar.
+            Categoría A-E según un score que combina K/D, % de headshots, % de bajas con granada
+            y % de partidas ganadas (Search and Destroy) — cada métrica se compara contra el resto
+            de jugadores calificados y el score final es el promedio de esos cuatro percentiles.
+            Mínimo {{ $minMatches }} partidas jugadas y {{ $minKills }} bajas para entrar.
         </p>
     </div>
 
@@ -39,6 +39,7 @@
                         <th class="px-4 py-2 font-medium text-center">Rango</th>
                         <th class="px-4 py-2 font-medium text-right">K/D</th>
                         <th class="px-4 py-2 font-medium text-right">Headshots</th>
+                        <th class="px-4 py-2 font-medium text-right">Granadas</th>
                         <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         <th class="px-4 py-2 font-medium text-right">Score</th>
                     </tr>
@@ -64,6 +65,7 @@
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-300">{{ $row->kd }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->hsPct }}%</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->nadePct }}%</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->winPct }}%</td>
                             <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $row->score }}</td>
                         </tr>

@@ -1049,12 +1049,13 @@ class SpecialtyController extends Controller
 
     /**
      * Categoriza a los jugadores en rangos A-E segun un score compuesto de
-     * K/D, % de headshots y % de partidas ganadas — cada metrica se convierte
-     * a un percentil (0-100) dentro del pool de jugadores calificados, y el
-     * score final es el promedio de los tres percentiles. Los rangos son
-     * quintiles de ese score (A = top 20%, ..., E = bottom 20%), asi que
-     * siempre quedan mas o menos parejos sin importar cuantos jugadores
-     * califiquen — no son umbrales fijos de K/D ni de nada por el estilo.
+     * K/D, % de headshots, % de bajas con granada y % de partidas ganadas —
+     * cada metrica se convierte a un percentil (0-100) dentro del pool de
+     * jugadores calificados, y el score final es el promedio de esos cuatro
+     * percentiles. Los rangos son quintiles de ese score (A = top 20%, ...,
+     * E = bottom 20%), asi que siempre quedan mas o menos parejos sin
+     * importar cuantos jugadores califiquen — no son umbrales fijos de K/D
+     * ni de nada por el estilo.
      */
     public function rango(Request $request)
     {
@@ -1113,6 +1114,7 @@ class SpecialtyController extends Controller
                     'player' => $stat->player,
                     'kd' => $stat->deaths > 0 ? round($stat->kills / $stat->deaths, 2) : $stat->kills,
                     'hsPct' => $stat->kills > 0 ? round($stat->headshots / $stat->kills * 100, 1) : 0,
+                    'nadePct' => $stat->kills > 0 ? round($stat->grenade_kills / $stat->kills * 100, 1) : 0,
                     'winPct' => round(min($won[$guid] ?? 0, $playedCount) / $playedCount * 100, 1),
                     'played' => $playedCount,
                 ]);
@@ -1139,10 +1141,11 @@ class SpecialtyController extends Controller
 
                 $kdPct = $percentiles('kd');
                 $hsPctPct = $percentiles('hsPct');
+                $nadePctPct = $percentiles('nadePct');
                 $winPctPct = $percentiles('winPct');
 
-                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $hsPctPct, $winPctPct) {
-                    $row->score = round(($kdPct[$i] + $hsPctPct[$i] + $winPctPct[$i]) / 3, 1);
+                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $hsPctPct, $nadePctPct, $winPctPct) {
+                    $row->score = round(($kdPct[$i] + $hsPctPct[$i] + $nadePctPct[$i] + $winPctPct[$i]) / 4, 1);
 
                     return $row;
                 })->sortByDesc('score')->values();
