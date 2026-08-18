@@ -5,34 +5,34 @@
 @section('content')
 <div class="space-y-6">
     <div class="flex items-start justify-between gap-3 flex-wrap">
-      <div>
-        <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← Volver a partidas</a>
-        <h1 class="flex items-center gap-2 text-lg font-semibold mt-1">
-            @if($mapImageUrl = \App\Support\MapImage::url($match->map))
-                <img src="{{ $mapImageUrl }}" alt="" class="h-6 w-6 rounded object-cover">
-            @endif
-            {{ \App\Support\MapCatalog::mapLabel($match->map) }}
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">
-            {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} ·
-            @if($match->is_backfilled)
-                fecha no disponible (importado)
-            @else
-                {{ $match->started_at->translatedFormat('j \d\e F, Y') }} ·
-                {{ $match->started_at->format('H:i') }}@if($match->ended_at) – {{ $match->ended_at->format('H:i') }}@endif ·
-                {{ $match->duration_label }}
-                @if($match->ended_at)
-                    <span class="text-emerald-400">Finalizado</span>
+      <div class="flex items-start gap-3">
+        @if($mapImageUrl = \App\Support\MapImage::url($match->map))
+            <img src="{{ $mapImageUrl }}" alt="" class="h-14 w-14 rounded-lg object-cover shrink-0 mt-1">
+        @endif
+        <div>
+            <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← Volver a partidas</a>
+            <h1 class="text-lg font-semibold mt-1">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} ·
+                @if($match->is_backfilled)
+                    fecha no disponible (importado)
                 @else
-                    <span class="text-emerald-400">(en curso)</span>
+                    {{ $match->started_at->translatedFormat('j \d\e F, Y') }} ·
+                    {{ $match->started_at->format('H:i') }}@if($match->ended_at) – {{ $match->ended_at->format('H:i') }}@endif ·
+                    {{ $match->duration_label }}
+                    @if($match->ended_at)
+                        <span class="text-emerald-400">Finalizado</span>
+                    @else
+                        <span class="text-emerald-400">(en curso)</span>
+                    @endif
                 @endif
-            @endif
-            @if($finalScore)
-                · <span class="text-slate-300 font-medium">{{ $finalScore }}</span>
-            @else
-                · {{ $rounds->count() }} ronda(s)
-            @endif
-        </p>
+                @if($finalScore)
+                    · <span class="text-slate-300 font-medium">{{ $finalScore }}</span>
+                @else
+                    · {{ $rounds->count() }} ronda(s)
+                @endif
+            </p>
+        </div>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         @if($chatMessages->isNotEmpty())
