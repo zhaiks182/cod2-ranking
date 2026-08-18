@@ -7,7 +7,6 @@ use App\Models\Server;
 use App\Services\Cod2RconClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 class ConsoleController extends Controller
 {
@@ -60,52 +59,23 @@ class ConsoleController extends Controller
     }
 
     /**
-     * Los 7 gametypes jugables de zPAM 4.08 (confirmado 2026-08-18 contra
-     * maps/mp/gametypes/*.txt dentro de zpam408.iwd) — "strat" queda afuera a
-     * proposito, es un modo de planeamiento previo a la ronda real, no algo que
-     * se elija manualmente (ver el fix de ParseCod2Log que ya lo excluye de
-     * crear partidas).
-     */
-    public const GAMETYPES = [
-        'sd' => 'Search and Destroy', 'tdm' => 'Team Deathmatch', 'dm' => 'Deathmatch',
-        'hq' => 'Headquarters', 'ctf' => 'Capture the Flag', 'htf' => 'Hold the Flag',
-        're' => 'Retrieval',
-    ];
-
-    /**
-     * Un solo boton para las dos condiciones (mapa + gametype) — el dueño pidio
-     * explicitamente esto en vez de dos formularios/botones separados, mismo
-     * patron que el menu "Teams" in-game de zPAM (Map + Gametype + un Apply).
-     *
-     * Formato de los comandos RCON confirmado dos veces, ambas contra fuentes
-     * reales del propio mod (2026-08-18):
-     *  1. Captura del menu "Apply" de zPAM mostrando el string que arma:
-     *     "/rcon g_gametype dm; /rcon map mp_trainstation_bhg;" — parecia un
-     *     solo comando encadenado con ";", se probo asi primero y no funciono.
-     *  2. El .iwd del mod (zpam408.iwd, que el dueño tambien paso) tiene el
-     *     script fuente real: maps/mp/gametypes/_menu_rcon_map.gsc, funcion
-     *     mapOptions_updateRconCommand(). Ahi se ve que arma DOS strings
-     *     "/rcon ..." SEPARADOS (uno por linea con su propio prefijo
-     *     "/rcon"), no uno solo — cada "/rcon X" que el cliente ejecuta en su
-     *     consola dispara su PROPIO paquete RCON independiente al server. El
-     *     ";" en la captura es solo el separador de comandos de consola del
-     *     cliente, no parte de un unico payload RCON. Por eso van como dos
-     *     llamadas a command() separadas, no una sola con ";" en el medio.
+     * Revertido a solo cambiar mapa (2026-08-18) — se probo agregar g_gametype
+     * al combo y un cambio de mapa/gametype combinado aislado funcionaba bien,
+     * pero en pruebas repetidas seguidas el server dejo de aplicar los cambios
+     * (posible proteccion anti-spam de "map"/cvars mas estricta de lo que
+     * sv_floodProtect hace para comandos sueltos como kick/say, sin confirmar
+     * del todo). El dueño pidio volver a la version simple mientras tanto:
+     * solo `map <codigo>`, sin tocar g_gametype.
      */
     public function changeMap(Request $request, Server $server)
     {
-        $data = $request->validate([
-            'map' => ['required', 'string', 'max:64'],
-            'gametype' => ['required', 'string', Rule::in(array_keys(self::GAMETYPES))],
-        ]);
+        $data = $request->validate(['map' => ['required', 'string', 'max:64']]);
 
         $client = Cod2RconClient::forServer($server);
         if (! $this->isReachable($client)) {
-            return back()->with('error', 'No se pudo conectar al servidor por RCON — el mapa/gametype probablemente NO cambiaron.');
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — el mapa probablemente NO cambió.');
         }
 
-        $client->command('g_gametype '.$data['gametype']);
-        usleep(300000);
         $client->command('map '.$data['map']);
         usleep(300000);
 
