@@ -39,7 +39,12 @@
                 @foreach($backfilled as $match)
                     <a href="{{ route('matches.show', $match) }}" class="flex items-center justify-between px-4 py-3 hover:bg-slate-800/30">
                         <div>
-                            <div class="font-medium">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
+                            <div class="flex items-center gap-2 font-medium">
+                                @if($mapImageUrl = \App\Support\MapImage::url($match->map))
+                                    <img src="{{ $mapImageUrl }}" alt="" class="h-6 w-6 rounded object-cover">
+                                @endif
+                                {{ \App\Support\MapCatalog::mapLabel($match->map) }}
+                            </div>
                             <div class="text-xs text-slate-500">{{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }}</div>
                         </div>
                         <div class="text-sm text-slate-400">{{ $match->kills_count }} bajas →</div>
@@ -56,7 +61,12 @@
                 @foreach($dayMatches as $match)
                     <a href="{{ route('matches.show', $match) }}" class="flex items-center justify-between px-4 py-3 hover:bg-slate-800/30">
                         <div>
-                            <div class="font-medium">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
+                            <div class="flex items-center gap-2 font-medium">
+                                @if($mapImageUrl = \App\Support\MapImage::url($match->map))
+                                    <img src="{{ $mapImageUrl }}" alt="" class="h-6 w-6 rounded object-cover">
+                                @endif
+                                {{ \App\Support\MapCatalog::mapLabel($match->map) }}
+                            </div>
                             <div class="text-xs text-slate-500">
                                 {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} · {{ $match->started_at->format('H:i') }}@if($match->ended_at) – {{ $match->ended_at->format('H:i') }}@endif · {{ $match->duration_label }}
                                 @if($match->ended_at)
