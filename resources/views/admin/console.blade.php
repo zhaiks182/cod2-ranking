@@ -82,18 +82,27 @@
     <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
         <h2 class="text-xs uppercase tracking-wide text-slate-400">Cambiar mapa</h2>
         @php
-            // Variantes "_fix"/"_bal"/"_sun" confirmadas contra partidas reales ya
-            // jugadas en este server (matches.map en la BD) — no son un listado
-            // completo de todo lo que el server tiene instalado (el mod zPAM trae
-            // bastantes mas, ver captura del menu "Teams" in-game), solo las que
-            // sabemos con certeza que existen y funcionan. Para cualquier otro
-            // codigo de mapa (ej. uno que nunca se jugo todavia), usar el campo de
-            // "Comando RCON libre" de abajo con `map <codigo>` — el backend acepta
-            // cualquier string, esta grilla es solo un atajo para lo mas comun.
+            // Listado completo de mapas custom instalados en el server (confirmado
+            // 2026-08-18 contra el directorio real de mapas del dueño, los .d3dbsp/
+            // .gsc de cada variante) — mp_chelm_fix, mp_crossroads y mp_vallente_fix
+            // no tienen entrada en MapCatalog::MAPS (no son mapas stock de CoD2,
+            // asi que mapLabel() cae al fallback generico basado en el codigo) y
+            // wawa_3daim no lleva el prefijo "mp_" (es el mapa de aim-trainer para
+            // Deathmatch, ver "Cuando se crea una partida" en CLAUDE.md).
             $mapVariants = [
-                'mp_burgundy_fix' => 'FIX', 'mp_carentan_fix' => 'FIX', 'mp_carentan_bal' => 'BAL',
+                'mp_breakout_tls' => 'TLS',
+                'mp_burgundy_fix' => 'FIX',
+                'mp_carentan_bal' => 'BAL', 'mp_carentan_fix' => 'FIX',
+                'mp_chelm_fix' => 'FIX',
+                'mp_crossroads' => null,
                 'mp_dawnville_fix' => 'FIX', 'mp_dawnville_sun' => 'SUN',
-                'mp_toujane_fix' => 'FIX', 'mp_trainstation_fix' => 'FIX',
+                'mp_leningrad_mjr' => 'MJR', 'mp_leningrad_tls' => 'TLS',
+                'mp_matmata_fix' => 'FIX',
+                'mp_railyard_mjr' => 'MJR',
+                'mp_toujane_fix' => 'FIX',
+                'mp_trainstation_bhg' => 'BHG', 'mp_trainstation_fix' => 'FIX',
+                'mp_vallente_fix' => 'FIX',
+                'wawa_3daim' => null,
             ];
             $mapOptions = [];
             foreach (\App\Support\MapCatalog::all() as $code => $label) {
