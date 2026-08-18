@@ -113,6 +113,16 @@
             foreach ($mapVariants as $code => $suffix) {
                 $mapOptions[$code] = ['label' => \App\Support\MapCatalog::mapLabel($code), 'suffix' => $suffix];
             }
+
+            // Orden a pedido del dueño (2026-08-18): los mapas "_fix" van primero
+            // (el pack de mapas de la comunidad), y dentro de eso los que mas se
+            // juegan van al frente — el resto (variantes bal/sun/mjr/tls/bhg,
+            // customs, y las versiones stock sin parchear) quedan despues, en el
+            // orden en que ya estaban.
+            $priorityCodes = ['mp_toujane_fix', 'mp_burgundy_fix', 'mp_dawnville_fix', 'mp_dawnville_sun', 'mp_railyard_mjr', 'mp_railyard', 'mp_carentan_fix', 'mp_carentan_bal'];
+            $fixCodes = array_values(array_filter(array_keys($mapOptions), fn ($c) => str_ends_with($c, '_fix')));
+            $orderedCodes = array_unique(array_merge($priorityCodes, $fixCodes, array_keys($mapOptions)));
+            $mapOptions = collect($orderedCodes)->mapWithKeys(fn ($c) => [$c => $mapOptions[$c]])->all();
         @endphp
         <form method="POST" action="{{ route('admin.console.map', $server) }}" class="space-y-3">
             @csrf
