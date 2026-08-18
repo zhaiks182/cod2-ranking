@@ -13,11 +13,11 @@
 <body class="bg-panel2 text-slate-200 min-h-screen">
     @auth
         <header class="border-b border-slate-800 bg-panel/60">
-            <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-                <a href="{{ route('admin.servers.index') }}" class="flex items-center gap-2">
+            <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+                <a href="{{ route('admin.servers.index') }}" class="flex items-center gap-2 shrink-0">
                     <img src="{{ asset('logo_cod2.webp') }}" alt="Call of Duty 2" class="h-7 w-auto">
                 </a>
-                <nav class="flex items-center gap-4 text-sm">
+                <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                     <a href="{{ route('admin.servers.index') }}" class="text-slate-300 hover:text-cyan-400">Servidores</a>
                     <a href="{{ route('admin.matches.index') }}" class="text-slate-300 hover:text-cyan-400">Partidas</a>
                     <a href="{{ route('admin.maps.index') }}" class="text-slate-300 hover:text-cyan-400">Mapas</a>

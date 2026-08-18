@@ -5,7 +5,7 @@
 @section('content')
 @php $players = $status['players'] ?? []; @endphp
 <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h1 class="text-lg font-semibold">{{ $server->name }}</h1>
             <p class="text-xs text-slate-500">Mapa actual: {{ \App\Support\MapCatalog::mapLabel($status['map'] ?? null) }}</p>

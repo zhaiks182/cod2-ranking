@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-2">
         <h1 class="text-lg font-semibold">Servidores</h1>
         <a href="{{ route('admin.servers.create') }}" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">+ Agregar servidor</a>
     </div>
