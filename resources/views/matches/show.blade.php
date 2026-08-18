@@ -7,7 +7,12 @@
     <div class="flex items-start justify-between gap-3 flex-wrap">
       <div>
         <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← Volver a partidas</a>
-        <h1 class="text-lg font-semibold mt-1">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</h1>
+        <h1 class="flex items-center gap-2 text-lg font-semibold mt-1">
+            @if($mapImageUrl = \App\Support\MapImage::url($match->map))
+                <img src="{{ $mapImageUrl }}" alt="" class="h-6 w-6 rounded object-cover">
+            @endif
+            {{ \App\Support\MapCatalog::mapLabel($match->map) }}
+        </h1>
         <p class="text-xs text-slate-500 mt-0.5">
             {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} ·
             @if($match->is_backfilled)
