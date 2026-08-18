@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Rango')
+@section('title', 'Rangos')
 
 @section('content')
 <div class="space-y-6">
@@ -14,7 +14,7 @@
 
     <div>
         <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>🎖️</span> Rango
+            <span>🎖️</span> Rangos
         </h1>
         <p class="text-xs text-slate-500 mt-0.5">
             Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra
@@ -38,9 +38,9 @@
                         <th class="px-4 py-2 font-medium">Jugador</th>
                         <th class="px-4 py-2 font-medium text-center">Rango</th>
                         <th class="px-4 py-2 font-medium text-right">K/D</th>
+                        <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         <th class="px-4 py-2 font-medium text-right">Headshots</th>
                         <th class="px-4 py-2 font-medium text-right">Granadas</th>
-                        <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         <th class="px-4 py-2 font-medium text-right">Score</th>
                     </tr>
                 </thead>
@@ -56,7 +56,7 @@
                             };
                         @endphp
                         <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                            <td class="px-4 py-2 text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             </td>
@@ -64,9 +64,9 @@
                                 <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg border font-bold {{ $tierStyle }}">{{ $row->rango }}</span>
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-300">{{ $row->kd }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->winPct }}%</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->hsPct }}%</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->nadePct }}%</td>
-                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->winPct }}%</td>
                             <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $row->score }}</td>
                         </tr>
                     @endforeach
