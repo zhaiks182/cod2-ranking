@@ -160,6 +160,20 @@ class ConsoleController extends Controller
 
         $lines = $chunk === '' ? [] : preg_split('/\r?\n/', rtrim($chunk, "\r\n"));
 
+        // Mismo problema que el chat en ParseCod2Log::toUtf8() — el cliente manda
+        // acentos en Windows-1252, no UTF-8 (confirmado: "a" con tilde llega como el
+        // byte suelto 0xE1). response()->json() usa json_encode(), que lanza
+        // "Malformed UTF-8 characters" y tira 500 en CUALQUIER poll que incluya una
+        // linea de chat con acento — por eso la consola en vivo nunca mostraba nada
+        // apenas alguien escribia con tildes (confirmado en storage/logs/laravel.log,
+        // errores repetidos de logTail() con exactamente ese mensaje). Se convierte
+        // linea por linea, no el chunk entero, para no arruinar otras lineas del
+        // mismo chunk que ya vengan en UTF-8 valido.
+        $lines = array_map(
+            fn ($line) => mb_check_encoding($line, 'UTF-8') ? $line : mb_convert_encoding($line, 'UTF-8', 'Windows-1252'),
+            $lines
+        );
+
         return response()->json(['lines' => $lines, 'offset' => $newOffset]);
     }
 }
