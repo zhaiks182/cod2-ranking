@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/widget/live-status', [DashboardController::class, 'liveStatusWidget'])->name('dashboard.live-status');
 Route::get('/ranking', [LeaderboardController::class, 'index'])->name('leaderboard');
+Route::get('/rango', [SpecialtyController::class, 'rango'])->name('rango');
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');

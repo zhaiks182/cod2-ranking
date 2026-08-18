@@ -1047,6 +1047,124 @@ class SpecialtyController extends Controller
         return view('specialties.win-rate', compact('servers', 'server', 'rows', 'minMaps'));
     }
 
+    /**
+     * Categoriza a los jugadores en rangos A-E segun un score compuesto de
+     * K/D, % de headshots y % de partidas ganadas — cada metrica se convierte
+     * a un percentil (0-100) dentro del pool de jugadores calificados, y el
+     * score final es el promedio de los tres percentiles. Los rangos son
+     * quintiles de ese score (A = top 20%, ..., E = bottom 20%), asi que
+     * siempre quedan mas o menos parejos sin importar cuantos jugadores
+     * califiquen — no son umbrales fijos de K/D ni de nada por el estilo.
+     */
+    public function rango(Request $request)
+    {
+        [$servers, $server] = $this->resolveServer($request);
+
+        $rows = collect();
+        $minMatches = 3;
+        $minKills = 20;
+
+        if ($server) {
+            $stats = PlayerServerStat::with('player')
+                ->where('server_id', $server->id)
+                ->where('kills', '>=', $minKills)
+                ->whereHas('player')
+                ->get()
+                ->keyBy('player.guid');
+
+            // Mismo proxy de "partidas jugadas/ganadas" que winRate() de arriba —
+            // sin lista de participantes por partida, un jugador cuenta como
+            // presente si aparece como atacante o victima en al menos una baja
+            // de esa partida.
+            $matches = GameMatch::where('server_id', $server->id)
+                ->where('is_backfilled', false)
+                ->where('gametype', 'sd')
+                ->whereNotNull('ended_at')
+                ->with('rounds:id,match_id,winner_guids')
+                ->get();
+
+            $played = [];
+            $won = [];
+            foreach ($matches as $match) {
+                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
+                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
+                    ->filter(fn ($g) => $g && $g !== '0')->unique();
+
+                foreach ($participantGuids as $guid) {
+                    $played[$guid] = ($played[$guid] ?? 0) + 1;
+                }
+
+                $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
+                if ($winningGuids) {
+                    foreach ($winningGuids as $guid) {
+                        $won[$guid] = ($won[$guid] ?? 0) + 1;
+                    }
+                }
+            }
+
+            $qualified = collect();
+            foreach ($stats as $guid => $stat) {
+                $playedCount = $played[$guid] ?? 0;
+                if ($playedCount < $minMatches) {
+                    continue;
+                }
+
+                $qualified->push((object) [
+                    'player' => $stat->player,
+                    'kd' => $stat->deaths > 0 ? round($stat->kills / $stat->deaths, 2) : $stat->kills,
+                    'hsPct' => $stat->kills > 0 ? round($stat->headshots / $stat->kills * 100, 1) : 0,
+                    'winPct' => round(min($won[$guid] ?? 0, $playedCount) / $playedCount * 100, 1),
+                    'played' => $playedCount,
+                ]);
+            }
+
+            $n = $qualified->count();
+            if ($n > 1) {
+                // Percentil 0-100 de cada metrica: ordenar ascendente y ubicar cada
+                // jugador por su posicion — el peor en esa metrica queda en 0, el
+                // mejor en 100. Empates comparten el mismo percentil (posicion del
+                // primero que aparece con ese valor), para que un grupo grande con
+                // el mismo valor no quede artificialmente desparejo entre si.
+                $percentiles = function (string $field) use ($qualified, $n) {
+                    $sorted = $qualified->pluck($field)->sort()->values();
+                    $firstIndexOf = [];
+                    foreach ($sorted as $i => $value) {
+                        if (! isset($firstIndexOf[$value])) {
+                            $firstIndexOf[$value] = $i;
+                        }
+                    }
+
+                    return $qualified->map(fn ($row) => round($firstIndexOf[$row->$field] / ($n - 1) * 100, 2));
+                };
+
+                $kdPct = $percentiles('kd');
+                $hsPctPct = $percentiles('hsPct');
+                $winPctPct = $percentiles('winPct');
+
+                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $hsPctPct, $winPctPct) {
+                    $row->score = round(($kdPct[$i] + $hsPctPct[$i] + $winPctPct[$i]) / 3, 1);
+
+                    return $row;
+                })->sortByDesc('score')->values();
+
+                $tiers = ['A', 'B', 'C', 'D', 'E'];
+                $qualified = $qualified->map(function ($row, $i) use ($n, $tiers) {
+                    $quintile = (int) floor($i / ($n / 5));
+                    $row->rango = $tiers[min($quintile, 4)];
+
+                    return $row;
+                });
+            }
+
+            $rows = $qualified;
+        }
+
+        return view('specialties.rango', [
+            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'minMatches' => $minMatches, 'minKills' => $minKills,
+        ]);
+    }
+
     public function bombs(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
