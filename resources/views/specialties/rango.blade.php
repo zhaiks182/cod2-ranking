@@ -17,9 +17,9 @@
             <span>🎖️</span> Rango
         </h1>
         <p class="text-xs text-slate-500 mt-0.5">
-            Categoría A-E según un score que combina K/D, % de headshots, % de bajas con granada
-            y % de partidas ganadas (Search and Destroy) — cada métrica se compara contra el resto
-            de jugadores calificados y el score final es el promedio de esos cuatro percentiles.
+            Categoría A-E según el percentil de K/D contra el resto de jugadores calificados
+            (Search and Destroy) — headshots, granadas y win rate se muestran en la tabla como
+            referencia pero, por ahora, no entran en el cálculo del rango.
             Mínimo {{ $minMatches }} partidas jugadas y {{ $minKills }} bajas para entrar.
         </p>
     </div>
