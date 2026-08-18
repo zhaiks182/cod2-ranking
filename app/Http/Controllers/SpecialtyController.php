@@ -1062,7 +1062,7 @@ class SpecialtyController extends Controller
         [$servers, $server] = $this->resolveServer($request);
 
         $rows = collect();
-        $minMatches = 10;
+        $minMatches = 5;
         $minKills = 20;
 
         if ($server) {
@@ -1129,14 +1129,22 @@ class SpecialtyController extends Controller
                 // el mismo valor no quede artificialmente desparejo entre si.
                 $percentiles = function (string $field) use ($qualified, $n) {
                     $sorted = $qualified->pluck($field)->sort()->values();
+                    // Las claves de $firstIndexOf son el VALOR de la metrica (ej. 1.29)
+                    // castings a string a proposito — PHP trunca automaticamente una
+                    // key float a int (1.29 y 1.87 quedan las dos como key "1"),
+                    // lo que colapsaba a todos los jugadores con K/D entre 1.0 y 1.99
+                    // en el mismo percentil sin importar el valor real. Confirmado en
+                    // vivo: 6 jugadores con K/D distinto (1.19 a 1.5) daban el mismo
+                    // percentil 60 hasta este fix.
                     $firstIndexOf = [];
                     foreach ($sorted as $i => $value) {
-                        if (! isset($firstIndexOf[$value])) {
-                            $firstIndexOf[$value] = $i;
+                        $key = (string) $value;
+                        if (! isset($firstIndexOf[$key])) {
+                            $firstIndexOf[$key] = $i;
                         }
                     }
 
-                    return $qualified->map(fn ($row) => round($firstIndexOf[$row->$field] / ($n - 1) * 100, 2));
+                    return $qualified->map(fn ($row) => round($firstIndexOf[(string) $row->$field] / ($n - 1) * 100, 2));
                 };
 
                 $kdPct = $percentiles('kd');
