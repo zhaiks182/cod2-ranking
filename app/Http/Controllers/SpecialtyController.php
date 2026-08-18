@@ -1048,14 +1048,14 @@ class SpecialtyController extends Controller
     }
 
     /**
-     * Categoriza a los jugadores en rangos A-E segun un score compuesto de
-     * K/D, % de headshots, % de bajas con granada y % de partidas ganadas —
-     * cada metrica se convierte a un percentil (0-100) dentro del pool de
-     * jugadores calificados, y el score final es el promedio de esos cuatro
-     * percentiles. Los rangos son quintiles de ese score (A = top 20%, ...,
-     * E = bottom 20%), asi que siempre quedan mas o menos parejos sin
-     * importar cuantos jugadores califiquen — no son umbrales fijos de K/D
-     * ni de nada por el estilo.
+     * Categoriza a los jugadores en rangos A-E segun un score de 70% K/D +
+     * 30% win rate — cada metrica se convierte a un percentil (0-100) dentro
+     * del pool de jugadores calificados antes de combinarse, para que ambas
+     * pesen relativo al resto del server y no a una escala arbitraria. Los
+     * rangos son quintiles de ese score (A = top 20%, ..., E = bottom 20%),
+     * asi que siempre quedan mas o menos parejos sin importar cuantos
+     * jugadores califiquen. Headshots% y granadas% se muestran en la tabla
+     * como referencia pero no entran en el score (ver comentario mas abajo).
      */
     public function rango(Request $request)
     {
@@ -1140,13 +1140,19 @@ class SpecialtyController extends Controller
                 };
 
                 $kdPct = $percentiles('kd');
+                $winPctPct = $percentiles('winPct');
 
-                // PRUEBA (2026-08-18): score = solo el percentil de K/D, las otras
-                // tres metricas se siguen calculando y mostrando en la tabla pero no
-                // entran en el promedio — comparar contra la version de 4 metricas
-                // antes de decidir cual se queda.
-                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct) {
-                    $row->score = $kdPct[$i];
+                // Score final (2026-08-18): 70% K/D + 30% win rate, cada uno su
+                // percentil dentro del pool calificado. K/D pesa mas por ser la
+                // metrica mas estable/individual; win rate entra con menos peso
+                // porque en partidas pug (equipos armados al azar) depende bastante
+                // de con quien te toco jugar, no solo de tu nivel. Headshots% y
+                // granadas% quedan fuera del calculo — son mas de estilo de juego
+                // que de impacto competitivo, y con un pool chico solo metian ruido
+                // (se probo un promedio parejo de las 4 metricas y tambien solo K/D
+                // antes de asentarse en esta combinacion).
+                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $winPctPct) {
+                    $row->score = round($kdPct[$i] * 0.7 + $winPctPct[$i] * 0.3, 1);
 
                     return $row;
                 })->sortByDesc('score')->values();
