@@ -76,10 +76,11 @@ class ConsoleController extends Controller
      * Un solo boton para las dos condiciones (mapa + gametype) — el dueño pidio
      * explicitamente esto en vez de dos formularios/botones separados, mismo
      * patron que el menu "Teams" in-game de zPAM (Map + Gametype + un Apply).
-     * g_gametype es un cvar de serverinfo que CoD2 solo relee con seguridad en
-     * una carga completa de mapa, asi que mandar el cvar y despues el `map` los
-     * aplica juntos en un solo reload — no hace falta adivinar/leer el mapa
-     * actual como en la version anterior de dos botones separados.
+     * El propio menu "Apply" de zPAM confirma el formato exacto (captura del
+     * dueño, 2026-08-18): un unico comando encadenado con ";" —
+     * `g_gametype dm; map mp_trainstation_bhg` — no dos comandos RCON
+     * separados como se probo primero (eso enviaba el cvar y el mapa en dos
+     * paquetes UDP distintos, y el cambio de mapa no terminaba de aplicarse).
      */
     public function changeMap(Request $request, Server $server)
     {
@@ -93,9 +94,7 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — el mapa/gametype probablemente NO cambiaron.');
         }
 
-        $client->command('g_gametype '.$data['gametype']);
-        usleep(300000);
-        $client->command('map '.$data['map']);
+        $client->command('g_gametype '.$data['gametype'].'; map '.$data['map']);
         usleep(300000);
 
         // El cambio de mapa en si (cargar assets, reconectar jugadores) tarda mucho
