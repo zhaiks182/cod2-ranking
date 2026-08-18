@@ -1062,7 +1062,7 @@ class SpecialtyController extends Controller
         [$servers, $server] = $this->resolveServer($request);
 
         $rows = collect();
-        $minMatches = 3;
+        $minMatches = 10;
         $minKills = 20;
 
         if ($server) {
