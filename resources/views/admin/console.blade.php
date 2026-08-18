@@ -69,30 +69,57 @@
         </div>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-4">
-        <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
-            <h2 class="text-xs uppercase tracking-wide text-slate-400">Mensaje a todos</h2>
-            <form method="POST" action="{{ route('admin.console.message', $server) }}" class="flex gap-2">
-                @csrf
-                <input type="hidden" name="mode" value="all">
-                <input type="text" name="text" required maxlength="200" placeholder="Escribe un mensaje…" class="flex-1 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm">
-                <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Enviar</button>
-            </form>
-        </div>
+    <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
+        <h2 class="text-xs uppercase tracking-wide text-slate-400">Mensaje a todos</h2>
+        <form method="POST" action="{{ route('admin.console.message', $server) }}" class="flex gap-2">
+            @csrf
+            <input type="hidden" name="mode" value="all">
+            <input type="text" name="text" required maxlength="200" placeholder="Escribe un mensaje…" class="flex-1 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+            <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Enviar</button>
+        </form>
+    </div>
 
-        <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
-            <h2 class="text-xs uppercase tracking-wide text-slate-400">Cambiar mapa</h2>
-            <form method="POST" action="{{ route('admin.console.map', $server) }}" class="flex gap-2">
-                @csrf
-                <select name="map" required class="flex-1 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm">
-                    <option value="">Selecciona un mapa…</option>
-                    @foreach(\App\Support\MapCatalog::all() as $code => $label)
-                        <option value="{{ $code }}">{{ $label }} ({{ $code }})</option>
-                    @endforeach
-                </select>
-                <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Cambiar</button>
-            </form>
-        </div>
+    <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
+        <h2 class="text-xs uppercase tracking-wide text-slate-400">Cambiar mapa</h2>
+        @php
+            // Variantes "_fix"/"_bal"/"_sun" confirmadas contra partidas reales ya
+            // jugadas en este server (matches.map en la BD) — no son un listado
+            // completo de todo lo que el server tiene instalado (el mod zPAM trae
+            // bastantes mas, ver captura del menu "Teams" in-game), solo las que
+            // sabemos con certeza que existen y funcionan. Para cualquier otro
+            // codigo de mapa (ej. uno que nunca se jugo todavia), usar el campo de
+            // "Comando RCON libre" de abajo con `map <codigo>` — el backend acepta
+            // cualquier string, esta grilla es solo un atajo para lo mas comun.
+            $mapVariants = [
+                'mp_burgundy_fix' => 'FIX', 'mp_carentan_fix' => 'FIX', 'mp_carentan_bal' => 'BAL',
+                'mp_dawnville_fix' => 'FIX', 'mp_dawnville_sun' => 'SUN',
+                'mp_toujane_fix' => 'FIX', 'mp_trainstation_fix' => 'FIX',
+            ];
+            $mapOptions = [];
+            foreach (\App\Support\MapCatalog::all() as $code => $label) {
+                $mapOptions[$code] = ['label' => $label, 'suffix' => null];
+            }
+            foreach ($mapVariants as $code => $suffix) {
+                $mapOptions[$code] = ['label' => \App\Support\MapCatalog::mapLabel($code), 'suffix' => $suffix];
+            }
+        @endphp
+        <form method="POST" action="{{ route('admin.console.map', $server) }}" class="space-y-3">
+            @csrf
+            <input type="hidden" name="map" id="map-select-value">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                @foreach($mapOptions as $code => $opt)
+                    <button type="button" data-map-option data-code="{{ $code }}" data-label="{{ $opt['label'] }}{{ $opt['suffix'] ? ' '.$opt['suffix'] : '' }}"
+                        class="px-3 py-2 rounded-lg border border-slate-700 text-left hover:border-cyan-500 hover:text-cyan-400 transition-colors">
+                        <span class="block text-xs font-medium text-slate-200">{{ $opt['label'] }}@if($opt['suffix']) <span class="text-cyan-400">{{ $opt['suffix'] }}</span>@endif</span>
+                        <span class="block text-[10px] text-slate-500">{{ $code }}</span>
+                    </button>
+                @endforeach
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+                <span class="text-xs text-slate-500">Seleccionado: <span id="map-select-label" class="text-cyan-400 font-medium">ninguno</span></span>
+                <button type="submit" id="map-select-submit" disabled class="ml-auto px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium">Cambiar</button>
+            </div>
+        </form>
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
@@ -129,6 +156,18 @@
         document.getElementById('cod2-message-text').value = text;
         document.getElementById('cod2-message-form').submit();
     }
+
+    document.querySelectorAll('[data-map-option]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('[data-map-option]').forEach(function (b) {
+                b.classList.remove('border-cyan-500', 'text-cyan-400', 'bg-cyan-950/30');
+            });
+            btn.classList.add('border-cyan-500', 'text-cyan-400', 'bg-cyan-950/30');
+            document.getElementById('map-select-value').value = btn.dataset.code;
+            document.getElementById('map-select-label').textContent = btn.dataset.label;
+            document.getElementById('map-select-submit').disabled = false;
+        });
+    });
 
     (function () {
         var box = document.getElementById('cod2-log-tail');
