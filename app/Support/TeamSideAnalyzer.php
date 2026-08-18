@@ -189,8 +189,12 @@ class TeamSideAnalyzer
             $playerIds = Player::whereIn('guid', $guids->unique())->pluck('id');
             $votes = ['axis' => 0, 'allies' => 0];
             foreach ($playerIds as $playerId) {
-                if (isset($sideByPlayerId[$playerId])) {
-                    $votes[$sideByPlayerId[$playerId]]++;
+                // attacker_team/victim_team on kills isn't limited to axis/allies (e.g.
+                // 'spectator' shows up too) — only tally the two sides this vote is
+                // deciding between, anything else is simply not a vote either way.
+                $side = $sideByPlayerId[$playerId] ?? null;
+                if (isset($votes[$side])) {
+                    $votes[$side]++;
                 }
             }
 

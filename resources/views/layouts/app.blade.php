@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'CoD2 Stats')</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -14,6 +17,12 @@
                     colors: {
                         panel: '#111827',
                         panel2: '#0b1220',
+                        gsprimary: '#1e40af',
+                        gsaccent: '#38bdf8',
+                    },
+                    fontFamily: {
+                        display: ['"Russo One"', 'sans-serif'],
+                        sans: ['"Chakra Petch"', 'sans-serif'],
                     },
                 },
             },
@@ -22,26 +31,26 @@
     <style>
         body { background: #0b1220; }
         ::-webkit-scrollbar { height: 8px; width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; }
     </style>
 </head>
-<body class="bg-panel2 text-slate-200 min-h-screen">
-    <header class="border-b border-slate-800 bg-panel/60">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
-                <img src="{{ asset('logo_cod2.webp') }}" alt="Call of Duty 2" class="h-8 w-auto">
+<body class="bg-panel2 text-slate-200 min-h-screen font-sans">
+    <header class="bg-panel">
+        <div class="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-3">
+            <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 shrink-0">
+                <span class="font-display text-lg tracking-wide text-slate-200">CoD2<span class="text-gsaccent">STATS</span></span>
             </a>
-            <nav class="flex gap-4 text-sm items-center">
-                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-cyan-400">Inicio</a>
-                <a href="{{ route('leaderboard') }}" class="text-slate-300 hover:text-cyan-400">Ranking</a>
-                <a href="{{ route('matches.index') }}" class="text-slate-300 hover:text-cyan-400">Partidas</a>
+            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
+                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
+                <a href="{{ route('leaderboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Ranking</a>
+                <a href="{{ route('matches.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Partidas</a>
                 <div class="relative">
                     <button type="button" data-specialties-toggle onclick="document.getElementById('specialties-dropdown').classList.toggle('hidden')"
-                        class="text-slate-300 hover:text-cyan-400 flex items-center gap-1">
-                        Especialidades
-                        <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
+                        class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
+                        ESPECIALIDADES
+                        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="specialties-dropdown" class="hidden absolute right-0 mt-2 w-64 max-h-[80vh] overflow-y-auto rounded-lg border border-slate-800 bg-panel shadow-xl py-1 z-50">
+                    <div id="specialties-dropdown" class="hidden absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         @php
                             $specialtyGroups = [
                                 'Combate' => [
@@ -98,13 +107,13 @@
                         @foreach($specialtyGroups as $groupName => $group)
                             <div class="{{ !$loop->first ? 'border-t border-slate-800' : '' }}">
                                 <button type="button" onclick="toggleSpecGroup(this)"
-                                    class="w-full flex items-center justify-between px-3 py-2 text-xs uppercase tracking-wide font-semibold text-slate-400 hover:bg-slate-800/60 hover:text-cyan-400">
+                                    class="w-full flex items-center justify-between px-3 py-2 text-xs uppercase tracking-wide font-semibold text-slate-400 hover:bg-gsprimary/20 hover:text-gsaccent">
                                     <span>{{ $group['icon'] }} {{ $groupName }}</span>
                                     <svg class="w-3 h-3 shrink-0 transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                                 </button>
                                 <div class="hidden">
                                     @foreach($group['items'] as $item)
-                                        <a href="{{ route($item['route']) }}" class="block pl-6 pr-3 py-2 text-sm text-slate-300 hover:bg-slate-800/60 hover:text-cyan-400">{{ $item['icon'] }} {{ $item['label'] }}</a>
+                                        <a href="{{ route($item['route']) }}" class="block pl-6 pr-3 py-2 text-sm uppercase tracking-wide text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ $item['icon'] }} {{ $item['label'] }}</a>
                                     @endforeach
                                 </div>
                             </div>
@@ -119,11 +128,11 @@
         @yield('content')
     </main>
 
-    <footer class="max-w-6xl mx-auto px-4 py-3 text-center text-xs text-slate-600 space-y-1">
+    <footer class="max-w-6xl mx-auto px-4 py-3 text-center text-xs uppercase tracking-widest text-slate-600">
         <p>Copyright © 2026 zhaiks. All Rights Reserved.</p>
     </footer>
 
-    <div id="teamkill-popover" class="hidden fixed z-50 w-64 max-h-72 overflow-y-auto rounded-lg border border-slate-700 bg-panel shadow-xl text-xs p-3"></div>
+    <div id="teamkill-popover" class="hidden fixed z-50 w-64 max-h-72 overflow-y-auto bg-panel shadow-xl text-xs p-3"></div>
     <script>
         function toggleSpecGroup(btn) {
             const submenu = btn.nextElementSibling;
