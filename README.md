@@ -14,7 +14,8 @@ todo se calcula a partir del propio `games_mp.log`.
 - 🏆 **Ranking general** — global, por mapa, y filtrable por rango de fechas.
   Tabla de posiciones Axis/Allies con el marcador de cada partida.
 - 🗂️ **Historial de partidas** — detalle por partida con línea de tiempo de eventos
-  (inicio, cambio de bando, tiempo extra, timeouts), chat general y chat de
+  (inicio, cambio de bando, tiempo extra, timeouts) y badges de quién lideró esa
+  partida en headshots, granadas y bash cuerpo a cuerpo, chat general y chat de
   equipo (separado por Axis/Allies), y desglose de kills por jugador.
 - ⭐ **+20 páginas de "Especialidades"** (leaderboards temáticos), agrupadas en:
   - ⚔️ **Combate** — headshots, granadas, ranking por arma, eficiencia K/D,

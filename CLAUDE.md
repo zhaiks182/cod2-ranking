@@ -15,6 +15,14 @@ enlazado desde el menú público a propósito)
 - MySQL/MariaDB (`cod2_stats`)
 - `geoip2/geoip2` para geolocalización de jugadores conectados (ver "Pendientes")
 
+**Identidad visual (2026-08-17):** tema "gaming/esports" — fuentes de Google Fonts
+Chakra Petch (texto general, `font-sans` en el config de Tailwind) y Russo One
+(logo/display, `font-display`), colores custom `gsprimary`/`gsaccent` (azul/celeste)
+agregados al `tailwind.config` inline en `layouts/app.blade.php`, esquinas más rectas
+que antes (se sacó `rounded-lg` de varios componentes a propósito), y medallas de
+emoji 🥇🥈🥉 (no SVG — un ícono de estrella coloreada se probó primero pero no se
+leía como medalla) en el top 3 del dashboard.
+
 ## Cómo llegan los datos
 
 El gameserver de CoD2 (`/home/gameserver/1.3/puG/main/games_mp.log`) escribe eventos
@@ -246,6 +254,18 @@ kills/rondas. Dos tablas nuevas los capturan:
   costo/beneficio pendiente si en algún momento se quiere precisión real
   (%acierto) en vez de solo bajas.
 
+**Ojo con las dos cosas distintas que se llaman "bash" (2026-08-17).** La
+línea de tiempo de `/partidas/{id}` tiene un badge "🥊 Más bash · jugador
+(N)" que **no** tiene nada que ver con el evento `bash_call` de arriba —
+es el líder de bajas cuerpo a cuerpo (`kills.mod = 'MOD_MELEE'`) de esa
+partida, calculado en `KillAggregator::aggregate()` (columna `bash`) y
+mostrado por `MatchController::show()` (`$topBash`). El mismo patrón se
+usa para `$topHeadshots` y `$topGrenades` — los tres son "quién ganó esta
+categoría en esta partida específica", no acumulados de por vida (eso ya
+existe aparte en las páginas de especialidades). Los tres badges se
+muestran en este orden fijo: Inicio, Cambio de bando, Headshots,
+Granadas, Bash (a pedido del dueño, no alfabético ni por importancia).
+
 ## Bitácora de bugs encontrados y arreglados (2026-08-09/10)
 
 Vale la pena leer esto antes de tocar el parser — son bugs no obvios que ya costaron
@@ -362,6 +382,56 @@ tiempo de debug una vez.
      seguir invirtiendo tiempo en un caso único. Si se retoma, arrancar revisando
      los `Winners;`/`RoundStart;` crudos entre las rondas 365 y 386 de esa partida.
 
+   - **Addendum (2026-08-17):** el corte fijo en 13 de arriba estaba mal para
+     partidas que van a *overtime real* — un empate 12-12 sigue repartiendo
+     `winner_guids` válidos más allá de 13, y el corte los truncaba (confirmado
+     en una partida real que terminó 16-13 en OT y se mostraba como 13-12
+     falso). `clusterRoundWinners()` ahora corta en el evento `match_end` del
+     log cuando existe (la autoridad real de "acá terminó la partida"), y solo
+     cae al viejo corte-en-13 como *fallback* para partidas sin ese evento
+     (anteriores a 2026-08-13). Validado en vivo contra la partida de Dawnville
+     del 2026-08-16 (`match_id=38`, St. Mere Eglise en el catálogo de mapas):
+     35 rondas reales, 3 períodos de overtime, marcador final 19-16 — coincide
+     exacto con la línea `Score;allies;19;axis;16` + `MatchEnd;` del log crudo
+     del servidor, la fuente de verdad de zPAM.
+   - También se endureció `sideOfCluster()` (usado por `sideScores()`) para
+     ignorar cualquier valor de `attacker_team`/`victim_team` que no sea
+     `axis`/`allies` (por ejemplo `spectator`) en vez de contarlo como voto —
+     antes podía inflar el conteo de un lado con jugadores que en realidad
+     estaban de espectadores en esa ronda.
+
+9. **`StatsRecalculator` borraba `damage_dealt`/`damage_taken`/`bomb_plants`/
+   `bomb_defuses`/`mid_round_disconnects` al eliminar una partida desde el panel
+   admin (2026-08-16).** Estas columnas de `player_server_stats`/`player_map_stats`
+   son acumuladores puros — a diferencia de kills/muertes/headshots, no tienen
+   tabla de detalle de la que recalcularse, porque `Damage;`/`Bomb;`/
+   `Disconnected;` nunca se guardan línea por línea (ver "Chat y eventos de
+   partida" arriba, "no se implementaron"). `recalculateAll()` hacía
+   `DB::table(...)->delete()` y reconstruía todo solo desde la tabla `kills`, así
+   que esas columnas quedaban en cero para siempre apenas se borraba una sola
+   partida — el dueño lo notó porque las páginas de especialistas en
+   bombas/daño se quedaron sin datos de golpe. Fix: `recalculateAll()` ahora
+   hace `->update([...])` poniendo en cero solo las columnas derivadas de
+   `kills` (kills, deaths, headshots, grenade_kills, teamkills, suicides),
+   dejando intactos los acumuladores sin respaldo. Los datos ya perdidos en ese
+   incidente se recuperaron reprocesando `games_mp.log` completo desde byte 0
+   con un script de solo lectura que replica la máquina de estados del parser y
+   empareja bloques de rondas contra las partidas sobrevivientes en la BD por
+   mapa+gametype+cantidad exacta de rondas (19 de 20 partidas recuperadas
+   exactas; la partida 11 tiene un bug histórico de parseo de los primeros días
+   del proyecto y no calzó con ningún bloque del log).
+
+10. **El gametype `"strat"` de zPAM creaba partidas falsas de 1 ronda
+    (2026-08-16).** `strat` es una fase de planeamiento/estrategia previa a la
+    ronda real, no gameplay — pero como sí manda su propio `RoundStart;`,
+    `openRound()` la registraba como una partida real de una sola ronda. Fix en
+    `ParseCod2Log::processLine()`: si `$pendingGametype === 'strat'` en el
+    handler de `RoundStart;`, no abre ronda ni partida, solo limpia el estado.
+    Una partida `strat` que ya se había colado a la BD antes del fix (map
+    Railyard/Stalingrad) fue borrada manualmente por el dueño desde el panel
+    admin — verificado después que `StatsRecalculator` (fix de la entrada 9)
+    preservó bien el resto de los datos ante ese borrado.
+
 ## Panel admin (`/adm_cod2`)
 
 - Login por `username` (no email) — tabla `users` con columna `username` agregada.
@@ -386,6 +456,30 @@ lo que bloqueaba a Apache/PHP (www-data) para tocar esos archivos y causaba 500s
 intermitentes en páginas no visitadas todavía. Si se edita `deploy.sh`, no quitar el
 segundo `chown`.
 
+**`tar -x` es aditivo — nunca borra en el VPS un archivo que dejó de estar en el
+commit desplegado (2026-08-17).** Si un archivo se elimina en git pero ya se había
+desplegado alguna vez, se queda huérfano en el filesystem del VPS para siempre,
+invisible a `git status`/`git diff` porque el VPS no tiene `.git`. Pasó dos veces:
+`app/Console/Commands/WatchConnects.php` (eliminado de git el 2026-08-10) y
+`resources/views/specialties/grenades.blade.php` (eliminado sin querer en el commit
+`9400ff7` del 2026-08-11) siguieron funcionando/existiendo en producción como si
+nada, generando falsas alarmas al comparar "qué hay en git" contra "qué hay
+realmente corriendo". Si se sospecha que el VPS tiene archivos que ya no deberían
+existir, no alcanza con mirar el repo — hay que diffear el filesystem real del VPS
+contra el árbol de git (`git archive HEAD | tar -t` vs. `find` en el VPS) y borrar
+a mano lo que sobre. `deploy.sh` no se tocó para arreglar esto (un `rsync --delete`
+sería más seguro que agregarle un `rm -rf` ciego a un script que corre por SSH como
+root) — sigue siendo responsabilidad manual por ahora.
+
+**Alguien puede desplegar desde otra máquina sin pasar por esta conversación
+(confirmado 2026-08-17).** El dueño clonó el repo en otra computadora, le pidió a
+otra sesión de Claude Code que actualizara el frontend, y lo desplegó — esta sesión
+no se enteró hasta que preguntó "¿está todo actualizado?" y hubo que diffear
+`app/`/`resources/` del VPS contra el HEAD local para encontrar la diferencia. No
+hay ningún marcador de "qué commit está desplegado" en el VPS (`git archive` no
+manda `.git/`), así que la única forma de detectar esto es esa comparación manual
+de filesystem. Si el sitio se ve distinto a lo que dice el git log local, empezar
+por ahí antes de asumir que no pasó nada.
 
 ## Pendientes / conocido-roto
 
