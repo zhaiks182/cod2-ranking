@@ -55,9 +55,11 @@
                                 default => 'bg-red-950/40 border-red-900 text-red-400',
                             };
                         @endphp
+                        @php $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
                         <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
                             <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">
+                                @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             </td>
                             <td class="px-4 py-2 text-center">
