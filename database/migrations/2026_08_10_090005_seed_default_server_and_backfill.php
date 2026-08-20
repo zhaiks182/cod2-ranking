@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -13,7 +14,12 @@ return new class extends Migration
             'log_path' => config('cod2.log_path'),
             'rcon_host' => config('cod2.rcon.host'),
             'rcon_port' => config('cod2.rcon.port'),
-            'rcon_password' => config('cod2.rcon.password'),
+            // Server::$casts treats this column as 'encrypted' — insertGetId() is a
+            // raw query, so it bypasses that cast and would otherwise store the
+            // password in plain text, which then fails to decrypt (DecryptException)
+            // the moment anything reads it back through the Eloquent model (e.g.
+            // Cod2RconClient::forServer(), called every minute by cod2:parse-log).
+            'rcon_password' => Crypt::encryptString(config('cod2.rcon.password')),
             'connect_ip' => config('cod2.connect_ip'),
             'connect_port' => config('cod2.connect_port'),
             'max_clients' => config('cod2.max_clients'),
