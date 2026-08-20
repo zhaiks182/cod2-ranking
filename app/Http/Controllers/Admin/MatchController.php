@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\GameMatch;
 use App\Models\Server;
+use App\Models\AdminAction;
 use App\Support\StatsRecalculator;
 use Illuminate\Http\Request;
 
@@ -29,6 +30,8 @@ class MatchController extends Controller
         $label = \App\Support\MapCatalog::mapLabel($match->map).' — '.($match->started_at?->format('d/m/Y H:i') ?? 'sin fecha');
 
         $match->delete();
+
+        AdminAction::record('matches.destroy', "Elimino la partida ({$label})");
 
         StatsRecalculator::recalculateAll();
 

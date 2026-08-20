@@ -34,6 +34,11 @@ class GameMatch extends Model
         return $this->hasMany(Kill::class, 'match_id');
     }
 
+    public function demos(): HasMany
+    {
+        return $this->hasMany(Demo::class, 'match_id');
+    }
+
     /**
      * Human-readable elapsed time — counts up to now() while the match has no
      * ended_at yet, so an in-progress match shows a live-growing duration instead of

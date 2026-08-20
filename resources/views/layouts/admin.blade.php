@@ -40,8 +40,11 @@
                 <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                     <a href="{{ route('admin.servers.index') }}" class="text-slate-300 hover:text-gsaccent">Servidores</a>
                     <a href="{{ route('admin.matches.index') }}" class="text-slate-300 hover:text-gsaccent">Partidas</a>
+                    <a href="{{ route('admin.demos.index') }}" class="text-slate-300 hover:text-gsaccent">Demos</a>
                     <a href="{{ route('admin.maps.index') }}" class="text-slate-300 hover:text-gsaccent">Mapas</a>
                     <a href="{{ route('admin.players.index') }}" class="text-slate-300 hover:text-gsaccent">Países</a>
+                    <a href="{{ route('admin.bans.index') }}" class="text-slate-300 hover:text-gsaccent">Bans</a>
+                    <a href="{{ route('admin.audit.index') }}" class="text-slate-300 hover:text-gsaccent">Auditoría</a>
                     <a href="{{ route('admin.password.edit') }}" class="text-slate-300 hover:text-gsaccent">Contraseña</a>
                     <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent">Ver sitio público</a>
                     <form method="POST" action="{{ route('admin.logout') }}">

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Server extends Model
 {
     protected $fillable = [
-        'name', 'slug', 'log_path',
+        'name', 'slug', 'log_path', 'systemd_service',
         'rcon_host', 'rcon_port', 'rcon_password',
         'connect_ip', 'connect_port', 'join_password', 'max_clients', 'is_active',
     ];

@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAction;
+use App\Models\Ban;
+use App\Models\Player;
 use App\Models\Server;
 use App\Services\Cod2RconClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\Process\Process;
 
 class ConsoleController extends Controller
 {
@@ -29,7 +33,47 @@ class ConsoleController extends Controller
         $client->command('clientkick '.$data['slot']);
         usleep(300000);
 
+        AdminAction::record('console.kick', "Expulso al slot {$data['slot']} en {$server->name}");
+
         return back()->with('status', 'Jugador expulsado.');
+    }
+
+    /**
+     * banClient es un comando nativo del engine de CoD2 (no de zPAM ni CoD2x) --
+     * escribe el guid en ban.txt en el gameserver y el motor mismo rechaza esa
+     * conexion en el futuro (SV_IsBannedGuid, se ve en SV_DirectConnect). No hace
+     * falta ningun cambio de mod para esto, es el mismo mecanismo que kick pero
+     * persistente. El guid viene de status() (ya lo parsea Cod2RconClient), asi
+     * que coincide exacto con players.guid sin ninguna conversion extra.
+     */
+    public function ban(Request $request, Server $server)
+    {
+        $data = $request->validate([
+            'slot' => ['required', 'integer'],
+            'guid' => ['required', 'integer'],
+            'name' => ['required', 'string', 'max:64'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $client = Cod2RconClient::forServer($server);
+        if (! $this->isReachable($client)) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — el jugador probablemente NO fue baneado.');
+        }
+
+        $client->command('banClient '.$data['slot']);
+        usleep(300000);
+
+        $ban = Ban::create([
+            'player_id' => Player::where('guid', $data['guid'])->value('id'),
+            'guid' => $data['guid'],
+            'player_name' => $data['name'],
+            'reason' => $data['reason'] ?: null,
+            'banned_by' => Auth::id(),
+        ]);
+
+        AdminAction::record('console.ban', "Baneo a {$data['name']} (guid {$data['guid']}) en {$server->name}".($data['reason'] ? " — {$data['reason']}" : ''));
+
+        return back()->with('status', "Jugador baneado ({$data['name']}).");
     }
 
     public function message(Request $request, Server $server)
@@ -49,9 +93,11 @@ class ConsoleController extends Controller
 
         if ($data['mode'] === 'all') {
             $client->command('say "^7'.$text.'"');
+            AdminAction::record('console.message', "Mensaje a todos en {$server->name}: {$text}");
         } else {
             $admin = Auth::user()->name;
             $client->command('tell '.$data['slot'].' "^6'.$admin.' (Privado): ^7'.$text.'"');
+            AdminAction::record('console.message', "Mensaje privado al slot {$data['slot']} en {$server->name}: {$text}");
         }
         usleep(300000);
 
@@ -78,6 +124,8 @@ class ConsoleController extends Controller
 
         $client->command('map '.$data['map']);
         usleep(300000);
+
+        AdminAction::record('console.map', "Cambio el mapa a {$data['map']} en {$server->name}");
 
         // El cambio de mapa en si (cargar assets, reconectar jugadores) tarda mucho
         // mas que los 300ms de espera anti flood-protect de arriba — la consulta
@@ -132,7 +180,49 @@ class ConsoleController extends Controller
 
         $result = Cod2RconClient::forServer($server)->command($data['cmd'], true);
 
+        AdminAction::record('console.command', "Ejecuto comando RCON en {$server->name}: {$data['cmd']}");
+
         return back()->with('lastCommand', $data['cmd'])->with('lastResult', trim($result));
+    }
+
+    /**
+     * Control real del proceso (no un simple map_restart por RCON) — reiniciar,
+     * detener o iniciar el servicio systemd del gameserver, pedido explicito del
+     * dueño (2026-08-19), sabiendo que corta a todos los jugadores conectados.
+     * www-data no tenia sudo antes de esto; se agrego una regla acotada en
+     * /etc/sudoers.d/cod2-panel que permite EXACTAMENTE estas tres combinaciones
+     * de "systemctl <accion> cod2server.service" y nada mas (ver CLAUDE.md). El
+     * nombre del servicio sale de servers.systemd_service, no del request, y la
+     * accion esta restringida a la misma whitelist que el sudoers, asi que no hay
+     * forma de que esto ejecute un comando arbitrario.
+     */
+    public function service(Request $request, Server $server)
+    {
+        $data = $request->validate(['action' => ['required', 'in:restart,stop,start']]);
+        $action = $data['action'];
+
+        if (! $server->systemd_service || ! preg_match('/^[a-zA-Z0-9_.-]+\.service$/', $server->systemd_service)) {
+            return back()->with('error', 'Este servidor no tiene un servicio systemd configurado.');
+        }
+
+        $process = new Process(['sudo', 'systemctl', $action, $server->systemd_service]);
+        $process->run();
+
+        AdminAction::record('console.'.$action, ucfirst($action)." el servicio {$server->systemd_service} en {$server->name}");
+
+        $labels = ['restart' => 'reinicio', 'stop' => 'detencion', 'start' => 'inicio'];
+
+        if (! $process->isSuccessful()) {
+            return back()->with('error', "Fallo el {$labels[$action]}: ".trim($process->getErrorOutput() ?: $process->getOutput()));
+        }
+
+        $messages = [
+            'restart' => 'Servicio reiniciado. Puede tardar unos segundos en volver a responder.',
+            'stop' => 'Servicio detenido.',
+            'start' => 'Servicio iniciado. Puede tardar unos segundos en responder.',
+        ];
+
+        return back()->with('status', $messages[$action]);
     }
 
     /**

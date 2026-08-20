@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Kill;
 use App\Models\Player;
 use App\Models\PlayerWeaponPick;
+use App\Support\MapCatalog;
 use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
@@ -17,6 +18,8 @@ class PlayerController extends Controller
                 ->where(fn ($q) => $q->where('kills', '>', 0)->orWhere('deaths', '>', 0))
                 ->orderByDesc('kills'),
         ]);
+
+        $player->setRelation('mapStats', MapCatalog::mergeVariants($player->mapStats));
 
         $recentKills = $player->kills()->where('is_suicide', false)->with('round', 'victim')->latest('id')->limit(15)->get();
         $recentDeaths = $player->deaths()->with('round', 'attacker')->latest('id')->limit(15)->get();

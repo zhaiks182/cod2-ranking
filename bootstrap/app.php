@@ -13,6 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/adm_cod2/login');
+
+        // El cliente CoD2x no puede mandar un token CSRF al subir el demo.
+        $middleware->validateCsrfTokens(except: [
+            'api/demos/upload/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -126,7 +126,10 @@
             <div class="md:col-span-2 rounded-xl border border-slate-800 bg-panel flex flex-col overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
                     <span class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Jugadores conectados</span>
-                    <span class="text-[11px] text-slate-600" data-stat="players-count-label">{{ count($players) }} conectados</span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/50 border border-emerald-900 text-emerald-400 text-[11px]" data-stat="players-count-label">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        {{ count($players) }} conectados
+                    </span>
                 </div>
                 <div class="max-h-60 overflow-y-auto px-4">
                     <table class="w-full text-sm">

@@ -41,6 +41,11 @@ class Player extends Model
         return $this->hasMany(PlayerMapStat::class);
     }
 
+    public function bans(): HasMany
+    {
+        return $this->hasMany(Ban::class);
+    }
+
     public function getKdRatioAttribute(): float
     {
         return $this->deaths_total > 0

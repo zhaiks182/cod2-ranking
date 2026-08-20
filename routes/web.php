@@ -1,13 +1,19 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BanController;
 use App\Http\Controllers\Admin\ConsoleController;
+use App\Http\Controllers\Admin\DemoController as AdminDemoController;
 use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PlayerController as AdminPlayerController;
 use App\Http\Controllers\Admin\ServerController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemosController;
+use App\Http\Controllers\DemoUploadController;
 use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\MatchController;
@@ -22,6 +28,9 @@ Route::get('/ranking', [LeaderboardController::class, 'index'])->name('leaderboa
 Route::get('/rango', [SpecialtyController::class, 'rango'])->name('rango');
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
+Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');
+Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name('demos.download');
+Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
 Route::get('/teamkills/{player:guid}', [TeamkillController::class, 'index'])->name('teamkills.index');
 Route::get('/kills/{player:guid}', [KillDetailController::class, 'index'])->name('kills.detail');
@@ -50,6 +59,13 @@ Route::get('/dano', [SpecialtyController::class, 'damage'])->name('specialties.d
 Route::get('/desconexiones', [SpecialtyController::class, 'disconnects'])->name('specialties.disconnects');
 Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])->name('specialties.grenade-deaths');
 
+// Subida automatica de demos por HWID desde el cliente CoD2x (ver _record.gsc en el
+// mod zPAM). Sin auth: el cliente del juego no puede autenticarse, y exento de CSRF
+// (ver bootstrap/app.php) por lo mismo.
+Route::post('/api/demos/upload/{hwid}/{demoName}', [DemoUploadController::class, 'store'])
+    ->where('hwid', '[0-9a-fA-F]+')
+    ->name('demos.upload');
+
 Route::prefix('adm_cod2')->name('admin.')->group(function () {
     Route::get('/', fn () => redirect()->route('admin.servers.index'))->name('home');
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -61,10 +77,16 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::get('/password', [PasswordController::class, 'edit'])->name('password.edit');
         Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
+        Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
+
         Route::resource('servers', ServerController::class)->except(['show']);
 
         Route::get('/partidas', [AdminMatchController::class, 'index'])->name('matches.index');
         Route::delete('/partidas/{match}', [AdminMatchController::class, 'destroy'])->name('matches.destroy');
+
+        Route::get('/demos', [AdminDemoController::class, 'index'])->name('demos.index');
+        Route::delete('/demos/{demo}', [AdminDemoController::class, 'destroy'])->name('demos.destroy');
+        Route::get('/demos/{match}', [AdminDemoController::class, 'show'])->name('demos.show');
 
         Route::get('/maps', [MapImageController::class, 'index'])->name('maps.index');
         Route::post('/maps/{code}', [MapImageController::class, 'store'])->name('maps.store');
@@ -75,9 +97,16 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
+        Route::post('/console/{server}/ban', [ConsoleController::class, 'ban'])->name('console.ban');
         Route::post('/console/{server}/message', [ConsoleController::class, 'message'])->name('console.message');
         Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
         Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
+        Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
         Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
+
+        Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
+
+        Route::get('/bans', [BanController::class, 'index'])->name('bans.index');
+        Route::delete('/bans/{ban}', [BanController::class, 'destroy'])->name('bans.destroy');
     });
 });

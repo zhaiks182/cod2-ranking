@@ -44,6 +44,7 @@
                 <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
                 <a href="{{ route('leaderboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Ranking</a>
                 <a href="{{ route('matches.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Partidas</a>
+                <a href="{{ route('demos.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Demos</a>
                 <a href="{{ route('rango') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Rangos</a>
                 <div class="relative">
                     <button type="button" data-specialties-toggle onclick="document.getElementById('specialties-dropdown').classList.toggle('hidden')"

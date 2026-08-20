@@ -59,6 +59,36 @@ class MapCatalog
         return self::MAPS[$code] ?? ucwords(str_replace(['mp_', '_'], ['', ' '], $code));
     }
 
+    /**
+     * Suma stats de variantes del mismo mapa real (mp_dawnville_fix + mp_dawnville_sun
+     * -> "St. Mere Eglise, France" una sola vez, en vez de dos filas identicas en
+     * "Mejores mapas" con distinto codigo pero la misma etiqueta -- confirmado que
+     * confundia, 2026-08-19, tambien reportado para Carentan (_fix vs _bal). Cada
+     * item de $stats necesita ->map, ->server, ->kills, ->deaths, ->teamkills.
+     * Devuelve stdClass con ->map_codes (los codigos originales agrupados) para que
+     * el filtro de detalle de kills/fuego amigo pueda pedir las dos variantes juntas
+     * en vez de perder la mitad del detalle.
+     */
+    public static function mergeVariants(\Illuminate\Support\Collection $stats): \Illuminate\Support\Collection
+    {
+        return $stats
+            ->groupBy(fn ($s) => self::normalize($s->map))
+            ->map(function ($group, $normalizedCode) {
+                $first = $group->first();
+
+                return (object) [
+                    'map' => $normalizedCode,
+                    'map_codes' => $group->pluck('map')->unique()->values()->all(),
+                    'server' => $first->server,
+                    'kills' => $group->sum('kills'),
+                    'deaths' => $group->sum('deaths'),
+                    'teamkills' => $group->sum('teamkills'),
+                ];
+            })
+            ->sortByDesc('kills')
+            ->values();
+    }
+
     // Los 8 gametypes que trae zPAM 4.08 (confirmado 2026-08-18 contra los .txt de
     // maps/mp/gametypes/ dentro de zpam408.iwd — uno por codigo, sin mas variantes).
     private const GAMETYPES = [

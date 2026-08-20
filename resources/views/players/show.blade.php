@@ -62,8 +62,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($player->mapStats as $stat)
-                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => $stat->map]); @endphp
+                        @forelse($player->mapStats->take(4) as $stat)
+                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map])]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
@@ -83,6 +83,12 @@
                 </table>
                 </div>
             </div>
+            @if($player->mapStats->count() > 4)
+                <button type="button" onclick="document.getElementById('map-stats-modal').classList.remove('hidden')"
+                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    Ver todos los mapas ({{ $player->mapStats->count() }}) →
+                </button>
+            @endif
         </section>
 
         <section>
@@ -144,6 +150,46 @@
         </section>
     </div>
 </div>
+
+@if($player->mapStats->count() > 4)
+    <div id="map-stats-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+        onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-sm font-semibold">Todos los mapas ({{ $player->mapStats->count() }})</span>
+                <button type="button" onclick="document.getElementById('map-stats-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+            </div>
+            <div class="overflow-y-auto overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Mapa</th>
+                            <th class="px-4 py-2 font-medium text-right">Kills</th>
+                            <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($player->mapStats as $stat)
+                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map])]); @endphp
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                    <span class="relative inline-block">
+                                        <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $stat->kills }}</button>
+                                        @if($stat->teamkills > 0)
+                                            <button type="button" data-teamkill-trigger data-player="{{ $player->guid }}" data-params="{{ $tkParams }}" class="absolute left-full top-1/2 -translate-y-1/2 ml-0.5 whitespace-nowrap px-1 py-1.5 text-[11px] text-red-500 font-medium hover:underline">(-{{ $stat->teamkills }})</button>
+                                        @endif
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@endif
 
 @if($player->aliases->count() > 5)
     <div id="alias-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"

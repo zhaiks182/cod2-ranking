@@ -51,7 +51,7 @@ class Cod2RconClient
     }
 
     /**
-     * @return array{map: ?string, players: array<int, array{slot:int, score:int, ping:string, guid:int, name:string}>}|null
+     * @return array{map: ?string, players: array<int, array{slot:int, score:int, ping:?string, guid:int, name:string}>}|null
      */
     public function status(): ?array
     {
@@ -162,7 +162,22 @@ class Cod2RconClient
         }
 
         $count = count($tokens);
-        $name = $this->toUtf8(implode(' ', array_slice($tokens, 4, $count - 8)));
+
+        // The engine occasionally omits "ping" entirely for a connected player
+        // (seen live 2026-08-19, reproducible across several status polls for the
+        // same client) — when that happens, the token right after "score" is
+        // really the guid, one field earlier than usual. A real ping is always a
+        // small decimal (0-9999); a guid is a full signed 32-bit value, always
+        // wider than that, so an oversized number in the ping position is the
+        // tell that the field is missing rather than that ping is genuinely huge.
+        // Without this, the whole row shifts: guid gets misread as ping, the name
+        // gets misread as guid (casting to 0), and the name is lost entirely.
+        $pingMissing = strlen(ltrim($tokens[2], '-')) > 4;
+        $ping = $pingMissing ? null : $tokens[2];
+        $guid = (int) $tokens[$pingMissing ? 2 : 3];
+        $nameOffset = $pingMissing ? 3 : 4;
+
+        $name = $this->toUtf8(implode(' ', array_slice($tokens, $nameOffset, $count - $nameOffset - 4)));
 
         // address is "ip:port" (or a "00000000.0...:0" placeholder for bots) — split off
         // the port from the right so IPv4 dots don't confuse anything.
@@ -172,8 +187,8 @@ class Cod2RconClient
         return [
             'slot' => (int) $tokens[0],
             'score' => (int) $tokens[1],
-            'ping' => $tokens[2],
-            'guid' => (int) $tokens[3],
+            'ping' => $ping,
+            'guid' => $guid,
             'name' => $name,
             'ip' => $ip,
         ];

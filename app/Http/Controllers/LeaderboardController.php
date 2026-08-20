@@ -9,6 +9,7 @@ use App\Models\PlayerServerStat;
 use App\Models\Round;
 use App\Models\Server;
 use App\Support\KillAggregator;
+use App\Support\MapCatalog;
 use App\Support\TeamSideAnalyzer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,19 +21,28 @@ class LeaderboardController extends Controller
         $servers = Server::where('is_active', true)->orderBy('name')->get();
         $server = $servers->firstWhere('slug', $request->query('server')) ?? $servers->first();
 
-        $map = $request->query('map');
+        // Normalizado siempre, aunque venga un codigo crudo de variante en la URL
+        // (bookmark viejo, por ejemplo) — ver buildMapGroups()/MapCatalog::mergeVariants
+        // para el porque: mp_dawnville_fix y mp_dawnville_sun son el mismo mapa real
+        // (St. Mere Eglise) y desde 2026-08-19 comparten una sola pestaña.
+        $map = $request->query('map') ? MapCatalog::normalize($request->query('map')) : null;
         $from = $request->query('from');
         $to = $request->query('to');
         $usingDateFilter = (bool) ($from || $to);
 
         $mapGroups = $server ? $this->buildMapGroups($server->id) : collect();
 
+        // Los codigos crudos (variantes) que hay que incluir en cada query de abajo
+        // para que la pestaña combinada muestre datos de TODAS sus variantes, no solo
+        // la que casualmente quedo de ultima.
+        $mapCodes = $map ? ($mapGroups[$map]->codes ?? [$map]) : [];
+
         // A map played across more than one calendar day can't honestly show one
         // combined "all sessions" total (see the class-level note on buildMapGroups) —
         // picking that map's tab with no explicit date defaults to its most recent
         // session instead of silently mixing every session together.
-        if ($map && ! $usingDateFilter && $mapGroups->get($map, collect())->count() > 1) {
-            $latestDate = $mapGroups[$map]->last()->toDateString();
+        if ($map && ! $usingDateFilter && ($mapGroups[$map]->dates ?? collect())->count() > 1) {
+            $latestDate = $mapGroups[$map]->dates->last()->toDateString();
             $from = $to = $latestDate;
             $usingDateFilter = true;
         }
@@ -41,10 +51,10 @@ class LeaderboardController extends Controller
 
         if ($server) {
             if ($usingDateFilter) {
-                $rows = $this->aggregateFromKills($server->id, $map, $from, $to);
+                $rows = $this->aggregateFromKills($server->id, $mapCodes, $from, $to);
             } elseif ($map) {
                 $rows = PlayerMapStat::with('player')
-                    ->where('server_id', $server->id)->where('map', $map)
+                    ->where('server_id', $server->id)->whereIn('map', $mapCodes)
                     ->where(fn ($q) => $q->where('kills', '>', 0)->orWhere('deaths', '>', 0))
                     ->whereHas('player')
                     ->orderByDesc('kills')
@@ -79,7 +89,7 @@ class LeaderboardController extends Controller
             // that whole session under its start date. Filtering rounds by their own
             // timestamp here would silently drop that last round from the session's
             // one and only date tab.
-            $rounds = Round::where('rounds.server_id', $server->id)->where('rounds.map', $map)->where('rounds.gametype', 'sd')
+            $rounds = Round::where('rounds.server_id', $server->id)->whereIn('rounds.map', $mapCodes)->where('rounds.gametype', 'sd')
                 ->join('matches', 'matches.id', '=', 'rounds.match_id')
                 ->when($from, fn ($q) => $q->where('matches.started_at', '>=', Carbon::parse($from)->startOfDay()))
                 ->when($to, fn ($q) => $q->where('matches.started_at', '<=', Carbon::parse($to)->endOfDay()))
@@ -97,18 +107,21 @@ class LeaderboardController extends Controller
             }
         }
 
-        return view('leaderboard', compact('servers', 'server', 'mapGroups', 'map', 'from', 'to', 'usingDateFilter', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
+        return view('leaderboard', compact('servers', 'server', 'mapGroups', 'map', 'mapCodes', 'from', 'to', 'usingDateFilter', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
     }
 
     /**
-     * One entry per map, each holding the sorted list of calendar days it's been
-     * played on — a map played more than once gets a secondary row of date pills in
-     * the view instead of a separate top-level tab per session, so "Toujane" stays one
-     * tab in the main row no matter how many days it's been played, with its sessions
-     * listed underneath. A map played only once has a single-date list (no secondary
-     * row needed).
+     * One entry per REAL map (variant codes like mp_dawnville_fix/mp_dawnville_sun
+     * merged under the same normalized key since 2026-08-19 — same map, same tab,
+     * see MapCatalog::normalize()), each holding the sorted list of calendar days
+     * it's been played on and the raw codes that contributed to it. A map played
+     * more than once gets a secondary row of date pills in the view instead of a
+     * separate top-level tab per session, so "Toujane" stays one tab in the main
+     * row no matter how many days it's been played, with its sessions listed
+     * underneath. A map played only once has a single-date list (no secondary row
+     * needed).
      *
-     * @return \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, \Carbon\Carbon>>
+     * @return \Illuminate\Support\Collection<string, object{dates: \Illuminate\Support\Collection<int, \Carbon\Carbon>, codes: array<int, string>}>
      */
     private function buildMapGroups(int $serverId)
     {
@@ -118,34 +131,42 @@ class LeaderboardController extends Controller
             ->selectRaw('map, DATE(started_at) as play_date')
             ->distinct()
             ->get()
-            ->groupBy('map');
+            ->groupBy(fn ($row) => MapCatalog::normalize($row->map));
 
-        $groups = $sessions
+        $groups = $sessions->map(fn ($rows) => (object) [
             // DATE(started_at) comes back as a plain string from a raw query (this
-            // isn't an Eloquent model with date casts) — parse to Carbon here so the
-            // view can call date methods on it without every multi-session map 500ing.
-            ->map(fn ($rows) => $rows->pluck('play_date')->map(fn ($d) => Carbon::parse($d))->sort()->values());
+            // isn't an Eloquent model with date casts) — dedupe the raw strings first
+            // (two variant codes played the same day would otherwise show as two
+            // separate date pills for the same calendar day) before parsing to Carbon
+            // so the view can call date methods on it without every multi-session map
+            // 500ing.
+            'dates' => $rows->pluck('play_date')->unique()->map(fn ($d) => Carbon::parse($d))->sort()->values(),
+            'codes' => $rows->pluck('map')->unique()->values()->all(),
+        ]);
 
         // Requested tab order: Toujane, Burgundy, Dawnville, Stalingrad first (in that
         // order), then whatever other maps have been played, alphabetically by label.
         $priority = ['mp_toujane', 'mp_burgundy', 'mp_dawnville', 'mp_railyard'];
 
-        return $groups->sortBy(function ($dates, $mapCode) use ($priority) {
-            $rank = array_search(\App\Support\MapCatalog::normalize($mapCode), $priority, true);
+        return $groups->sortBy(function ($group, $mapCode) use ($priority) {
+            $rank = array_search($mapCode, $priority, true);
 
             return $rank !== false
                 ? sprintf('0_%02d', $rank)
-                : '1_'.\App\Support\MapCatalog::mapLabel($mapCode);
+                : '1_'.MapCatalog::mapLabel($mapCode);
         });
     }
 
     /**
      * The cached player_map_stats / player_server_stats tables only cover all-time
      * totals, so a date range has to be aggregated live from the kills table instead.
+     *
+     * @param  array<int, string>  $mapCodes  Raw map codes to include (all variants of
+     *                                        the selected normalized map, or empty for "General").
      */
-    private function aggregateFromKills(int $serverId, ?string $map, ?string $from, ?string $to)
+    private function aggregateFromKills(int $serverId, array $mapCodes, ?string $from, ?string $to)
     {
-        return KillAggregator::aggregate(function () use ($serverId, $map, $from, $to) {
+        return KillAggregator::aggregate(function () use ($serverId, $mapCodes, $from, $to) {
             // The ranking is Search & Destroy only — a DM/HQ/CTF session shouldn't
             // contribute to it (see StatsRecalculator / ParseCod2Log for the same rule
             // applied to the cached player_map_stats/player_server_stats tables).
@@ -153,8 +174,8 @@ class LeaderboardController extends Controller
                 ->join('rounds', 'rounds.id', '=', 'kills.round_id')
                 ->join('matches', 'matches.id', '=', 'rounds.match_id')
                 ->where('rounds.server_id', $serverId)->where('rounds.gametype', 'sd');
-            if ($map) {
-                $q->where('rounds.map', $map);
+            if ($mapCodes) {
+                $q->whereIn('rounds.map', $mapCodes);
             }
             // Filtered by the owning match's started_at (see the $rounds query in
             // index() for the full story) — a late-night session can have kills that

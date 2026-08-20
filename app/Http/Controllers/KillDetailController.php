@@ -42,7 +42,11 @@ class KillDetailController extends Controller
         }
 
         if ($map = $request->query('map')) {
-            $query->where('rounds.map', $map);
+            // Variantes del mismo mapa real (mp_dawnville_fix + mp_dawnville_sun) se
+            // muestran combinadas en "Mejores mapas" (ver MapCatalog::mergeVariants),
+            // asi que el filtro tiene que aceptar los codigos separados por coma para
+            // que el detalle no se quede con solo la mitad de las bajas.
+            $query->whereIn('rounds.map', explode(',', $map));
         }
 
         if ($from = $request->query('from')) {

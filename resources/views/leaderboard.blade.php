@@ -22,23 +22,48 @@
 
         <div class="flex items-center gap-2 text-sm flex-wrap">
             <a href="{{ route('leaderboard', ['server' => $server?->slug, 'from' => $from, 'to' => $to]) }}" class="px-3 py-1.5 rounded-lg border {{ !$map ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">General</a>
-            @foreach($mapGroups as $mapCode => $dates)
+            @foreach($mapGroups as $mapCode => $group)
                 <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $mapCode]) }}" class="px-3 py-1.5 rounded-lg border {{ $map === $mapCode ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ \App\Support\MapCatalog::mapLabel($mapCode) }}</a>
             @endforeach
         </div>
     </div>
 
-    @if($map && ($mapGroups[$map] ?? collect())->count() > 1)
+    @if($map && ($mapGroups[$map]->dates ?? collect())->count() > 1)
+        @php
+            $monthGroups = $mapGroups[$map]->dates->groupBy(fn ($d) => $d->format('Y-m'));
+        @endphp
         <div class="flex items-center gap-2 text-xs -mt-2 flex-wrap">
             <span class="text-slate-500 uppercase tracking-wide">Partidas</span>
-            @foreach($mapGroups[$map] as $date)
-                @php $dateStr = $date->toDateString(); @endphp
-                <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'from' => $dateStr, 'to' => $dateStr]) }}"
-                    class="px-2.5 py-1 rounded-lg border {{ $from === $dateStr ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
-                    {{ $date->translatedFormat('j \d\e F') }}
-                </a>
+            @foreach($monthGroups as $monthKey => $dates)
+                @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+                <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.remove('hidden')"
+                    class="px-2.5 py-1 rounded-lg border {{ $dates->contains(fn ($d) => $d->toDateString() === $from) ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                    {{ $monthLabel }}
+                </button>
             @endforeach
         </div>
+
+        @foreach($monthGroups as $monthKey => $dates)
+            @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+            <div id="dates-modal-{{ $monthKey }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+                onclick="if(event.target === this) this.classList.add('hidden')">
+                <div class="w-full max-w-sm max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+                    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <span class="text-sm font-semibold">{{ $monthLabel }}</span>
+                        <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+                    </div>
+                    <div class="overflow-y-auto p-3 flex flex-wrap gap-2">
+                        @foreach($dates as $date)
+                            @php $dateStr = $date->toDateString(); @endphp
+                            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'from' => $dateStr, 'to' => $dateStr]) }}"
+                                class="px-2.5 py-1 rounded-lg border text-xs {{ $from === $dateStr ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                                {{ $date->translatedFormat('j \d\e F') }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endforeach
     @endif
 
     <form method="get" class="flex flex-wrap items-end gap-3 text-sm bg-panel border border-slate-800 rounded-xl px-4 py-3">
@@ -59,9 +84,14 @@
     </form>
 
     @php
+        // El detalle de kills/fuego amigo filtra por codigo de mapa EXACTO
+        // (rounds.map), que nunca es el codigo normalizado ($map, ej. mp_dawnville)
+        // sino la variante real (mp_dawnville_fix/mp_dawnville_sun) — hay que mandar
+        // $mapCodes (las variantes que arma esta pestaña) o el filtro no encuentra
+        // ninguna ronda.
         $tkParams = http_build_query(array_filter([
             'server' => $server?->slug,
-            'map' => $map,
+            'map' => $mapCodes ? implode(',', $mapCodes) : null,
             'from' => $from,
             'to' => $to,
         ]));

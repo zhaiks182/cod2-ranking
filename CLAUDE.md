@@ -432,6 +432,199 @@ tiempo de debug una vez.
     admin — verificado después que `StatsRecalculator` (fix de la entrada 9)
     preservó bien el resto de los datos ante ese borrado.
 
+## Subida automática de demos por HWID (2026-08-19)
+
+Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
+demo (`.dm_1`) al panel, identificado por HWID (no por cuenta/UUID de ningún sistema
+de match externo). Se puede ver y descargar en `/demos` (público) y administrar en
+`/adm_cod2/demos` (borrar, ver tamaño total, configurar retención).
+
+**IMPORTANTE — esto todavía NO está en ningún repo git.** Todo lo de esta sección se
+hizo trabajando directo sobre el VPS (sesión de Claude Code por SSH), no en la máquina
+donde normalmente se desarrolla y desde donde corre `deploy.sh`. Los archivos Laravel
+listados abajo existen solo en el filesystem del VPS — hay que traerlos a la máquina
+de desarrollo y comitearlos antes de que el próximo `deploy.sh` (que hace `git archive
+HEAD | tar -x`, ver sección "Deploy") los pise con lo que haya en git. El código del
+mod zPAM (ver más abajo) ni siquiera es parte de este repo — vive aparte, sin git.
+
+### Cómo funciona el contrato de subida (CoD2x)
+
+El demo se graba **en la PC de cada jugador**, no en el server. Reconstruido leyendo
+`src/mss32/demo.cpp` del repo público `callofduty2x/CoD2x`:
+
+- El server (GSC) le indica al cliente el nombre del demo (`cl_demoAutoRecordName`) y
+  la URL de subida (`cl_demoAutoRecordUploadUrl`) vía `setClientCvar2`. El endpoint
+  **no está hardcodeado en el cliente ni en ningún archivo de config del jugador** —
+  vive en el código del mod, en `_record.gsc::execRecording()`:
+  ```
+  url = "https://cod2.4livepro.com/api/demos/upload/" + self getHWID() + "/";
+  self setClientCvar2("cl_demoAutoRecordUploadUrl", url);
+  ```
+  Si el día de mañana cambia el dominio/endpoint, este es el único lugar a tocar (y
+  reconstruir/desplegar el `.iwd`, ver "Cambios en el mod zPAM" abajo).
+  **Se evaluó usar la IP directa (`167.148.33.82`) en vez del dominio, para evitar
+  pasar por Cloudflare** (el dominio está proxeado — ver "Favicon cacheado por
+  Cloudflare" más abajo) **pero se descartó (2026-08-19):** Apache en este VPS rutea
+  por virtual host según el header `Host`, y el vhost por defecto (el que responde
+  si no hay `Host` que matchee ningún `ServerName`/`ServerAlias`) es
+  `monitor.4livepro.com`, no `cod2.4livepro.com` — pegarle a la IP cruda hubiera
+  caído en el sitio equivocado. Quedó con el dominio.
+- Cuando el cliente arranca a grabar, escribe un archivo marcador
+  `demos/<nombre>.dm_1.upload` con la URL completa (`uploadUrl + nombreDelDemo`, sin
+  extensión) — esto queda fijo desde ese momento, aunque el server cambie el cvar
+  después.
+- Al dejar de grabar (fin de partida, `/quit`, o desconexión), el cliente hace un
+  **`POST` con el `.dm_1` crudo en el body** (sin multipart, sin Content-Type) a esa
+  URL. Espera **200/201/409** para borrar el marcador y darlo por subido; cualquier
+  otro código reintenta hasta 3 veces (el contador de reintentos vive en memoria del
+  proceso del juego, así que se resetea si el jugador reabre el juego — un marcador
+  que falló 3 veces en una sesión vuelve a reintentar en la siguiente).
+- `/quit` en consola está parchado por CoD2x a propósito: si hay un demo pendiente de
+  subir, pausa el cierre del juego hasta que la subida termine (`cmd_quit()` en
+  `demo.cpp`). No hace falta hacer nada del lado del mod para esto.
+- El nombre del demo puede tardar unos segundos en generarse tras el fin de la
+  partida — `_matchinfo.gsc::clear()` (que dispara `stopRecordingForAll()`) corre
+  desde un polling loop (`waitForPlayerOrClear()`) que chequea cada 5-15s, no es
+  instantáneo. Confirmado en vivo varias veces durante las pruebas — es esperable, no
+  un bug.
+
+### Cambios en el mod zPAM
+
+**No están en git.** Viven en el VPS en `/root/zpam_test/extract10/` (la copia
+desempaquetada del `.iwd` más reciente — hay `extract`, `extract2`...`extract10` de
+iteraciones previas de desarrollo, `extract10` es la vigente). El `.iwd` final se
+arma con `zip -r -X -D` desde adentro de esa carpeta (sin entradas de directorio
+extra, para calzar con el formato del `.iwd` original) y se copia a:
+
+- `/home/gameserver/1.3/puG/main/zpam408.iwd` (el que carga el server)
+- `/var/www/html/cod2/main/zpam408.iwd` y `/var/www/monitor.4livepro.com/cod2/main/zpam408.iwd`
+  (mirrors de descarga rápida — `sv_wwwBaseURL` en `server.cfg` apunta ahí; si no se
+  actualizan estos dos junto con el del server, los clientes se traban descargando el
+  mod viejo al conectar — pasó una vez, ver conversación del 2026-08-19)
+
+Backups de cada `.iwd` reemplazado en `/root/backups/zpam/`.
+
+Dos archivos tocados dentro de `maps/mp/gametypes/_record.gsc`:
+
+1. **`execRecording()`** — antes, la URL de subida solo se armaba si había un "match"
+   oficial activado (sistema externo tipo fpschallenge.eu, con UUID). Se agregó una
+   rama `else if (level.gametype == "sd")` que arma la URL con `self getHWID()` para
+   el caso de pug libre (sin match activado):
+   ```
+   url = "https://cod2.4livepro.com/api/demos/upload/" + self getHWID() + "/";
+   ```
+2. **`getSecureString()`** — se sacaron `#`, `[`, `]`, `{`, `}` del charset permitido.
+   Esta función se usa tanto para el nombre de archivo del demo como (ahora) para la
+   URL de subida, y un jugador con `#` en el nombre/clan tag (`DESTINATION#ZHAIK`,
+   caso real durante las pruebas) cortaba la URL a la mitad — `#` es el separador de
+   fragmento en una URL, todo lo que sigue nunca se manda al server. Confirmado en
+   vivo: `POST .../DESTINATION` (truncado) en vez de
+   `POST .../DESTINATION#ZHAIK_!_1v0_tj_1` (completo).
+
+**`server.cfg`**: `scr_recording` estaba en `0` (grabación apagada). Se cambió a `1`
+— sin esto zPAM nunca arranca a grabar, sin importar el resto del código.
+
+### Lado Laravel (este repo — hay que comitear)
+
+**Identidad del jugador — dos IDs distintos, no confundir:**
+
+`self getHWID()` en GSC devuelve un hash hex de 32 caracteres (ej.
+`9de59a25f08864a03a55d30cd1318773`). **No es lo mismo** que `players.guid` (el GUID
+entero que CoD2x escribe en el log y que usa el parser — ver sección "Identidad del
+jugador" más arriba). Reconstruyendo `server.cpp` del repo de CoD2x se encontró la
+relación exacta: `guid` es un hash **FNV-1a de 32 bits** del string hex de HWID2
+(offset `2166136261`, prime `16777619`, reinterpretado como `int32` con signo).
+Implementado en `app/Support/HwidHasher.php` y **confirmado en vivo** contra un
+jugador real: mismo HWID hex → mismo `guid` exacto (`17665482`, jugador `zhaiks`).
+Esto es lo que permite vincular cada demo a su `Player` sin que el jugador tenga que
+loguearse en nada.
+
+**Vínculo demo → partida — inferido por tiempo, con auto-corrección:**
+
+La URL de subida no lleva ningún id de partida (el mod no lo sabe). `match_id` se
+resuelve en `app/Support/DemoMatchResolver.php`: la partida no-importada más
+reciente con `started_at <= at + 90s`. El margen de 90s existe porque el demo llega
+casi al instante (el cliente lo sube apenas termina de grabar) pero
+`cod2:parse-log` (cron cada minuto) puede tardar hasta un minuto en crear la fila de
+la partida nueva — confirmado en vivo: un demo con `created_at` 12:19:49 tenía que
+vincularse a una partida creada recién a las 12:20:02. Por eso también existe
+`demos:reconcile-matches` (cron cada minuto, junto a `cod2:parse-log`): re-revisa
+demos de los últimos 10 minutos y corrige el `match_id` si para ese momento ya existe
+una partida más adecuada.
+
+Si se borra la partida desde el admin (`/adm_cod2/partidas`), el demo vinculado
+**no se borra** — `match_id` queda `NULL` (`nullOnDelete` en la FK) y el demo queda
+"huérfano": el archivo sigue en disco pero deja de aparecer en `/demos` y
+`/adm_cod2/demos` (ambas paginas listan por partida). Decisión explícita del dueño de
+dejarlo así (2026-08-19), no tocar.
+
+**Archivos nuevos:**
+
+- `database/migrations/2026_08_19_120000_create_demos_table.php` — tabla `demos`
+  (`player_id` nullable FK, `match_id` nullable FK, `hwid` string, `demo_name`,
+  `file_path`, `size_bytes`). Ojo: la primera versión de esta migración tenía `hwid`
+  como `integer` (supuesto equivocado de que era lo mismo que `guid`) — se
+  rehizo/remigró en caliente porque no había datos reales todavía. Si se ve algo raro
+  en el historial de migraciones sobre esto, ya está resuelto.
+- `database/migrations/2026_08_19_130000_add_match_id_to_demos_table.php`
+- `database/migrations/2026_08_19_140000_create_settings_table.php` — tabla
+  `settings`, una sola fila (id=1), hoy solo tiene `demo_retention_days` (nullable =
+  sin límite).
+- `app/Models/Demo.php`, `app/Models/Setting.php`
+- `app/Support/HwidHasher.php`, `app/Support/DemoMatchResolver.php`
+- `app/Http/Controllers/DemoUploadController.php` — recibe el POST del cliente CoD2x
+  en `POST /api/demos/upload/{hwid}/{demoName}` (sin auth, exento de CSRF — el
+  cliente del juego no puede autenticarse ni mandar token; ver excepción en
+  `bootstrap/app.php` → `validateCsrfTokens(except: ['api/demos/upload/*'])`). Valida
+  `demoName` contra el mismo charset que ahora permite `getSecureString()` en el mod.
+- `app/Http/Controllers/DemosController.php` — público: `/demos` (partidas con
+  demos, tarjetas estilo `/partidas`), `/demos/{match}` (jugadores + descarga),
+  `/demos/download/{demo}`.
+- `app/Http/Controllers/Admin/DemoController.php` — `/adm_cod2/demos` (listado por
+  partida con tamaño total, más el form de retención embebido arriba, estilo
+  "Imágenes de mapa"), `/adm_cod2/demos/{match}` (borrar por demo).
+- `app/Http/Controllers/Admin/SettingController.php` — solo `update()` (no hay
+  página propia, el form vive dentro de `/adm_cod2/demos`).
+- `app/Console/Commands/ReconcileDemoMatches.php` (`demos:reconcile-matches`)
+- `app/Console/Commands/PruneOldDemos.php` (`demos:prune-old`, corre diario, borra
+  archivo+registro de demos más viejos que `settings.demo_retention_days`; no hace
+  nada si es `null`)
+- `resources/views/demos/index.blade.php`, `resources/views/demos/show.blade.php`
+- `resources/views/admin/demos/index.blade.php`, `resources/views/admin/demos/show.blade.php`
+
+**Archivos modificados:**
+
+- `routes/web.php` — rutas públicas y admin de demos (ver arriba)
+- `routes/console.php` — agrega `demos:reconcile-matches` (`everyMinute`) y
+  `demos:prune-old` (`daily`)
+- `bootstrap/app.php` — excepción de CSRF para `api/demos/upload/*`
+- `app/Models/GameMatch.php` — nueva relación `demos()`
+- `resources/views/layouts/app.blade.php` — link "Demos" en el nav público
+- `resources/views/layouts/admin.blade.php` — link "Demos" en el nav admin (no hay
+  link de "Configuración" separado — se sacó a pedido del dueño y el control de
+  retención se movió adentro de la página de Demos)
+
+**Almacenamiento:** disco `local` de Laravel — en esta versión apunta a
+`storage/app/private/` (no `storage/app/` directo, cambió en versiones recientes de
+Laravel). Los demos quedan en `storage/app/private/demos/{hwid}/{nombre}.dm_1`, no
+públicos (hay que pasar por el controller/ruta de descarga, no están bajo `public/`).
+
+### Otros hallazgos de la sesión (no específicos de demos)
+
+- **Favicon cacheado por Cloudflare.** El sitio está detrás de Cloudflare
+  (`server: cloudflare` en las respuestas). Actualizar un archivo estático en
+  `public/` (ej. `favicon.png`) no se ve reflejado hasta purgar el caché de
+  Cloudflare a mano (dashboard → Caching → Purge Cache) — no hay forma de hacerlo
+  desde el VPS/SSH sin las credenciales/API token de Cloudflare, que esta sesión no
+  tenía. Si algo se actualiza en `public/` y no se ve el cambio, purgar Cloudflare
+  antes de sospechar otra cosa.
+- **`public/favicon.png` se reemplazó (2026-08-19)** por uno nuevo (logo con
+  estrella + "2") que el dueño subió desde su PC. Es un archivo binario, no
+  código — fácil de pasar por alto al reconciliar con git. También toca traerlo al
+  repo de desarrollo. `public/favicon.ico` sigue como estaba (0 bytes, no se tocó
+  — el layout usa `favicon.png` explícitamente vía `<link rel="icon"
+  type="image/png">`, el `.ico` no se usa).
+
 ## Panel admin (`/adm_cod2`)
 
 - Login por `username` (no email) — tabla `users` con columna `username` agregada.
@@ -443,6 +636,8 @@ tiempo de debug una vez.
 - `bootstrap/app.php` tiene `redirectGuestsTo('/adm_cod2/login')` — si se cambia el
   prefijo de rutas admin, hay que actualizar esto también (es un string, no una ruta
   con nombre, porque corre antes de que el router esté disponible).
+- `/adm_cod2/demos` (borrar demos, ver tamaño total por partida, configurar retención)
+  — ver sección "Subida automática de demos por HWID" más arriba.
 
 ## Deploy
 
@@ -481,6 +676,148 @@ manda `.git/`), así que la única forma de detectar esto es esa comparación ma
 de filesystem. Si el sitio se ve distinto a lo que dice el git log local, empezar
 por ahí antes de asumir que no pasó nada.
 
+## Auditoría de admin y reinicio de servicio (2026-08-19)
+
+Dos mejoras al panel admin, a pedido del dueño tras una sesión de pruebas donde
+varias partidas/demos se borraron y hubo que rastrear el access log de Apache a
+mano para entender qué había pasado.
+
+**Tampoco está comiteado a git** — mismo caso que la sección de demos más arriba,
+se hizo en la misma sesión de VPS por SSH.
+
+### Log de auditoría
+
+Tabla `admin_actions` (`user_id` nullable, `action`, `description`, timestamps),
+modelo `AdminAction` con un helper estático `AdminAction::record($action,
+$description)`. Se llama desde cada acción destructiva/operativa del admin:
+
+- `Admin\MatchController@destroy`
+- `Admin\DemoController@destroy`
+- `Admin\PlayerController@clearIp`
+- `Admin\ConsoleController@kick/message/changeMap/command/restart`
+
+Página nueva: `/adm_cod2/auditoria` (`AuditController@index`), tabla simple con
+fecha/admin/acción/detalle, paginada. Link "Auditoría" en el nav admin.
+
+### Control real del servicio desde el panel
+
+Antes solo se podía reiniciar/parar/iniciar `cod2server.service` por SSH. Se
+agregaron tres botones en `/adm_cod2/console/{server}` (todos con confirmación —
+cortan a todos los jugadores conectados): **Reiniciar** y **Detener** se muestran
+cuando el status RCON da OK (server arriba); **Iniciar** se muestra cuando no
+(server abajo). Los tres pegan al mismo endpoint `ConsoleController@service`
+(`POST admin.console.service`, con `action=restart|stop|start` en el body).
+
+**Esto le da a `www-data` un permiso de sistema nuevo que no tenía (confirmado
+2026-08-19: `sudo -l -U www-data` daba "not allowed to run sudo").** Se agregó una
+regla en `/etc/sudoers.d/cod2-panel`, validada con `visudo -c` antes de instalarla:
+
+```
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart cod2server.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop cod2server.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start cod2server.service
+```
+
+Acotada a propósito a ESAS tres combinaciones exactas, nada de wildcards ni otras
+acciones de systemctl (`enable`, `disable`, comandos sobre otros servicios, etc).
+`ConsoleController@service` valida `action` contra la misma whitelist
+(`in:restart,stop,start`) antes de pasarla a `Process`, asi que ni siquiera con un
+request armado a mano se puede colar algo fuera de esas tres. **Este archivo vive
+en `/etc/sudoers.d/` del VPS — no es parte de ningún repo, no viaja con git ni con
+`deploy.sh`.** Si el VPS se reconstruye desde cero algún día, hay que volver a
+crear esta regla a mano (está el comando exacto arriba) para que los botones
+vuelvan a funcionar.
+
+`ConsoleController@restart` valida `servers.systemd_service` contra un regex
+(`^[a-zA-Z0-9_.-]+\.service$`) antes de pasarlo a `Process` — el nombre sale de la
+base de datos, no del request, pero la validación queda ahí igual como defensa en
+profundidad. Se agregó la columna `servers.systemd_service` (nullable), el server
+existente (`pug-latam`) se backfillió con `cod2server.service`.
+
+**Antes de esto, se decidió explícitamente NO agregar un CoD2x custom para
+auto-subir screenshots (2026-08-19).** El dueño lo evaluó y prefirió no seguir
+después de que se investigó el costo real: requeriría compilar un `mss32.dll`
+propio y que cada jugador lo instale a mano (no hay forma de "empujarlo" desde el
+server), y quedaría frágil ante el auto-updater agresivo de CoD2x oficial (ver
+`src/mss32/updater.cpp` del repo de CoD2x — el server mismo se auto-reemplaza sin
+avisar si `sv_update` queda en `true`, que es el default; no se tocó ese cvar
+tampoco, decisión de no modificar nada del server en producción por esto). Si se
+retoma esta idea en el futuro, arrancar releyendo esa investigación antes de
+proponer nada.
+
+## Bans persistentes (2026-08-19)
+
+Antes solo había Kick (por sesión, se reconecta al toque). Se agregó Ban en
+`/adm_cod2/console/{server}`, junto a Kick, para jugadores conectados —
+igual de simple para el admin, pero persistente.
+
+**Hallazgo clave: no hace falta tocar el mod ni CoD2x para esto.** `banClient
+<slot>` / `banUser <nombre>` / `tempBanClient` / `tempBanUser` / `unbanUser
+<nombre>` son comandos **nativos del engine base de CoD2** (confirmado leyendo
+el `.c` decompilado de `CoD2MP_s.c` en el repo de CoD2x — no son parte de
+CoD2x, existen desde antes). `banClient` escribe el guid en un `ban.txt` en el
+gameserver, y el motor mismo rechaza esa conexión en el futuro
+(`SV_IsBannedGuid`, se ve en `SV_DirectConnect`) — mismo guid que usa todo lo
+demás en este sitio. Como son comandos de consola normales, se mandan por el
+mismo `Cod2RconClient` que ya existía para kick/say/map, sin agregar nada nuevo
+de infraestructura.
+
+Tabla `bans` (Laravel) es solo el registro/historial — `ban.txt` no guarda
+motivo, quién baneó, ni fecha. `unbanUser` busca por **nombre exacto**, no por
+guid (confirmado en el código decompilado: "unbanned %i user(s) named %s") —
+por eso `bans.player_name` guarda el nombre tal como estaba en el momento del
+ban, para que el desbaneo desde `/adm_cod2/bans` siga funcionando aunque el
+jugador haya cambiado de nombre después.
+
+**Limitación conocida (v1):** solo se puede banear a alguien que esté
+conectado en ese momento (necesita el slot). Banear a alguien offline
+(revisando un demo días después, por ejemplo) no está soportado — quedaría
+para más adelante si hace falta, probablemente escribiendo a `ban.txt`
+directo o agregando un chequeo server-side vía GSC+HTTP (mismo patrón que
+demos), no se investigó el formato exacto de `ban.txt` para escritura directa.
+
+Probado en vivo (2026-08-19): `banClient` con slot inválido devuelve "Bad
+client slot" (confirma que el comando existe y se ejecuta), y el ciclo
+crear/desbanear se probó con un registro sintético en la tabla `bans` (sin
+afectar a ningún jugador real).
+
+## Variantes de mapa combinadas (2026-08-19)
+
+`MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y
+`mp_dawnville_sun` (mismo mapa real, distinto código de variante subida por la
+comunidad) se etiqueten igual ("St. Mere Eglise, France"). Pero varias pantallas
+todavía agrupaban/filtraban por el código **crudo**, así que el mismo mapa
+aparecía duplicado con distinto conteo — reportado en "Mejores mapas" (perfil de
+jugador) y en las pestañas de `/ranking`. Mismo problema para Carentan
+(`_fix`/`_bal`).
+
+**Dos arreglos separados, mismo patrón:**
+
+- `MapCatalog::mergeVariants()` (nuevo) — suma kills/deaths/teamkills de todas las
+  variantes de un mapa real en un solo item. Usado en
+  `PlayerController@show` para `$player->mapStats`.
+- `LeaderboardController::buildMapGroups()` — ahora agrupa por
+  `MapCatalog::normalize($map)` en vez del código crudo. Cada grupo trae
+  `->dates` (fechas combinadas) y `->codes` (los códigos crudos que lo componen).
+  `$map` en el controller siempre se normaliza al leerlo de la URL
+  (`MapCatalog::normalize($request->query('map'))`), y se calcula `$mapCodes`
+  (el array de códigos crudos del grupo activo) para pasarlo a cada `whereIn`
+  (antes eran `where('map', $map)` sueltos).
+
+**Gotcha a tener en cuenta si se toca esto de nuevo:** el código normalizado
+(`$map`, ej. \`mp_dawnville\`) sirve para la URL/pestaña/label, pero **nunca**
+para filtrar `rounds.map` — esa columna solo tiene los códigos crudos
+(\`mp_dawnville_fix\`, \`mp_dawnville_sun\`), \`mp_dawnville\` pelado no
+existe ahí. Cualquier filtro contra \`rounds.map\`/\`kills\` tiene que usar
+\`\$mapCodes\` (o el equivalente \`map_codes\` que arma \`mergeVariants()\`
+para la vista del jugador), no \`\$map\`. Ya paso una vez en esta misma sesión:
+el primer intento de esto dejó el boton de detalle de kills en \`/ranking\`
+mandando \`map=mp_dawnville\` (normalizado) al endpoint \`/kills/{guid}\`, que
+no encontraba ninguna ronda porque esa columna nunca tiene ese valor exacto —
+se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
+\`KillDetailController\`/\`TeamkillController\` ya aceptan \`map=codigo1,codigo2\`
+(\`explode(',', \$map)\` + \`whereIn\`) desde el fix de "Mejores mapas".
+
 ## Pendientes / conocido-roto
 
 - **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
@@ -505,3 +842,33 @@ por ahí antes de asumir que no pasó nada.
   detalle (compañero + arma) disponible al hacer click. Decisión explícita del dueño
   de dejarlo así en vez de intentar imitar la fórmula de zPAM sin confirmarla del
   todo — ver conversación del 2026-08-09/10.
+
+- **Feature de subida de demos por HWID (2026-08-19) todavía no está comiteada a
+  git.** Se hizo trabajando directo sobre el VPS por SSH, en otra sesión/máquina que
+  el flujo normal de `deploy.sh`. Ver el manifiesto completo de archivos nuevos y
+  modificados en la sección "Subida automática de demos por HWID" más arriba —
+  hay que traerlos al repo de desarrollo y comitearlos antes del próximo deploy,
+  porque `deploy.sh` sobreescribe con lo que haya en git (ver sección "Deploy",
+  `tar -x` es aditivo pero SÍ pisa archivos que ya existen). El código del mod
+  zPAM (`_record.gsc`, `server.cfg`) ni siquiera es parte de este repo — vive
+  aparte en `/root/zpam_test/` en el VPS, sin git en absoluto.
+- **Y a las variantes de mapa combinadas (2026-08-19)**: `app/Support/MapCatalog.php`
+  (`mergeVariants()`), `app/Http/Controllers/PlayerController.php`,
+  `app/Http/Controllers/LeaderboardController.php`,
+  `app/Http/Controllers/KillDetailController.php`,
+  `app/Http/Controllers/TeamkillController.php`,
+  `resources/views/players/show.blade.php` y `resources/views/leaderboard.blade.php`.
+  Ver seccion "Variantes de mapa combinadas" mas arriba.
+- **Y a los bans persistentes (2026-08-19)**: `database/migrations/*_create_bans_table.php`,
+  `app/Models/Ban.php`, `app/Http/Controllers/Admin/BanController.php`, el metodo
+  `ban()` nuevo en `ConsoleController.php`, `resources/views/admin/bans/index.blade.php`,
+  y los cambios en `console.blade.php` (boton Ban) y el nav admin. Ver seccion
+  "Bans persistentes" mas arriba.
+- **Lo mismo aplica a la auditoría de admin + reinicio de servicio (2026-08-19)**
+  y al fix de paginado de "Mejores mapas" en `resources/views/players/show.blade.php`
+  (mismo patron que ya tenia "Alias usados": top 5 + modal "ver todos") — ver
+  seccion "Auditoria de admin y reinicio de servicio" mas arriba para el
+  manifiesto completo. Ademas, `/etc/sudoers.d/cod2-panel` (la regla que le da a
+  www-data permiso para reiniciar el servicio) es un archivo de sistema, no de
+  este repo — no hay forma de "comitearlo", si el VPS se reconstruye hay que
+  recrearlo a mano con el comando exacto que esta en esa seccion.

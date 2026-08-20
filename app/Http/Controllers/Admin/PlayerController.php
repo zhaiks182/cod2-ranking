@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAction;
 use App\Models\Player;
 use App\Services\GeoIp;
 
@@ -34,6 +35,8 @@ class PlayerController extends Controller
     public function clearIp(Player $player)
     {
         $player->update(['ip' => null]);
+
+        AdminAction::record('players.clear-ip', "Limpio el pais de \"{$player->last_name_plain}\"");
 
         return back()->with('status', "Se quitó el país de \"{$player->last_name_plain}\".");
     }

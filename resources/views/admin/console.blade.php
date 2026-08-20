@@ -10,7 +10,29 @@
             <h1 class="text-lg font-semibold">{{ $server->name }}</h1>
             <p class="text-xs text-slate-500">Mapa actual: {{ \App\Support\MapCatalog::mapLabel($status['map'] ?? null) }}</p>
         </div>
-        <a href="{{ route('admin.servers.index') }}" class="text-xs text-slate-500 hover:text-slate-300">← Servidores</a>
+        <div class="flex items-center gap-3">
+            @if($server->systemd_service)
+                @if($status)
+                    <form method="POST" action="{{ route('admin.console.service', $server) }}" onsubmit="return confirm('¿Reiniciar el servicio {{ $server->systemd_service }}? Esto desconecta a todos los jugadores conectados ahora mismo. Esta acción no se puede deshacer.')">
+                        @csrf
+                        <input type="hidden" name="action" value="restart">
+                        <button type="submit" class="text-xs px-3 py-1.5 rounded-lg border border-amber-900 text-amber-400 hover:bg-amber-950/40">Reiniciar servicio</button>
+                    </form>
+                    <form method="POST" action="{{ route('admin.console.service', $server) }}" onsubmit="return confirm('¿Detener el servicio {{ $server->systemd_service }}? El servidor deja de estar jugable hasta que lo vuelvas a iniciar. Esta acción no se puede deshacer.')">
+                        @csrf
+                        <input type="hidden" name="action" value="stop">
+                        <button type="submit" class="text-xs px-3 py-1.5 rounded-lg border border-red-900 text-red-400 hover:bg-red-950/40">Detener servicio</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('admin.console.service', $server) }}" onsubmit="return confirm('¿Iniciar el servicio {{ $server->systemd_service }}?')">
+                        @csrf
+                        <input type="hidden" name="action" value="start">
+                        <button type="submit" class="text-xs px-3 py-1.5 rounded-lg border border-emerald-900 text-emerald-400 hover:bg-emerald-950/40">Iniciar servicio</button>
+                    </form>
+                @endif
+            @endif
+            <a href="{{ route('admin.servers.index') }}" class="text-xs text-slate-500 hover:text-slate-300">← Servidores</a>
+        </div>
     </div>
 
     @if(!$status && session('mapChanging'))
@@ -61,6 +83,9 @@
                                 <input type="hidden" name="slot" value="{{ $p['slot'] }}">
                                 <button type="submit" class="text-xs px-2 py-1 rounded border border-slate-700 hover:border-red-500 hover:text-red-400">Kick</button>
                             </form>
+                            <button type="button"
+                                onclick="cod2Ban({{ $p['slot'] }}, {{ $p['guid'] }}, {{ json_encode($p['name']) }}, {{ json_encode(\App\Support\Cod2Colors::stripColors($p['name'])) }})"
+                                class="text-xs px-2 py-1 rounded border border-red-900 text-red-400 hover:bg-red-950/40">Ban</button>
                         </td>
                     </tr>
                 @empty
@@ -137,10 +162,18 @@
             <input type="hidden" name="map" id="map-select-value">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                 @foreach($mapOptions as $code => $opt)
+                    @php $mapImageUrl = \App\Support\MapImage::url($code); @endphp
                     <button type="button" data-map-option data-code="{{ $code }}" data-label="{{ $opt['label'] }}{{ $opt['suffix'] ? ' '.$opt['suffix'] : '' }}"
-                        class="px-3 py-2 rounded-lg border border-slate-700 text-left hover:border-cyan-500 hover:text-cyan-400 transition-colors">
-                        <span class="block text-xs font-medium text-slate-200">{{ $opt['label'] }}@if($opt['suffix']) <span class="text-cyan-400">{{ $opt['suffix'] }}</span>@endif</span>
-                        <span class="block text-[10px] text-slate-500">{{ $code }}</span>
+                        class="flex items-center gap-2 px-2 py-2 rounded-lg border border-slate-700 text-left hover:border-cyan-500 hover:text-cyan-400 transition-colors">
+                        @if($mapImageUrl)
+                            <img src="{{ $mapImageUrl }}" alt="" class="h-9 w-9 rounded object-cover shrink-0">
+                        @else
+                            <span class="h-9 w-9 rounded bg-panel2 shrink-0"></span>
+                        @endif
+                        <span class="min-w-0">
+                            <span class="block text-xs font-medium text-slate-200 truncate">{{ $opt['label'] }}@if($opt['suffix']) <span class="text-cyan-400">{{ $opt['suffix'] }}</span>@endif</span>
+                            <span class="block text-[10px] text-slate-500 truncate">{{ $code }}</span>
+                        </span>
                     </button>
                 @endforeach
             </div>
@@ -177,6 +210,13 @@
     <input type="hidden" name="slot" id="cod2-message-slot">
     <input type="hidden" name="text" id="cod2-message-text">
 </form>
+<form id="cod2-ban-form" method="POST" action="{{ route('admin.console.ban', $server) }}" class="hidden">
+    @csrf
+    <input type="hidden" name="slot" id="cod2-ban-slot">
+    <input type="hidden" name="guid" id="cod2-ban-guid">
+    <input type="hidden" name="name" id="cod2-ban-name">
+    <input type="hidden" name="reason" id="cod2-ban-reason">
+</form>
 <script>
     function cod2Message(slot, name) {
         var text = prompt('Mensaje privado para ' + name + ':');
@@ -184,6 +224,16 @@
         document.getElementById('cod2-message-slot').value = slot;
         document.getElementById('cod2-message-text').value = text;
         document.getElementById('cod2-message-form').submit();
+    }
+
+    function cod2Ban(slot, guid, name, plainName) {
+        if (!confirm('¿Banear a ' + plainName + '? Es permanente hasta que lo desbaneés a mano en /adm_cod2/bans.')) return;
+        var reason = prompt('Motivo del ban (opcional):') || '';
+        document.getElementById('cod2-ban-slot').value = slot;
+        document.getElementById('cod2-ban-guid').value = guid;
+        document.getElementById('cod2-ban-name').value = name;
+        document.getElementById('cod2-ban-reason').value = reason;
+        document.getElementById('cod2-ban-form').submit();
     }
 
     document.querySelectorAll('[data-map-option]').forEach(function (btn) {
