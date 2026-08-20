@@ -5,30 +5,32 @@
     $memNow = $latest ? round($latest->memory_bytes / 1048576, 1) : null;
     $swapNow = $latest ? round($latest->swap_bytes / 1048576, 1) : null;
 
-    // Grafico de area armado a mano con SVG (linea + relleno degradado + puntos
-    // con tooltip nativo del navegador via <title>, sin libreria de graficos ni
-    // JS) -- consistente con el resto del panel, que evita dependencias
-    // externas salvo lo minimo. Los valores se normalizan al viewBox 680x120.
-    $buildChart = function (array $values, array $samples, float $max, string $unit, float $width = 680, float $height = 100) {
-        $count = count($values);
+    // Grafico de area armado a mano con SVG (linea + relleno degradado + cada
+    // punto con su timestamp y valores embebidos en data-points para el
+    // tooltip/crosshair de JS) -- sin libreria de graficos ni JS externo,
+    // consistente con el resto del panel. Los valores se normalizan al
+    // viewBox 680x100.
+    $buildChart = function (array $points, float $max, float $width = 680, float $height = 100) {
+        $count = count($points);
         if ($count < 2) {
             return null;
         }
 
         $xy = [];
-        foreach ($values as $i => $v) {
+        foreach ($points as $i => $p) {
             $x = ($i / ($count - 1)) * $width;
-            $y = $height - (min($v / max($max, 1), 1) * $height);
-            $xy[] = ['x' => round($x, 1), 'y' => round($y, 1), 'v' => $v, 'sample' => $samples[$i]];
+            $y = $height - (min($p['v'] / max($max, 1), 1) * $height);
+            $xy[] = ['x' => round($x, 1), 'y' => round($y, 1), 'v' => $p['v'], 'series' => $p['series']];
         }
 
         $linePoints = implode(' ', array_map(fn ($p) => $p['x'].','.$p['y'], $xy));
         $areaPath = 'M'.$xy[0]['x'].','.$height.' L'.$linePoints.' L'.end($xy)['x'].','.$height.' Z';
 
-        // Mostrar un punto/tooltip cada N muestras en vez de las 1440 posibles
-        // (1 por minuto en 24h) -- de a una satura el SVG de nodos sin agregar
-        // nada legible. ~40 marcadores alcanza para ver la forma real sin
-        // sobrecargar el DOM.
+        // Mostrar un marcador visible cada N muestras en vez de las 1440
+        // posibles (1/min en 24h) -- de a una satura el SVG de nodos sin
+        // aportar nada legible. El hover/tooltip igual usa TODOS los puntos
+        // (via data-points, abajo) para "engancharse" al mas cercano al mouse
+        // con precision real, no solo a estos ~40 visibles.
         $step = max(1, (int) ceil($count / 40));
         $markers = [];
         foreach ($xy as $i => $p) {
@@ -39,25 +41,53 @@
 
         $maxPoint = collect($xy)->sortByDesc('v')->first();
 
+        // data-points para el JS: x (coordenada del viewBox), t (hora
+        // legible) y series (lo que se muestra en la caja del tooltip, cada
+        // una con su label/valor/color ya formateados en el servidor).
+        $dataPoints = array_map(fn ($p) => ['x' => $p['x'], 't' => $p['series']['t'], 'series' => $p['series']['rows']], $xy);
+
         return [
             'line' => $linePoints,
             'area' => $areaPath,
             'markers' => $markers,
             'maxPoint' => $maxPoint,
-            'unit' => $unit,
-            'startLabel' => $samples[0]->sampled_at->format('H:i'),
-            'endLabel' => end($samples)->sampled_at->format('H:i'),
+            'dataPoints' => $dataPoints,
         ];
     };
 
-    $samples = $resourceSamples->values()->all();
-    $cpuValues = $resourceSamples->pluck('cpu_percent')->map(fn ($v) => $v ?? 0)->values()->all();
-    $memValues = $resourceSamples->pluck('memory_bytes')->map(fn ($v) => $v / 1048576)->values()->all();
+    $cpuColor = '#22d3ee';
+    $ramColor = '#a78bfa';
+    $swapColor = '#f59e0b';
 
-    $cpuChart = $buildChart($cpuValues, $samples, 100, '%');
+    $cpuPoints = $resourceSamples->map(fn ($s) => [
+        'v' => $s->cpu_percent ?? 0,
+        'series' => [
+            't' => $s->sampled_at->format('d/m H:i'),
+            'rows' => [['label' => 'CPU', 'value' => number_format($s->cpu_percent ?? 0, 1).'%', 'color' => $cpuColor]],
+        ],
+    ])->values()->all();
+
+    $memPoints = $resourceSamples->map(fn ($s) => [
+        'v' => round($s->memory_bytes / 1048576, 1),
+        'series' => [
+            't' => $s->sampled_at->format('d/m H:i'),
+            'rows' => [
+                ['label' => 'RAM', 'value' => number_format($s->memory_bytes / 1048576, 1).' MB', 'color' => $ramColor],
+                ['label' => 'Swap', 'value' => number_format($s->swap_bytes / 1048576, 1).' MB', 'color' => $swapColor],
+            ],
+        ],
+    ])->values()->all();
+
+    $cpuChart = $buildChart($cpuPoints, 100);
     // 400 = el MemoryMax configurado en el .service, se usa de referencia visual
     // aunque el pico real de las muestras sea mas bajo.
-    $memChart = $buildChart($memValues, $samples, max(400, ...($memValues ?: [0])), ' MB');
+    $memMax = max(400, ...(array_column($memPoints, 'v') ?: [0]));
+    $memChart = $buildChart($memPoints, $memMax);
+
+    $timeLabels = $resourceSamples->isNotEmpty() ? [
+        'start' => $resourceSamples->first()->sampled_at->format('H:i'),
+        'end' => $resourceSamples->last()->sampled_at->format('H:i'),
+    ] : null;
 
     // Rango min/prom/max del periodo mostrado -- mismo dato que ya tenemos en
     // $resourceSamples, sin pedir nada nuevo. El % de CPU viene NULL en la
@@ -66,21 +96,18 @@
     // en vez de contarlas como 0 y falsear el minimo/promedio.
     $cpuReal = $resourceSamples->pluck('cpu_percent')->filter(fn ($v) => $v !== null)->values();
     $cpuStats = $cpuReal->isNotEmpty() ? [
-        'min' => $cpuReal->min(),
-        'avg' => round($cpuReal->avg(), 1),
-        'max' => $cpuReal->max(),
+        'min' => $cpuReal->min(), 'avg' => round($cpuReal->avg(), 1), 'max' => $cpuReal->max(),
     ] : null;
 
-    $memMbValues = collect($memValues);
+    $memMbValues = collect(array_column($memPoints, 'v'));
     $memStats = $memMbValues->isNotEmpty() ? [
-        'min' => round($memMbValues->min(), 1),
-        'avg' => round($memMbValues->avg(), 1),
-        'max' => round($memMbValues->max(), 1),
+        'min' => round($memMbValues->min(), 1), 'avg' => round($memMbValues->avg(), 1), 'max' => round($memMbValues->max(), 1),
     ] : null;
 @endphp
-<div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-    <div class="px-4 py-3 border-b border-slate-800 text-xs uppercase tracking-wide text-slate-400">
-        Recursos del servicio ({{ $server->systemd_service }}) — últimas 24h
+<div id="resource-usage-widget" data-refresh-url="{{ route('admin.console.resource-usage', $server) }}" class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-800 text-xs uppercase tracking-wide text-slate-400 flex items-center justify-between">
+        <span>Recursos del servicio ({{ $server->systemd_service }}) — últimas 24h</span>
+        <span class="text-[10px] normal-case text-slate-600">se actualiza solo cada 1 min</span>
     </div>
     <div class="p-4 space-y-5">
         <div class="grid grid-cols-3 gap-4 text-center">
@@ -103,15 +130,15 @@
         </div>
 
         @if($cpuChart)
-            @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (24h)', 'stroke' => '#22d3ee', 'gradId' => 'cod2-cpu-grad'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (24h)', 'stroke' => '#a78bfa', 'gradId' => 'cod2-ram-grad']] as $key => $c)
+            @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (24h)', 'stroke' => $cpuColor, 'gradId' => 'cod2-cpu-grad', 'unit' => '%'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (24h)', 'stroke' => $ramColor, 'gradId' => 'cod2-ram-grad', 'unit' => ' MB']] as $key => $c)
                 <div>
                     <div class="flex items-baseline justify-between mb-1">
                         <span class="text-[10px] uppercase tracking-wide text-slate-600">{{ $c['label'] }}</span>
                         @if($c['stats'])
-                            <span class="text-[10px] text-slate-600">pico <span class="text-slate-400 font-medium">{{ number_format($c['chart']['maxPoint']['v'], 1) }}{{ $c['chart']['unit'] }}</span></span>
+                            <span class="text-[10px] text-slate-600">pico <span class="text-slate-400 font-medium">{{ number_format($c['chart']['maxPoint']['v'], 1) }}{{ $c['unit'] }}</span></span>
                         @endif
                     </div>
-                    <svg viewBox="0 0 680 108" class="w-full h-24" preserveAspectRatio="none">
+                    <svg viewBox="0 0 680 100" class="cod2-chart-svg w-full h-24 cursor-crosshair" preserveAspectRatio="none" data-points='@json($c['chart']['dataPoints'])'>
                         <defs>
                             <linearGradient id="{{ $c['gradId'] }}" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stop-color="{{ $c['stroke'] }}" stop-opacity="0.28" />
@@ -129,22 +156,26 @@
                         {{-- marcador del pico --}}
                         <circle cx="{{ $c['chart']['maxPoint']['x'] }}" cy="{{ $c['chart']['maxPoint']['y'] }}" r="3" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" />
 
-                        {{-- puntos con tooltip nativo (hover en desktop, tap-and-hold en mobile) --}}
+                        {{-- puntos visibles (subset), decorativos -- el hover real usa TODOS los puntos via data-points --}}
                         @foreach($c['chart']['markers'] as $m)
-                            <circle cx="{{ $m['x'] }}" cy="{{ $m['y'] }}" r="7" fill="transparent" class="hover:fill-white/5">
-                                <title>{{ $m['sample']->sampled_at->format('d/m H:i') }} — {{ number_format($m['v'], 1) }}{{ $c['chart']['unit'] }}</title>
-                            </circle>
+                            <circle cx="{{ $m['x'] }}" cy="{{ $m['y'] }}" r="2" fill="{{ $c['stroke'] }}" opacity="0.6" />
                         @endforeach
+
+                        {{-- linea vertical que sigue al mouse, oculta hasta que el JS la mueva --}}
+                        <line class="cod2-chart-crosshair" x1="0" y1="0" x2="0" y2="100" stroke="#94a3b8" stroke-width="1" opacity="0" />
+                        <circle class="cod2-chart-crosshair-dot" r="3.5" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" opacity="0" />
                     </svg>
-                    <div class="flex items-center justify-between text-[10px] text-slate-700 -mt-1">
-                        <span>{{ $c['chart']['startLabel'] }}</span>
-                        <span>{{ $c['chart']['endLabel'] }}</span>
-                    </div>
+                    @if($timeLabels)
+                        <div class="flex items-center justify-between text-[10px] text-slate-700 -mt-1">
+                            <span>{{ $timeLabels['start'] }}</span>
+                            <span>{{ $timeLabels['end'] }}</span>
+                        </div>
+                    @endif
                     @if($c['stats'])
                         <div class="grid grid-cols-3 gap-2 mt-1.5 text-center">
-                            <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['min'], 1) }}{{ $c['chart']['unit'] }}</span></div>
-                            <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['avg'], 1) }}{{ $c['chart']['unit'] }}</span></div>
-                            <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['max'], 1) }}{{ $c['chart']['unit'] }}</span></div>
+                            <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['min'], 1) }}{{ $c['unit'] }}</span></div>
+                            <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['avg'], 1) }}{{ $c['unit'] }}</span></div>
+                            <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['max'], 1) }}{{ $c['unit'] }}</span></div>
                         </div>
                     @endif
                 </div>

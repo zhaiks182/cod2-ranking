@@ -31,6 +31,23 @@ class ConsoleController extends Controller
         return view('admin.console', compact('server', 'status', 'resourceSamples'));
     }
 
+    /**
+     * Fragmento HTML del widget de recursos solo, para el polling desde JS
+     * (mismo patron que dashboard.live-status en el home) -- el usuario pidio
+     * que el panel se actualice solo, sin F5. Se re-corre la misma query que
+     * show() en vez de compartir estado porque este endpoint no necesita nada
+     * mas de la pagina (status RCON, jugadores, etc.).
+     */
+    public function resourceUsage(Server $server)
+    {
+        $resourceSamples = ServerResourceSample::where('server_id', $server->id)
+            ->where('sampled_at', '>=', now()->subDay())
+            ->orderBy('sampled_at')
+            ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
+
+        return view('partials.resource-usage', compact('server', 'resourceSamples'));
+    }
+
     public function kick(Request $request, Server $server)
     {
         $data = $request->validate(['slot' => ['required', 'integer']]);

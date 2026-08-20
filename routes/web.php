@@ -103,6 +103,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
         Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
         Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
+        Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');
 
         Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
 
