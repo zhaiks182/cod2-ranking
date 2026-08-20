@@ -108,7 +108,7 @@
 @endphp
 <div id="resource-usage-widget" data-refresh-url="{{ route('admin.console.resource-usage', $server) }}" class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
     <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
-        <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Recursos del servicio <span class="text-slate-600 font-normal normal-case">({{ $server->systemd_service }})</span></span>
+        <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Recursos del servicio <span class="text-slate-300 font-normal normal-case">({{ $server->systemd_service }})</span></span>
         <span class="inline-flex items-center gap-1.5 text-[10px] text-slate-600">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/70"></span>
             actualiza cada 1 min · últimas 48h
