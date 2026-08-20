@@ -74,6 +74,67 @@ nombres y el país (por IP) de los jugadores conectados.
 > que sincronizar el log primero (por ejemplo con `rsync` por SSH antes de cada
 > corrida del parser) — no viene resuelto de fábrica.
 
+### Instalar los prerrequisitos en una VM nueva (Ubuntu/Debian)
+
+`install.sh` **no instala nada de esto** — asume que ya está en la máquina.
+En una VM recién creada (probado en Ubuntu 24.04 LTS), instalar todo con:
+
+```bash
+# PHP 8.3 + extensiones (el repo oficial de Ubuntu no siempre trae 8.3, se usa el PPA de ondrej)
+apt-get update
+apt-get install -y software-properties-common
+add-apt-repository -y ppa:ondrej/php
+apt-get update
+apt-get install -y php8.3 php8.3-fpm php8.3-mysql php8.3-mbstring php8.3-xml \
+    php8.3-curl php8.3-zip php8.3-bcmath php8.3-gd php8.3-intl git curl
+
+# Composer (no viene empaquetado en los repos de Ubuntu)
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm composer-setup.php
+
+# Base de datos
+apt-get install -y mariadb-server
+systemctl enable --now mariadb
+
+# Servidor web — nginx + PHP-FPM (Apache también sirve, pero acá se documenta nginx)
+apt-get install -y nginx
+systemctl enable --now php8.3-fpm nginx
+```
+
+Con eso instalado, seguí con `install.sh` en la sección de abajo. Después de
+que termine, todavía falta apuntar un vhost de nginx a `public/` — ver
+["Servir la aplicación"](#servir-la-aplicación) más abajo; `install.sh` no
+lo hace por vos. Ejemplo mínimo de vhost:
+
+```nginx
+server {
+    listen 80;
+    server_name tu-dominio-o-ip;
+
+    root /ruta/a/cod2-ranking/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+```bash
+ln -s /etc/nginx/sites-available/tu-vhost /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
+
 ## Instalación
 
 ### Opción rápida: `install.sh`
