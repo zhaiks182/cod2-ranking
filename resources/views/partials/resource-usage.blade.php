@@ -77,7 +77,15 @@
         ],
     ])->values()->all();
 
-    $cpuChart = $buildChart($cpuPoints, 100);
+    // Escala dinamica en vez de 0-100% fijo: con carga baja (tipico, ej.
+    // 1-3%) la linea quedaba pegada al fondo del grafico y el area rellena
+    // se volvia invisible (1-2px de alto). Se calcula un techo segun el pico
+    // real +40% de margen, con un piso de 20% para no exagerar el zoom
+    // cuando todo esta tranquilo, y sin pasar nunca de 100 (tope real de
+    // CPU en 1 core).
+    $cpuValuesForMax = array_column($cpuPoints, 'v');
+    $cpuMax = min(100, max(20, ceil(max($cpuValuesForMax ?: [0]) * 1.4)));
+    $cpuChart = $buildChart($cpuPoints, $cpuMax);
     // 400 = el MemoryMax configurado en el .service, se usa de referencia visual
     // aunque el pico real de las muestras sea mas bajo.
     $memMax = max(400, ...(array_column($memPoints, 'v') ?: [0]));
