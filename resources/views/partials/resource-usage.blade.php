@@ -126,7 +126,7 @@
                 <div class="text-[11px] font-medium uppercase tracking-wider text-slate-500 mt-1.5">CPU</div>
             </div>
             <div class="rounded-lg border border-slate-800/70 bg-slate-950/40 py-4 text-center">
-                <div class="text-3xl font-semibold tabular-nums text-cyan-400">{{ $memNow !== null ? $memNow.' MB' : '—' }}</div>
+                <div class="text-3xl font-semibold tabular-nums text-emerald-400">{{ $memNow !== null ? $memNow.' MB' : '—' }}</div>
                 <div class="text-[11px] font-medium uppercase tracking-wider text-slate-500 mt-1.5">RAM</div>
             </div>
         </div>
