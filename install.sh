@@ -167,6 +167,34 @@ find "$APP_DIR" -type f -exec chmod 644 {} \;
 # los deja de solo lectura, así que se relajan explícitamente después.
 chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 
+echo "== Configurando sudoers para los botones de control del servicio del panel =="
+# El panel (ConsoleController@service, /adm_cod2/console/{server}) hace "sudo
+# systemctl <start|stop|restart> cod2server.service" corriendo como $WEB_USER
+# para poder reiniciar/detener/iniciar el gameserver desde la web. Sin esta
+# regla, esos botones fallan con "sudo: a password is required" (visto en un
+# install limpio el 2026-08-20) — quedaba documentado solo en CLAUDE.md, nunca
+# se automatizó acá. Acotado a EXACTAMENTE esas 3 combinaciones, nada de
+# wildcards ni otros servicios/acciones.
+SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
+GAMESERVER_SERVICE="cod2server.service"
+if systemctl list-unit-files "$GAMESERVER_SERVICE" &>/dev/null; then
+    SUDOERS_RULE="$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE, $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE, $SYSTEMCTL_BIN start $GAMESERVER_SERVICE"
+    echo "$SUDOERS_RULE" > /tmp/cod2-panel-sudoers
+    if visudo -cf /tmp/cod2-panel-sudoers &>/dev/null; then
+        install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel
+        echo "  Listo: /etc/sudoers.d/cod2-panel"
+    else
+        echo "  ADVERTENCIA: la regla de sudoers generada no pasó 'visudo -c', no se instaló. Revisa a mano."
+    fi
+    rm -f /tmp/cod2-panel-sudoers
+else
+    echo "  $GAMESERVER_SERVICE no existe todavía en este host (¿instalaste cod2-server en otra"
+    echo "  máquina?) — se omite. Cuando exista el servicio, corre esto para habilitar los"
+    echo "  botones de Reiniciar/Detener/Iniciar del panel:"
+    echo "    echo '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE, $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE, $SYSTEMCTL_BIN start $GAMESERVER_SERVICE' > /tmp/cod2-panel-sudoers"
+    echo "    visudo -cf /tmp/cod2-panel-sudoers && install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel"
+fi
+
 echo "== Configurando cron (schedule:run cada minuto) =="
 # Dispara cod2:parse-log cada minuto y geoip:update una vez al mes (ver
 # routes/console.php) — un solo cron de sistema alcanza para ambos.

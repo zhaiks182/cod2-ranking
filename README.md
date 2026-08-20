@@ -174,6 +174,21 @@ los que elegiste durante la instalación. Por el camino manual, el usuario es
 cuanto antes desde `/adm_cod2/password`. Desde ahí se agregan y editan los
 servidores CoD2 (ver "Multi-servidor" arriba), incluido el primero.
 
+Desde `/adm_cod2/console/{server}` también hay botones para **reiniciar,
+detener e iniciar** el servicio systemd del gameserver (`servers.systemd_service`,
+por defecto `cod2server.service`). Para que funcionen, el usuario del server web
+(`www-data` en Debian/Ubuntu, `apache` en RHEL/CentOS) necesita permiso de
+`sudo` sin contraseña para esos 3 comandos exactos — `install.sh` lo configura
+solo si el servicio del gameserver ya existe en la máquina al momento de
+instalar. Si instalaste `cod2-ranking` **antes** que `cod2-server`, o en otra
+máquina, corré esto a mano una vez que exista el servicio (reemplazando
+`www-data` y `cod2server.service` si tu setup usa otros nombres):
+
+```bash
+echo 'www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart cod2server.service, /usr/bin/systemctl stop cod2server.service, /usr/bin/systemctl start cod2server.service' > /tmp/cod2-panel-sudoers
+visudo -cf /tmp/cod2-panel-sudoers && sudo install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel
+```
+
 ## Servir la aplicación
 
 Cualquier método estándar de Laravel sirve — Apache/Nginx + PHP-FPM apuntando a
