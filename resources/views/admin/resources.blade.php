@@ -7,7 +7,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h1 class="text-lg font-semibold">{{ $server->name }}</h1>
-            <p class="text-xs text-slate-500">CPU y RAM del servicio del sistema — separado de la consola del juego.</p>
+            <p class="text-xs text-slate-500">CPU y RAM del servicio del sistema.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('admin.console.show', $server) }}" class="text-xs text-cyan-400 hover:underline">← Consola</a>
