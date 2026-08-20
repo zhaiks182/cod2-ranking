@@ -638,6 +638,20 @@ class ParseCod2Log extends Command
             return null;
         }
 
+        // A malformed/truncated RCON "status" row (same family of bug as the
+        // 2026-08-10 ZHAIKS incident below) can put an arbitrary numeric-looking
+        // token where the guid should be. A real CoD2x guid is always a signed
+        // 32-bit FNV-1a hash, so anything outside that range is garbage from a bad
+        // parse, never a real player -- reject it here instead of letting MySQL's
+        // "Out of range value for column 'guid'" crash the whole cod2:parse-log run.
+        // Confirmed happening silently since 2026-08-14: syncLiveNames() throwing
+        // only aborts that tail step, parseServer() already ran and committed the
+        // real log data fine, so this was invisible on the site itself -- only
+        // storage/logs/laravel.log showed it, once a minute, every minute.
+        if ($guid < -2147483648 || $guid > 2147483647) {
+            return null;
+        }
+
         // Centralized here (not left to each caller) because several call sites —
         // recordKill's attacker/victim, recordConnect, recordDisconnect — were found
         // passing the raw log/RCON bytes straight through, which let a Windows-1252
