@@ -3,7 +3,6 @@
     $latest = $resourceSamples->last();
     $cpuNow = $latest?->cpu_percent;
     $memNow = $latest ? round($latest->memory_bytes / 1048576, 1) : null;
-    $swapNow = $latest ? round($latest->swap_bytes / 1048576, 1) : null;
 
     // Grafico de area armado a mano con SVG (linea + relleno degradado + cada
     // punto con su timestamp y valores embebidos en data-points para el
@@ -110,7 +109,7 @@
         <span class="text-[10px] normal-case text-slate-600">se actualiza solo cada 1 min</span>
     </div>
     <div class="p-4 space-y-5">
-        <div class="grid grid-cols-3 gap-4 text-center">
+        <div class="grid grid-cols-2 gap-4 text-center">
             <div>
                 <div class="text-2xl font-semibold {{ $cpuNow !== null && $cpuNow >= 80 ? 'text-red-400' : 'text-cyan-400' }}">
                     {{ $cpuNow !== null ? number_format($cpuNow, 1).'%' : '—' }}
@@ -120,12 +119,6 @@
             <div>
                 <div class="text-2xl font-semibold text-cyan-400">{{ $memNow !== null ? $memNow.' MB' : '—' }}</div>
                 <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1">RAM</div>
-            </div>
-            <div>
-                <div class="text-2xl font-semibold {{ ($swapNow ?? 0) > 0 ? 'text-amber-400' : 'text-emerald-400' }}">
-                    {{ $swapNow !== null ? $swapNow.' MB' : '—' }}
-                </div>
-                <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1">Swap</div>
             </div>
         </div>
 
