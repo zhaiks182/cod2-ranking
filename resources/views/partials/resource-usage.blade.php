@@ -104,75 +104,80 @@
     ] : null;
 @endphp
 <div id="resource-usage-widget" data-refresh-url="{{ route('admin.console.resource-usage', $server) }}" class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-    <div class="px-4 py-3 border-b border-slate-800 text-xs uppercase tracking-wide text-slate-400 flex items-center justify-between">
-        <span>Recursos del servicio ({{ $server->systemd_service }}) — últimas 24h</span>
-        <span class="text-[10px] normal-case text-slate-600">se actualiza solo cada 1 min</span>
+    <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Recursos del servicio <span class="text-slate-600 font-normal normal-case">({{ $server->systemd_service }})</span></span>
+        <span class="inline-flex items-center gap-1.5 text-[10px] text-slate-600">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/70"></span>
+            actualiza cada 1 min · últimas 24h
+        </span>
     </div>
-    <div class="p-4 space-y-5">
-        <div class="grid grid-cols-2 gap-4 text-center">
-            <div>
-                <div class="text-2xl font-semibold {{ $cpuNow !== null && $cpuNow >= 80 ? 'text-red-400' : 'text-cyan-400' }}">
+    <div class="p-5 space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-800/70 bg-slate-950/40 py-4 text-center">
+                <div class="text-3xl font-semibold tabular-nums {{ $cpuNow !== null && $cpuNow >= 80 ? 'text-red-400' : 'text-cyan-400' }}">
                     {{ $cpuNow !== null ? number_format($cpuNow, 1).'%' : '—' }}
                 </div>
-                <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1">CPU</div>
+                <div class="text-[11px] font-medium uppercase tracking-wider text-slate-500 mt-1.5">CPU</div>
             </div>
-            <div>
-                <div class="text-2xl font-semibold text-cyan-400">{{ $memNow !== null ? $memNow.' MB' : '—' }}</div>
-                <div class="text-[11px] uppercase tracking-wide text-slate-500 mt-1">RAM</div>
+            <div class="rounded-lg border border-slate-800/70 bg-slate-950/40 py-4 text-center">
+                <div class="text-3xl font-semibold tabular-nums text-cyan-400">{{ $memNow !== null ? $memNow.' MB' : '—' }}</div>
+                <div class="text-[11px] font-medium uppercase tracking-wider text-slate-500 mt-1.5">RAM</div>
             </div>
         </div>
 
         @if($cpuChart)
-            @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (24h)', 'stroke' => $cpuColor, 'gradId' => 'cod2-cpu-grad', 'unit' => '%'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (24h)', 'stroke' => $ramColor, 'gradId' => 'cod2-ram-grad', 'unit' => ' MB']] as $key => $c)
-                <div>
-                    <div class="flex items-baseline justify-between mb-1">
-                        <span class="text-[10px] uppercase tracking-wide text-slate-600">{{ $c['label'] }}</span>
+            <div class="space-y-5">
+                @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (24h)', 'stroke' => $cpuColor, 'gradId' => 'cod2-cpu-grad', 'unit' => '%'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (24h)', 'stroke' => $ramColor, 'gradId' => 'cod2-ram-grad', 'unit' => ' MB']] as $key => $c)
+                    <div class="rounded-lg border border-slate-800/70 bg-slate-950/20 p-3.5">
+                        <div class="flex items-baseline justify-between mb-2">
+                            <span class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $c['label'] }}</span>
+                            @if($c['stats'])
+                                <span class="text-[11px] text-slate-600">pico <span class="text-slate-300 font-medium">{{ number_format($c['chart']['maxPoint']['v'], 1) }}{{ $c['unit'] }}</span></span>
+                            @endif
+                        </div>
+                        <svg viewBox="0 0 680 100" class="cod2-chart-svg w-full h-24 cursor-crosshair" preserveAspectRatio="none" data-points='@json($c['chart']['dataPoints'])'>
+                            <defs>
+                                <linearGradient id="{{ $c['gradId'] }}" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="{{ $c['stroke'] }}" stop-opacity="0.28" />
+                                    <stop offset="100%" stop-color="{{ $c['stroke'] }}" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                            {{-- lineas guia horizontales (0%, 50%, 100% del alto) para dar referencia sin ejes numericos que compitan con los tiles de arriba --}}
+                            <line x1="0" y1="0" x2="680" y2="0" stroke="#1e293b" stroke-width="1" />
+                            <line x1="0" y1="50" x2="680" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,3" />
+                            <line x1="0" y1="100" x2="680" y2="100" stroke="#1e293b" stroke-width="1" />
+
+                            <path d="{{ $c['chart']['area'] }}" fill="url(#{{ $c['gradId'] }})" stroke="none" />
+                            <polyline points="{{ $c['chart']['line'] }}" fill="none" stroke="{{ $c['stroke'] }}" stroke-width="1.5" stroke-linejoin="round" />
+
+                            {{-- marcador del pico --}}
+                            <circle cx="{{ $c['chart']['maxPoint']['x'] }}" cy="{{ $c['chart']['maxPoint']['y'] }}" r="3" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" />
+
+                            {{-- puntos visibles (subset), decorativos -- el hover real usa TODOS los puntos via data-points --}}
+                            @foreach($c['chart']['markers'] as $m)
+                                <circle cx="{{ $m['x'] }}" cy="{{ $m['y'] }}" r="2" fill="{{ $c['stroke'] }}" opacity="0.6" />
+                            @endforeach
+
+                            {{-- linea vertical que sigue al mouse, oculta hasta que el JS la mueva --}}
+                            <line class="cod2-chart-crosshair" x1="0" y1="0" x2="0" y2="100" stroke="#94a3b8" stroke-width="1" opacity="0" />
+                            <circle class="cod2-chart-crosshair-dot" r="3.5" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" opacity="0" />
+                        </svg>
+                        @if($timeLabels)
+                            <div class="flex items-center justify-between text-[11px] text-slate-600 mt-1">
+                                <span>{{ $timeLabels['start'] }}</span>
+                                <span>{{ $timeLabels['end'] }}</span>
+                            </div>
+                        @endif
                         @if($c['stats'])
-                            <span class="text-[10px] text-slate-600">pico <span class="text-slate-400 font-medium">{{ number_format($c['chart']['maxPoint']['v'], 1) }}{{ $c['unit'] }}</span></span>
+                            <div class="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-800/70 text-center text-[11px]">
+                                <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['min'], 1) }}{{ $c['unit'] }}</span></div>
+                                <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['avg'], 1) }}{{ $c['unit'] }}</span></div>
+                                <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['max'], 1) }}{{ $c['unit'] }}</span></div>
+                            </div>
                         @endif
                     </div>
-                    <svg viewBox="0 0 680 100" class="cod2-chart-svg w-full h-24 cursor-crosshair" preserveAspectRatio="none" data-points='@json($c['chart']['dataPoints'])'>
-                        <defs>
-                            <linearGradient id="{{ $c['gradId'] }}" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="{{ $c['stroke'] }}" stop-opacity="0.28" />
-                                <stop offset="100%" stop-color="{{ $c['stroke'] }}" stop-opacity="0" />
-                            </linearGradient>
-                        </defs>
-                        {{-- lineas guia horizontales (0%, 50%, 100% del alto) para dar referencia sin ejes numericos que compitan con los tiles de arriba --}}
-                        <line x1="0" y1="0" x2="680" y2="0" stroke="#1e293b" stroke-width="1" />
-                        <line x1="0" y1="50" x2="680" y2="50" stroke="#1e293b" stroke-width="1" stroke-dasharray="2,3" />
-                        <line x1="0" y1="100" x2="680" y2="100" stroke="#1e293b" stroke-width="1" />
-
-                        <path d="{{ $c['chart']['area'] }}" fill="url(#{{ $c['gradId'] }})" stroke="none" />
-                        <polyline points="{{ $c['chart']['line'] }}" fill="none" stroke="{{ $c['stroke'] }}" stroke-width="1.5" stroke-linejoin="round" />
-
-                        {{-- marcador del pico --}}
-                        <circle cx="{{ $c['chart']['maxPoint']['x'] }}" cy="{{ $c['chart']['maxPoint']['y'] }}" r="3" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" />
-
-                        {{-- puntos visibles (subset), decorativos -- el hover real usa TODOS los puntos via data-points --}}
-                        @foreach($c['chart']['markers'] as $m)
-                            <circle cx="{{ $m['x'] }}" cy="{{ $m['y'] }}" r="2" fill="{{ $c['stroke'] }}" opacity="0.6" />
-                        @endforeach
-
-                        {{-- linea vertical que sigue al mouse, oculta hasta que el JS la mueva --}}
-                        <line class="cod2-chart-crosshair" x1="0" y1="0" x2="0" y2="100" stroke="#94a3b8" stroke-width="1" opacity="0" />
-                        <circle class="cod2-chart-crosshair-dot" r="3.5" fill="{{ $c['stroke'] }}" stroke="#0b1220" stroke-width="1.5" opacity="0" />
-                    </svg>
-                    @if($timeLabels)
-                        <div class="flex items-center justify-between text-[10px] text-slate-700 -mt-1">
-                            <span>{{ $timeLabels['start'] }}</span>
-                            <span>{{ $timeLabels['end'] }}</span>
-                        </div>
-                    @endif
-                    @if($c['stats'])
-                        <div class="grid grid-cols-3 gap-2 mt-1.5 text-center">
-                            <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['min'], 1) }}{{ $c['unit'] }}</span></div>
-                            <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['avg'], 1) }}{{ $c['unit'] }}</span></div>
-                            <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ number_format($c['stats']['max'], 1) }}{{ $c['unit'] }}</span></div>
-                        </div>
-                    @endif
-                </div>
-            @endforeach
+                @endforeach
+            </div>
         @else
             <div class="text-xs text-slate-600 text-center py-4">Todavía no hay suficientes muestras para el gráfico (se junta 1 por minuto).</div>
         @endif
