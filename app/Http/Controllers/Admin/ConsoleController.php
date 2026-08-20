@@ -19,33 +19,48 @@ class ConsoleController extends Controller
     {
         $status = Cod2RconClient::forServer($server)->status();
 
-        // Ultimas 24h de muestras de cod2:sample-resources (una por minuto) para
-        // el grafico de CPU/RAM del panel de consola. Vacio si el servidor no
-        // tiene systemd_service configurado -- el comando que las genera se
-        // salta esos servidores.
-        $resourceSamples = ServerResourceSample::where('server_id', $server->id)
-            ->where('sampled_at', '>=', now()->subDay())
-            ->orderBy('sampled_at')
-            ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
+        return view('admin.console', compact('server', 'status'));
+    }
 
-        return view('admin.console', compact('server', 'status', 'resourceSamples'));
+    /**
+     * Pagina propia para CPU/RAM del gameserver -- separada de la consola a
+     * pedido del dueño (2026-08-20), para que "Consola" sea solo del juego
+     * (jugadores, RCON, mapa) y "Recursos" sea solo del sistema. Antes vivia
+     * como una seccion mas dentro de admin.console.
+     */
+    public function resources(Server $server)
+    {
+        $resourceSamples = $this->fetchResourceSamples($server);
+
+        return view('admin.resources', compact('server', 'resourceSamples'));
     }
 
     /**
      * Fragmento HTML del widget de recursos solo, para el polling desde JS
-     * (mismo patron que dashboard.live-status en el home) -- el usuario pidio
-     * que el panel se actualice solo, sin F5. Se re-corre la misma query que
-     * show() en vez de compartir estado porque este endpoint no necesita nada
-     * mas de la pagina (status RCON, jugadores, etc.).
+     * (mismo patron que dashboard.live-status en el home) -- el panel se
+     * actualiza solo, sin F5.
      */
     public function resourceUsage(Server $server)
     {
-        $resourceSamples = ServerResourceSample::where('server_id', $server->id)
-            ->where('sampled_at', '>=', now()->subDay())
-            ->orderBy('sampled_at')
-            ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
+        $resourceSamples = $this->fetchResourceSamples($server);
 
         return view('partials.resource-usage', compact('server', 'resourceSamples'));
+    }
+
+    /**
+     * Ultimas 48h de muestras de cod2:sample-resources (una por minuto).
+     * Vacio si el servidor no tiene systemd_service configurado -- el
+     * comando que las genera se salta esos servidores. Debe coincidir con
+     * la retencion de cod2:prune-resource-samples (tambien 48h) -- si se
+     * cambia uno hay que cambiar el otro, sino se pediria una ventana mas
+     * larga de la que efectivamente se conserva en la BD.
+     */
+    private function fetchResourceSamples(Server $server)
+    {
+        return ServerResourceSample::where('server_id', $server->id)
+            ->where('sampled_at', '>=', now()->subDays(2))
+            ->orderBy('sampled_at')
+            ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
     }
 
     public function kick(Request $request, Server $server)

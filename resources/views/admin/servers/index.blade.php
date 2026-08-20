@@ -36,6 +36,9 @@
                         </td>
                         <td class="px-4 py-2 text-right space-x-2 whitespace-nowrap">
                             <a href="{{ route('admin.console.show', $server) }}" class="text-cyan-400 hover:underline">Consola</a>
+                            @if($server->systemd_service)
+                                <a href="{{ route('admin.console.resources', $server) }}" class="text-violet-400 hover:underline">Recursos</a>
+                            @endif
                             <a href="{{ route('admin.servers.edit', $server) }}" class="text-slate-300 hover:underline">Editar</a>
                             <form method="POST" action="{{ route('admin.servers.destroy', $server) }}" class="inline" onsubmit="return confirm('¿Eliminar {{ $server->name }}? Se borran también sus estadísticas.')">
                                 @csrf

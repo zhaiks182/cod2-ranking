@@ -26,7 +26,7 @@
         $areaPath = 'M'.$xy[0]['x'].','.$height.' L'.$linePoints.' L'.end($xy)['x'].','.$height.' Z';
 
         // Mostrar un marcador visible cada N muestras en vez de las 1440
-        // posibles (1/min en 24h) -- de a una satura el SVG de nodos sin
+        // posibles (1/min en 48h) -- de a una satura el SVG de nodos sin
         // aportar nada legible. El hover/tooltip igual usa TODOS los puntos
         // (via data-points, abajo) para "engancharse" al mas cercano al mouse
         // con precision real, no solo a estos ~40 visibles.
@@ -83,9 +83,12 @@
     $memMax = max(400, ...(array_column($memPoints, 'v') ?: [0]));
     $memChart = $buildChart($memPoints, $memMax);
 
+    // Con la ventana en 48h, "solo hora" es ambiguo (¿17:05 es de hoy o de
+    // ayer?) -- se agrega la fecha corta salvo que el punto sea de hoy.
+    $shortLabel = fn ($dt) => $dt->isToday() ? $dt->format('H:i') : $dt->format('d/m H:i');
     $timeLabels = $resourceSamples->isNotEmpty() ? [
-        'start' => $resourceSamples->first()->sampled_at->format('H:i'),
-        'end' => $resourceSamples->last()->sampled_at->format('H:i'),
+        'start' => $shortLabel($resourceSamples->first()->sampled_at),
+        'end' => $shortLabel($resourceSamples->last()->sampled_at),
     ] : null;
 
     // Rango min/prom/max del periodo mostrado -- mismo dato que ya tenemos en
@@ -108,7 +111,7 @@
         <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Recursos del servicio <span class="text-slate-600 font-normal normal-case">({{ $server->systemd_service }})</span></span>
         <span class="inline-flex items-center gap-1.5 text-[10px] text-slate-600">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/70"></span>
-            actualiza cada 1 min · últimas 24h
+            actualiza cada 1 min · últimas 48h
         </span>
     </div>
     <div class="p-5 space-y-6">
@@ -127,7 +130,7 @@
 
         @if($cpuChart)
             <div class="space-y-5">
-                @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (24h)', 'stroke' => $cpuColor, 'gradId' => 'cod2-cpu-grad', 'unit' => '%'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (24h)', 'stroke' => $ramColor, 'gradId' => 'cod2-ram-grad', 'unit' => ' MB']] as $key => $c)
+                @foreach(['cpu' => ['chart' => $cpuChart, 'stats' => $cpuStats, 'label' => 'CPU % (48h)', 'stroke' => $cpuColor, 'gradId' => 'cod2-cpu-grad', 'unit' => '%'], 'ram' => ['chart' => $memChart, 'stats' => $memStats, 'label' => 'RAM MB (48h)', 'stroke' => $ramColor, 'gradId' => 'cod2-ram-grad', 'unit' => ' MB']] as $key => $c)
                     <div class="rounded-lg border border-slate-800/70 bg-slate-950/20 p-3.5">
                         <div class="flex items-baseline justify-between mb-2">
                             <span class="text-xs font-medium uppercase tracking-wide text-slate-400">{{ $c['label'] }}</span>
