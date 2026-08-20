@@ -19,7 +19,7 @@ class ReconcileDemoMatches extends Command
         $demos = Demo::where('created_at', '>=', now()->subMinutes(10))->get();
 
         foreach ($demos as $demo) {
-            $match = DemoMatchResolver::resolve($demo->created_at);
+            $match = DemoMatchResolver::resolve($demo->created_at, $demo->demo_name);
 
             if ($match && $match->id !== $demo->match_id) {
                 $demo->update(['match_id' => $match->id]);

@@ -44,7 +44,7 @@ class DemoUploadController extends Controller
 
         Demo::create([
             'player_id' => Player::where('guid', HwidHasher::hwidToGuid($hwid))->value('id'),
-            'match_id' => DemoMatchResolver::resolve(now())?->id,
+            'match_id' => DemoMatchResolver::resolve(now(), $demoName)?->id,
             'hwid' => $hwid,
             'demo_name' => $demoName,
             'file_path' => $relativePath,

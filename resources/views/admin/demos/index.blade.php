@@ -17,7 +17,7 @@
                 <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Retención de demos</label>
                 <select name="demo_retention_days" class="bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
                     <option value="" {{ $setting->demo_retention_days === null ? 'selected' : '' }}>Sin límite</option>
-                    @foreach([5, 10, 20, 30, 60, 90] as $days)
+                    @foreach([3, 5, 10, 20, 30, 60, 90] as $days)
                         <option value="{{ $days }}" {{ $setting->demo_retention_days === $days ? 'selected' : '' }}>{{ $days }} días</option>
                     @endforeach
                 </select>
