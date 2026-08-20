@@ -41,6 +41,8 @@
         <div class="rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">No se pudo conectar por RCON a este servidor.</div>
     @endif
 
+    @include('partials.resource-usage')
+
     @if(session('lastCommand'))
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Resultado de: <span class="font-mono text-slate-300">{{ session('lastCommand') }}</span></div>

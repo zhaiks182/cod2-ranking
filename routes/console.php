@@ -10,5 +10,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('cod2:parse-log')->everyMinute()->withoutOverlapping();
 Schedule::command('demos:reconcile-matches')->everyMinute()->withoutOverlapping();
+Schedule::command('cod2:sample-resources')->everyMinute()->withoutOverlapping();
 Schedule::command('geoip:update')->monthly();
 Schedule::command('demos:prune-old')->daily();
+Schedule::command('cod2:prune-resource-samples')->daily();

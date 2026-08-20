@@ -7,6 +7,7 @@ use App\Models\AdminAction;
 use App\Models\Ban;
 use App\Models\Player;
 use App\Models\Server;
+use App\Models\ServerResourceSample;
 use App\Services\Cod2RconClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +19,16 @@ class ConsoleController extends Controller
     {
         $status = Cod2RconClient::forServer($server)->status();
 
-        return view('admin.console', compact('server', 'status'));
+        // Ultimas 24h de muestras de cod2:sample-resources (una por minuto) para
+        // el grafico de CPU/RAM del panel de consola. Vacio si el servidor no
+        // tiene systemd_service configurado -- el comando que las genera se
+        // salta esos servidores.
+        $resourceSamples = ServerResourceSample::where('server_id', $server->id)
+            ->where('sampled_at', '>=', now()->subDay())
+            ->orderBy('sampled_at')
+            ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
+
+        return view('admin.console', compact('server', 'status', 'resourceSamples'));
     }
 
     public function kick(Request $request, Server $server)
