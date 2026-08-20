@@ -30,6 +30,25 @@
     // 400 = el MemoryMax configurado en el .service, se usa de referencia visual
     // aunque el pico real de las muestras sea mas bajo.
     $memPoints = $buildSparkline($memValues, max(400, ...($memValues ?: [0])));
+
+    // Rango min/prom/max del periodo mostrado -- mismo dato que ya tenemos en
+    // $resourceSamples, sin pedir nada nuevo. El % de CPU viene NULL en la
+    // primera muestra de cada serie (no hay muestra anterior contra la cual
+    // restar, ver SampleServerResources), asi que esas se excluyen del calculo
+    // en vez de contarlas como 0 y falsear el minimo/promedio.
+    $cpuReal = $resourceSamples->pluck('cpu_percent')->filter(fn ($v) => $v !== null)->values();
+    $cpuStats = $cpuReal->isNotEmpty() ? [
+        'min' => $cpuReal->min(),
+        'avg' => round($cpuReal->avg(), 1),
+        'max' => $cpuReal->max(),
+    ] : null;
+
+    $memMbValues = collect($memValues);
+    $memStats = $memMbValues->isNotEmpty() ? [
+        'min' => round($memMbValues->min(), 1),
+        'avg' => round($memMbValues->avg(), 1),
+        'max' => round($memMbValues->max(), 1),
+    ] : null;
 @endphp
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-800 text-xs uppercase tracking-wide text-slate-400">
@@ -61,12 +80,26 @@
                 <svg viewBox="0 0 680 100" class="w-full h-20" preserveAspectRatio="none">
                     <polyline points="{{ $cpuPoints }}" fill="none" stroke="#22d3ee" stroke-width="1.5" />
                 </svg>
+                @if($cpuStats)
+                    <div class="grid grid-cols-3 gap-2 mt-1.5 text-center">
+                        <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ number_format($cpuStats['min'], 1) }}%</span></div>
+                        <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ number_format($cpuStats['avg'], 1) }}%</span></div>
+                        <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ number_format($cpuStats['max'], 1) }}%</span></div>
+                    </div>
+                @endif
             </div>
             <div>
                 <div class="text-[10px] uppercase tracking-wide text-slate-600 mb-1">RAM MB (24h)</div>
                 <svg viewBox="0 0 680 100" class="w-full h-20" preserveAspectRatio="none">
                     <polyline points="{{ $memPoints }}" fill="none" stroke="#a78bfa" stroke-width="1.5" />
                 </svg>
+                @if($memStats)
+                    <div class="grid grid-cols-3 gap-2 mt-1.5 text-center">
+                        <div><span class="text-slate-600">Mín</span> <span class="text-slate-300 font-medium">{{ $memStats['min'] }} MB</span></div>
+                        <div><span class="text-slate-600">Prom</span> <span class="text-slate-300 font-medium">{{ $memStats['avg'] }} MB</span></div>
+                        <div><span class="text-slate-600">Máx</span> <span class="text-slate-300 font-medium">{{ $memStats['max'] }} MB</span></div>
+                    </div>
+                @endif
             </div>
         @else
             <div class="text-xs text-slate-600 text-center py-4">Todavía no hay suficientes muestras para el gráfico (se junta 1 por minuto).</div>
