@@ -55,7 +55,7 @@
     };
 
     $cpuColor = '#22d3ee';
-    $ramColor = '#a78bfa';
+    $ramColor = '#34d399';
     $swapColor = '#f59e0b';
 
     $cpuPoints = $resourceSamples->map(fn ($s) => [
