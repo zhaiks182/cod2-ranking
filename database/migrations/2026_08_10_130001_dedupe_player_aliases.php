@@ -33,16 +33,19 @@ return new class extends Migration
         }
 
         Schema::table('player_aliases', function (Blueprint $table) {
-            $table->dropUnique(['player_id', 'name']);
+            // Add the replacement index before dropping (player_id, name): that old
+            // unique is what backs the player_id foreign key, and MariaDB refuses to
+            // drop it (error 1553) if it would leave the FK without a covering index.
             $table->unique(['player_id', 'name_plain']);
+            $table->dropUnique(['player_id', 'name']);
         });
     }
 
     public function down(): void
     {
         Schema::table('player_aliases', function (Blueprint $table) {
-            $table->dropUnique(['player_id', 'name_plain']);
             $table->unique(['player_id', 'name']);
+            $table->dropUnique(['player_id', 'name_plain']);
         });
     }
 };
