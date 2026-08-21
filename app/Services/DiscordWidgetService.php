@@ -18,7 +18,7 @@ class DiscordWidgetService
      * el total real del server (eso necesitaria un bot con el intent
      * GUILD_MEMBERS y un token secreto, fuera de alcance de esta version).
      *
-     * @return array{online: int, members: array<int, array>}|null null si
+     * @return array{name: ?string, online: int, members: array<int, array>}|null null si
      *         no hay guild_id configurado, o si Discord no responde/el
      *         widget esta apagado -- la vista lo trata como "seccion oculta".
      */
@@ -51,6 +51,7 @@ class DiscordWidgetService
         $data = $response->json();
 
         $result = [
+            'name' => $data['name'] ?? null,
             'online' => $data['presence_count'] ?? count($data['members'] ?? []),
             // online primero, despues idle, despues no molestar -- para que la
             // lista (recortada a los primeros N en la vista) muestre a los
