@@ -177,11 +177,26 @@
                         </span>
                     </div>
 
-                    @php $benefitColors = ['indigo-400', 'emerald-400', 'cyan-400', 'amber-400', 'violet-400', 'rose-400', 'sky-400', 'teal-400']; @endphp
+                    @php
+                        $benefitColors = ['indigo-400', 'emerald-400', 'cyan-400', 'amber-400', 'violet-400', 'rose-400', 'sky-400', 'teal-400'];
+                        // Un icono distinto por posicion (no todos el mismo check) para que la
+                        // lista se lea de un vistazo, aunque el texto ahora sea editable desde
+                        // adm_cod2/discord -- si algun dia hay mas de 8 items, el patron se repite.
+                        $benefitIcons = [
+                            '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+                            '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
+                            '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+                            '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+                            '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+                            '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+                            '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+                            '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+                        ];
+                    @endphp
                     <div class="space-y-3 text-sm text-slate-400">
                         @foreach($discordSetting->discordBenefitsList() as $i => $benefit)
                             <div class="flex items-center gap-2.5">
-                                <svg class="w-4 h-4 text-{{ $benefitColors[$i % count($benefitColors)] }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                <svg class="w-4 h-4 text-{{ $benefitColors[$i % count($benefitColors)] }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $benefitIcons[$i % count($benefitIcons)] !!}</svg>
                                 {{ $benefit }}
                             </div>
                         @endforeach
