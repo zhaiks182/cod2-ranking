@@ -25,24 +25,24 @@
                 @endforeach
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
-            <div class="relative px-6 py-16 md:py-24 text-center">
-                <h1 class="font-display text-3xl md:text-5xl font-bold text-white">Bienvenidos a <span class="text-gsaccent">Pug Latam</span></h1>
-                <p class="mt-3 text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
+            <div class="relative px-4 sm:px-6 py-10 sm:py-16 md:py-24 text-center">
+                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">Bienvenidos a <span class="text-gsaccent">Pug Latam</span></h1>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
 
-                <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-                    <a href="#servidor-en-vivo" class="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
+                <div class="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3">
+                    <a href="#servidor-en-vivo" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors w-full sm:w-auto">
+                        <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
                         Estado del servidor
                     </a>
                     @if(config('services.discord.invite_url'))
-                        <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors w-full sm:w-auto">
+                            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             Unirme a Discord
                         </a>
                     @endif
                 </div>
 
-                <div class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-sm text-slate-300">
+                <div class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">
                     <span class="relative flex h-2 w-2" aria-hidden="true">
                         <span class="{{ $status ? 'motion-safe:animate-ping' : '' }} absolute inline-flex h-full w-full rounded-full {{ $status ? 'bg-emerald-400' : 'bg-slate-500' }} opacity-75"></span>
                         <span class="relative inline-flex h-2 w-2 rounded-full {{ $status ? 'bg-emerald-400' : 'bg-slate-500' }}"></span>
