@@ -82,7 +82,7 @@
     </section>
 
     @if($discord)
-        <section class="rounded-2xl border border-indigo-900/40 bg-gradient-to-br from-[#1a1c3e]/40 to-panel p-6 md:p-8">
+        <section class="rounded-2xl border border-slate-800 bg-panel p-6 md:p-8">
             <div class="grid md:grid-cols-2 gap-8 items-start">
                 {{-- Columna izquierda: presentacion + botones + beneficios --}}
                 <div>
