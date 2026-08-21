@@ -32,6 +32,14 @@
         body { background: #0b1220; }
         ::-webkit-scrollbar { height: 8px; width: 8px; }
         ::-webkit-scrollbar-thumb { background: #1f2937; }
+
+        /* Usado por cod2CopyConnect() mas abajo -- compartido entre cualquier boton
+        de "copiar" de la pagina (Servidor en vivo, FAQ, etc.). */
+        @keyframes cod2-pop {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-panel2 text-slate-200 min-h-screen font-sans">
@@ -122,6 +130,17 @@
                         @endforeach
                     </div>
                 </div>
+                <div class="relative">
+                    <button type="button" data-help-toggle onclick="document.getElementById('help-dropdown').classList.toggle('hidden')"
+                        class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
+                        AYUDA
+                        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="help-dropdown" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ Preguntas frecuentes</a>
+                        {{-- "Descargas" se agrega aca cuando este definido el contenido. --}}
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -141,6 +160,52 @@
             submenu.classList.toggle('hidden');
             btn.querySelector('svg').classList.toggle('rotate-180');
         }
+
+        // Antes vivia dentro de partials/live-status.blade.php (dentro de un bloque
+        // @@once), asi que solo existia en paginas que incluyen ese partial. Se sube aca para
+        // que cualquier pagina (por ejemplo help/faq.blade.php) pueda reusar el mismo
+        // boton de "copiar" con el mismo feedback visual.
+        window.cod2CopyConnect = function (btn, text) {
+            var originalHtml = btn.innerHTML;
+            var successClasses = ['border-emerald-500', 'text-emerald-400', 'scale-105'];
+            var errorClasses = ['border-red-500', 'text-red-400'];
+
+            var flash = function (ok) {
+                btn.innerHTML = ok
+                    ? '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 scale-0 animate-[cod2-pop_0.3s_ease-out_forwards]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.415L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Copiado</span>'
+                    : '<span class="inline-flex items-center gap-1">Error</span>';
+                btn.classList.add.apply(btn.classList, ok ? successClasses : errorClasses);
+                btn.classList.remove('border-slate-700');
+
+                setTimeout(function () {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove.apply(btn.classList, successClasses.concat(errorClasses));
+                    btn.classList.add('border-slate-700');
+                }, 1500);
+            };
+
+            var fallbackCopy = function () {
+                var el = document.createElement('textarea');
+                el.value = text;
+                el.style.position = 'fixed';
+                el.style.opacity = '0';
+                document.body.appendChild(el);
+                el.focus();
+                el.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) {}
+                document.body.removeChild(el);
+                flash(ok);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    flash(true);
+                }).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+        };
 
         function escapeHtml(s) {
             const d = document.createElement('div');
@@ -244,6 +309,11 @@
             const dropdown = document.getElementById('specialties-dropdown');
             if (dropdown && !dropdown.contains(e.target) && !e.target.closest('[data-specialties-toggle]')) {
                 dropdown.classList.add('hidden');
+            }
+
+            const helpDropdown = document.getElementById('help-dropdown');
+            if (helpDropdown && !helpDropdown.contains(e.target) && !e.target.closest('[data-help-toggle]')) {
+                helpDropdown.classList.add('hidden');
             }
         });
     </script>

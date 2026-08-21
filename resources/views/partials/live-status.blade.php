@@ -185,12 +185,6 @@
 
 @once
 <style>
-    @keyframes cod2-pop {
-        0% { transform: scale(0); opacity: 0; }
-        60% { transform: scale(1.3); opacity: 1; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-
     @keyframes cod2-stat-flash {
         0% { background-color: transparent; }
         30% { background-color: rgba(34, 211, 238, 0.14); }
@@ -218,51 +212,8 @@
     }
 </style>
 <script>
-window.cod2CopyConnect = function (btn, text) {
-    var originalHtml = btn.innerHTML;
-    var successClasses = ['border-emerald-500', 'text-emerald-400', 'scale-105'];
-    var errorClasses = ['border-red-500', 'text-red-400'];
-
-    // A checkmark that pops in with a scale bounce reads as "done" much faster than
-    // a plain text swap did — the button also briefly scales itself up (scale-105)
-    // so the state change is visible even out of the corner of your eye.
-    var flash = function (ok) {
-        btn.innerHTML = ok
-            ? '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 scale-0 animate-[cod2-pop_0.3s_ease-out_forwards]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.415L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Copiado</span>'
-            : '<span class="inline-flex items-center gap-1">Error</span>';
-        btn.classList.add.apply(btn.classList, ok ? successClasses : errorClasses);
-        btn.classList.remove('border-slate-700');
-
-        setTimeout(function () {
-            btn.innerHTML = originalHtml;
-            btn.classList.remove.apply(btn.classList, successClasses.concat(errorClasses));
-            btn.classList.add('border-slate-700');
-        }, 1500);
-    };
-
-    var fallbackCopy = function () {
-        var el = document.createElement('textarea');
-        el.value = text;
-        el.style.position = 'fixed';
-        el.style.opacity = '0';
-        document.body.appendChild(el);
-        el.focus();
-        el.select();
-        var ok = false;
-        try { ok = document.execCommand('copy'); } catch (e) {}
-        document.body.removeChild(el);
-        flash(ok);
-    };
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () {
-            flash(true);
-        }).catch(fallbackCopy);
-    } else {
-        fallbackCopy();
-    }
-};
-
+// cod2CopyConnect() ahora vive en layouts/app.blade.php (compartido con
+// cualquier pagina, no solo esta) -- ver comentario ahi.
 (function () {
     function statText(root, key) {
         var node = root.querySelector('[data-stat="' + key + '"]');

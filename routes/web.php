@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
 use App\Http\Controllers\DemoUploadController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\MatchController;
@@ -60,6 +61,9 @@ Route::get('/bombas', [SpecialtyController::class, 'bombs'])->name('specialties.
 Route::get('/dano', [SpecialtyController::class, 'damage'])->name('specialties.damage');
 Route::get('/desconexiones', [SpecialtyController::class, 'disconnects'])->name('specialties.disconnects');
 Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])->name('specialties.grenade-deaths');
+
+Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
+// La ruta para "Descargas" (menu Ayuda) se agrega cuando este definido el contenido.
 
 // Subida automatica de demos por HWID desde el cliente CoD2x (ver _record.gsc en el
 // mod zPAM). Sin auth: el cliente del juego no puede autenticarse, y exento de CSRF
