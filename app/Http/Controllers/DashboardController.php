@@ -20,7 +20,20 @@ class DashboardController extends Controller
         [$status, $latestMatch, $topPlayers] = $this->loadServerData($server);
         $discord = DiscordWidgetService::fetch();
 
-        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers', 'discord'));
+        // Fondo del hero de la home: mosaico rotativo de mapas, reusando las imagenes
+        // que ya se suben desde adm_cod2/maps (una por mapa, ver MapImage) en vez de
+        // pedir asset nuevo. Se toma un subconjunto al azar para no cargar las ~15 de
+        // una sola vez.
+        $heroMapImages = collect(\App\Support\MapCatalog::all())
+            ->keys()
+            ->map(fn ($code) => \App\Support\MapImage::url($code))
+            ->filter()
+            ->shuffle()
+            ->take(8)
+            ->values()
+            ->all();
+
+        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers', 'discord', 'heroMapImages'));
     }
 
     /**
