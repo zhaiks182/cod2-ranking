@@ -23,6 +23,22 @@
         @include('partials.live-status')
     </section>
 
+    @if($discord)
+        <section>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                    <span class="relative flex h-2 w-2" aria-hidden="true">
+                        <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[#5865F2] opacity-75"></span>
+                        <span class="relative inline-flex h-2 w-2 rounded-full bg-[#5865F2]"></span>
+                    </span>
+                    Comunidad de Discord
+                </h2>
+                <span class="text-xs text-slate-500" id="discord-online-count">{{ $discord['online'] }} online ahora</span>
+            </div>
+            @include('partials.discord-community')
+        </section>
+    @endif
+
     <section>
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Top 10 jugadores</h2>
@@ -81,4 +97,45 @@
         </div>
     </section>
 </div>
+
+@if($discord)
+    <script>
+        // Auto-refresh del widget de Discord cada 45s -- la Widget API de
+        // Discord ya esta cacheada 60s del lado del server (ver
+        // DiscordWidgetService), asi que no tiene sentido pedirla mas seguido
+        // que eso; 45s da margen para que casi siempre pegue en cache.
+        //
+        // El script va ACA, en dashboard.blade.php, y no dentro de
+        // partials/discord-community.blade.php, a proposito: ese partial se
+        // vuelve a renderizar SOLO (sin este script) en cada fetch del
+        // refresh -- si el script estuviera adentro del partial, se
+        // re-inyectaria y duplicaria (setInterval apilandose) en cada vuelta.
+        // Mismo problema ya resuelto asi en el dashboard de Recursos del
+        // panel admin.
+        (function () {
+            function refreshDiscordWidget() {
+                var el = document.getElementById('discord-widget');
+                if (!el) return;
+                var url = el.dataset.refreshUrl;
+                if (!url) return;
+
+                fetch(url).then(function (r) { return r.text(); }).then(function (html) {
+                    var wrapper = document.createElement('div');
+                    wrapper.innerHTML = html;
+                    var fresh = wrapper.querySelector('#discord-widget');
+                    if (!fresh) return;
+
+                    var countEl = document.getElementById('discord-online-count');
+                    if (countEl && fresh.dataset.online) {
+                        countEl.textContent = fresh.dataset.online + ' online ahora';
+                    }
+
+                    el.replaceWith(fresh);
+                }).catch(function () {});
+            }
+
+            setInterval(refreshDiscordWidget, 45000);
+        })();
+    </script>
+@endif
 @endsection

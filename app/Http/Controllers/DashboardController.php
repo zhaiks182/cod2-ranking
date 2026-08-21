@@ -6,6 +6,7 @@ use App\Models\GameMatch;
 use App\Models\PlayerServerStat;
 use App\Models\Server;
 use App\Services\Cod2RconClient;
+use App\Services\DiscordWidgetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -17,8 +18,21 @@ class DashboardController extends Controller
         $server = $this->resolveServer($request, $servers);
 
         [$status, $latestMatch, $topPlayers] = $this->loadServerData($server);
+        $discord = DiscordWidgetService::fetch();
 
-        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers'));
+        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers', 'discord'));
+    }
+
+    /**
+     * Fragmento HTML del widget de Discord solo, para el polling desde JS
+     * (dashboard.blade.php tiene el script, no este partial -- ver el
+     * comentario en partials/discord-community.blade.php sobre por que).
+     */
+    public function discordWidget()
+    {
+        $discord = DiscordWidgetService::fetch();
+
+        return view('partials.discord-community', compact('discord'));
     }
 
     /**

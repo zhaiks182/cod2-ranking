@@ -22,6 +22,16 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'discord' => [
+        // ID del server (Discord: Configuracion del servidor > Widget, necesita
+        // "Comunidad" habilitada para que aparezca esa pantalla). No es un
+        // secreto -- es publico, va en la URL de la Widget API. La invite
+        // tampoco es secreta, pero se saca a config igual para no hardcodear
+        // un link que puede cambiar sin tocar codigo.
+        'guild_id' => env('DISCORD_GUILD_ID'),
+        'invite_url' => env('DISCORD_INVITE_URL'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
