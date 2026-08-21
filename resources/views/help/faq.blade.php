@@ -29,6 +29,13 @@
                         class="shrink-0 text-xs px-3 py-2 rounded-lg border border-slate-600 text-slate-200 hover:border-gsaccent hover:text-gsaccent transition-all duration-200 ease-out">Copiar</button>
                 </div>
                 <p>Si la consola está desactivada, activala primero desde las opciones del juego. También podés usar el botón <strong class="text-white">Estado del servidor</strong> arriba de la página de inicio para ver la IP y copiarla con un clic.</p>
+                @if($connectUri)
+                    <a href="{{ $connectUri }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Conectar
+                    </a>
+                    <p class="text-slate-600 text-xs">Necesita CoD2x instalado (ver más abajo) para que el navegador sepa abrir <code class="bg-panel2 border border-slate-800 rounded px-1">{{ $connectUri }}</code> con el juego.</p>
+                @endif
                 <p>Versión recomendada del juego: <strong class="text-white">1.3</strong> con CoD2x instalado.</p>
             </div>
         </details>
