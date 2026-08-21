@@ -34,8 +34,8 @@
                         <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
                         Estado del servidor
                     </a>
-                    @if(config('services.discord.invite_url'))
-                        <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors w-full sm:w-auto">
+                    @if($discordSetting->discord_invite_url ?? null)
+                        <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors w-full sm:w-auto">
                             <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             Unirme a Discord
                         </a>
@@ -135,7 +135,9 @@
     </section>
 
     @if($discord)
-        <section class="rounded-2xl border border-slate-800 bg-panel p-6 md:p-8">
+        <section>
+            <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-4">Discord</h2>
+            <div class="rounded-2xl border border-slate-800 bg-panel p-6 md:p-8">
             <div class="grid md:grid-cols-2 gap-8 items-start">
                 {{-- Columna izquierda: presentacion + botones + beneficios --}}
                 <div>
@@ -154,12 +156,14 @@
                             Servidor sin conexión
                         @endif
                     </span>
-                    <h2 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">Unite a nuestro Discord</h2>
-                    <p class="text-sm text-slate-400 mb-5">Chateá con la comunidad, reportá jugadores, y enterate de novedades del server en vivo.</p>
+                    <h3 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">Unite a nuestro Discord</h3>
+                    @if($discordSetting->discord_description)
+                        <p class="text-sm text-slate-400 mb-5">{{ $discordSetting->discord_description }}</p>
+                    @endif
 
                     <div class="flex flex-wrap items-center gap-3 mb-6">
-                        @if(config('services.discord.invite_url'))
-                            <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
+                        @if($discordSetting->discord_invite_url)
+                            <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                                 Unirme a Discord
                             </a>
@@ -173,44 +177,20 @@
                         </span>
                     </div>
 
+                    @php $benefitColors = ['indigo-400', 'emerald-400', 'cyan-400', 'amber-400', 'violet-400', 'rose-400', 'sky-400', 'teal-400']; @endphp
                     <div class="space-y-3 text-sm text-slate-400">
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                            Alertas de partidas y anuncios del server
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-                            Reportá tramposos y pedí soporte rápido
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                            Coordiná PUGs y partidas de Search &amp; Destroy
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                            Seguí tu ranking y estadísticas en vivo acá en el sitio
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-violet-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
-                            Descargá demos de las partidas jugadas
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-                            Descubrí rivalidades, rachas y récords del server
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-sky-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-                            Consultá de qué país es cada jugador
-                        </div>
-                        <div class="flex items-center gap-2.5">
-                            <svg class="w-4 h-4 text-teal-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            Mirá el horario pico para coordinar tus partidas
-                        </div>
+                        @foreach($discordSetting->discordBenefitsList() as $i => $benefit)
+                            <div class="flex items-center gap-2.5">
+                                <svg class="w-4 h-4 text-{{ $benefitColors[$i % count($benefitColors)] }} shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                                {{ $benefit }}
+                            </div>
+                        @endforeach
                     </div>
                 </div>
 
                 {{-- Columna derecha: tarjeta de miembros conectados --}}
                 @include('partials.discord-community')
+            </div>
             </div>
         </section>
     @endif

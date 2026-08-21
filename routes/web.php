@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BanController;
 use App\Http\Controllers\Admin\ConsoleController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
+use App\Http\Controllers\Admin\DiscordSettingController;
 use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
@@ -79,6 +80,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
         Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
+
+        Route::get('/discord', [DiscordSettingController::class, 'edit'])->name('discord.edit');
+        Route::put('/discord', [DiscordSettingController::class, 'update'])->name('discord.update');
 
         Route::resource('servers', ServerController::class)->except(['show']);
 

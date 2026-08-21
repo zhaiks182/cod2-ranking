@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\GameMatch;
 use App\Models\PlayerServerStat;
 use App\Models\Server;
+use App\Models\Setting;
 use App\Services\Cod2RconClient;
 use App\Services\DiscordWidgetService;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class DashboardController extends Controller
 
         [$status, $latestMatch, $topPlayers] = $this->loadServerData($server);
         $discord = DiscordWidgetService::fetch();
+        $discordSetting = Setting::current();
 
         // Fondo del hero de la home: mosaico rotativo de mapas, reusando las imagenes
         // que ya se suben desde adm_cod2/maps (una por mapa, ver MapImage) en vez de
@@ -33,7 +35,7 @@ class DashboardController extends Controller
             ->values()
             ->all();
 
-        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers', 'discord', 'heroMapImages'));
+        return view('dashboard', compact('servers', 'server', 'status', 'latestMatch', 'topPlayers', 'discord', 'discordSetting', 'heroMapImages'));
     }
 
     /**
@@ -44,8 +46,9 @@ class DashboardController extends Controller
     public function discordWidget()
     {
         $discord = DiscordWidgetService::fetch();
+        $discordSetting = Setting::current();
 
-        return view('partials.discord-community', compact('discord'));
+        return view('partials.discord-community', compact('discord', 'discordSetting'));
     }
 
     /**

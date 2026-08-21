@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -18,13 +19,17 @@ class DiscordWidgetService
      * el total real del server (eso necesitaria un bot con el intent
      * GUILD_MEMBERS y un token secreto, fuera de alcance de esta version).
      *
+     * El guild_id sale de Setting (editable en adm_cod2/discord) en vez de
+     * .env -- asi el dueño puede cambiar de server de Discord sin pasar por
+     * un deploy.
+     *
      * @return array{name: ?string, online: int, members: array<int, array>}|null null si
      *         no hay guild_id configurado, o si Discord no responde/el
      *         widget esta apagado -- la vista lo trata como "seccion oculta".
      */
     public static function fetch(): ?array
     {
-        $guildId = config('services.discord.guild_id');
+        $guildId = Setting::current()->discord_guild_id;
         if (! $guildId) {
             return null;
         }
@@ -70,5 +75,11 @@ class DiscordWidgetService
         Cache::put(self::CACHE_KEY, $result, self::CACHE_TTL_SECONDS);
 
         return $result;
+    }
+
+    /** Invalida la cache de 60s -- llamado cuando el admin cambia el guild_id en adm_cod2/discord. */
+    public static function forgetCache(): void
+    {
+        Cache::forget(self::CACHE_KEY);
     }
 }

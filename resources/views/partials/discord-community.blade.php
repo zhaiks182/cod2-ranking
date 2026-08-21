@@ -76,8 +76,8 @@
 
         <div class="px-4 py-3 border-t border-slate-800 flex items-center justify-between gap-3">
             <span class="text-xs text-slate-500">Unite para chatear y pedir soporte</span>
-            @if(config('services.discord.invite_url'))
-                <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs font-medium transition-colors">Unirme a Discord</a>
+            @if($discordSetting->discord_invite_url ?? null)
+                <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs font-medium transition-colors">Unirme a Discord</a>
             @endif
         </div>
     </div>
