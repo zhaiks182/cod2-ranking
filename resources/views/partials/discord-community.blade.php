@@ -15,9 +15,9 @@
             <span class="text-[11px] uppercase tracking-wide text-slate-500">Miembros conectados</span>
         </div>
 
-        <div class="max-h-72 overflow-y-auto divide-y divide-slate-800/50">
+        <div class="max-h-72 overflow-y-auto space-y-2 p-3">
             @forelse(array_slice($discord['members'], 0, 20) as $member)
-                <div class="flex items-center gap-3 px-4 py-2.5">
+                <div class="flex items-center gap-3 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2.5">
                     <div class="relative shrink-0">
                         @if($member['avatar_url'] ?? null)
                             <img src="{{ $member['avatar_url'] }}" alt="" class="w-9 h-9 rounded-full bg-slate-800">

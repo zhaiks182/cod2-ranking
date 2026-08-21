@@ -86,9 +86,20 @@
             <div class="grid md:grid-cols-2 gap-8 items-start">
                 {{-- Columna izquierda: presentacion + botones + beneficios --}}
                 <div>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-indigo-800/60 bg-indigo-950/40 text-[10px] uppercase tracking-wide text-indigo-300">
-                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                        Comunidad de Discord
+                    {{-- El punto/texto reflejan el estado REAL del gameserver ($status,
+                    la misma consulta RCON que ya usa "Servidor en vivo" arriba) en vez
+                    de ser un badge decorativo fijo -- a pedido del dueño. --}}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border {{ $status ? 'border-emerald-800/60 bg-emerald-950/40 text-emerald-300' : 'border-slate-700 bg-slate-900/60 text-slate-500' }} text-[10px] uppercase tracking-wide">
+                        @if($status)
+                            <span class="relative flex h-1.5 w-1.5" aria-hidden="true">
+                                <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                            </span>
+                            Servidor activo
+                        @else
+                            <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                            Servidor sin conexión
+                        @endif
                     </span>
                     <h2 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">Unite a nuestro Discord</h2>
                     <p class="text-sm text-slate-400 mb-5">Chateá con la comunidad, reportá jugadores, y enterate de novedades del server en vivo.</p>
@@ -117,6 +128,14 @@
                         <div class="flex items-center gap-2.5">
                             <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
                             Reportá tramposos y pedí soporte rápido
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                            Coordiná PUGs y partidas de Search &amp; Destroy
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                            Seguí tu ranking y estadísticas en vivo acá en el sitio
                         </div>
                     </div>
                 </div>
