@@ -34,7 +34,6 @@
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                         Conectar
                     </a>
-                    <p class="text-slate-600 text-xs">Necesita CoD2x instalado (ver más abajo) para que el navegador sepa abrir <code class="bg-panel2 border border-slate-800 rounded px-1">{{ $connectUri }}</code> con el juego.</p>
                 @endif
                 <p>Versión recomendada del juego: <strong class="text-white">1.3</strong> con CoD2x instalado.</p>
             </div>
@@ -120,14 +119,11 @@
                         </div>
                     </div>
                 </div>
-                <p class="text-slate-500 text-xs leading-relaxed">
-                    El archivo descargado también puede incluir
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-panel2 border border-slate-800 text-slate-400 align-middle">
-                        <svg class="w-3.5 h-3.5 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFile !!}</svg>
-                        CoD2x Installation and uninstallation manual.txt
-                    </span>
-                    , que no es necesario para instalar.
-                </p>
+                <p class="text-slate-500 text-xs">El archivo también puede contener archivos que no son necesarios para la instalación:</p>
+                <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-panel2 border border-slate-800 text-xs text-slate-400">
+                    <svg class="w-3.5 h-3.5 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFile !!}</svg>
+                    CoD2x Installation and uninstallation manual.txt
+                </div>
             </div>
         </details>
 
