@@ -3,10 +3,24 @@
 @section('title', 'Demos')
 
 @section('content')
+@php
+    // Igual que en show.blade.php: MB para totales chicos, GB cuando ya pasa
+    // el gigabyte -- "3600.5 MB" se lee peor que "3.6 GB" para un total que
+    // agrupa TODOS los demos, a diferencia de una partida sola que rara vez
+    // pasa de unos pocos MB.
+    $totalMb = $totalBytes / 1048576;
+    $totalLabel = $totalMb >= 1024 ? number_format($totalMb / 1024, 2).' GB' : number_format($totalMb, 1).' MB';
+@endphp
 <div class="space-y-4">
-    <div>
-        <h1 class="text-lg font-semibold">Demos</h1>
-        <p class="text-xs text-slate-500 mt-1">Demos subidos automáticamente por los jugadores al terminar cada partida SD.</p>
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h1 class="text-lg font-semibold">Demos</h1>
+            <p class="text-xs text-slate-500 mt-1">Demos subidos automáticamente por los jugadores al terminar cada partida SD.</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-2.5 text-right">
+            <div class="text-2xl font-semibold tabular-nums text-cyan-400">{{ $totalLabel }}</div>
+            <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ number_format($totalDemos) }} demos en total</div>
+        </div>
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4">

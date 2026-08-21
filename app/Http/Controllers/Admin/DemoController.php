@@ -21,7 +21,13 @@ class DemoController extends Controller
 
         $setting = Setting::current();
 
-        return view('admin.demos.index', compact('matches', 'setting'));
+        // Total real de TODOS los demos, no solo los de la pagina actual --
+        // la tabla esta paginada de a 20 partidas, sumar demos_sum_size_bytes
+        // visible daria solo el total de esta pagina.
+        $totalDemos = Demo::count();
+        $totalBytes = (int) Demo::sum('size_bytes');
+
+        return view('admin.demos.index', compact('matches', 'setting', 'totalDemos', 'totalBytes'));
     }
 
     public function show(GameMatch $match)
