@@ -53,6 +53,7 @@
                     <li>Configurá el umbral de memoria a la mitad de tu RAM.</li>
                     <li>Configurá el polling rate en <strong class="text-white">1000ms</strong>.</li>
                     <li>Hacé clic en <strong class="text-white">Start</strong> y minimizalo.</li>
+                    <li>Podés seguir <a href="https://www.youtube.com/watch?v=gMfCLvMa7MI" target="_blank" rel="noopener" class="text-gsaccent hover:underline">este video</a> como guía.</li>
                 </ol>
                 <p class="text-slate-500 text-xs">Tip: desactivar overlays (Discord/GeForce) puede ayudar si seguís viendo caídas de FPS.</p>
             </div>
