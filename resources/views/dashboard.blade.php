@@ -23,22 +23,6 @@
         @include('partials.live-status')
     </section>
 
-    @if($discord)
-        <section>
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                    <span class="relative flex h-2 w-2" aria-hidden="true">
-                        <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-[#5865F2] opacity-75"></span>
-                        <span class="relative inline-flex h-2 w-2 rounded-full bg-[#5865F2]"></span>
-                    </span>
-                    Comunidad de Discord
-                </h2>
-                <span class="text-xs text-slate-500" id="discord-online-count">{{ $discord['online'] }} online ahora</span>
-            </div>
-            @include('partials.discord-community')
-        </section>
-    @endif
-
     <section>
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Top 10 jugadores</h2>
@@ -96,6 +80,52 @@
         </table>
         </div>
     </section>
+
+    @if($discord)
+        <section class="rounded-2xl border border-indigo-900/40 bg-gradient-to-br from-[#1a1c3e]/40 to-panel p-6 md:p-8">
+            <div class="grid md:grid-cols-2 gap-8 items-start">
+                {{-- Columna izquierda: presentacion + botones + beneficios --}}
+                <div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-indigo-800/60 bg-indigo-950/40 text-[10px] uppercase tracking-wide text-indigo-300">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                        Comunidad de Discord
+                    </span>
+                    <h2 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">Unite a nuestro Discord</h2>
+                    <p class="text-sm text-slate-400 mb-5">Chateá con la comunidad, reportá jugadores, y enterate de novedades del server en vivo.</p>
+
+                    <div class="flex flex-wrap items-center gap-3 mb-6">
+                        @if(config('services.discord.invite_url'))
+                            <a href="{{ config('services.discord.invite_url') }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Unirme a Discord
+                            </a>
+                        @endif
+                        <span class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 text-sm text-slate-300">
+                            <span class="relative flex h-2 w-2" aria-hidden="true">
+                                <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
+                            </span>
+                            <span id="discord-online-count">{{ $discord['online'] }} online ahora</span>
+                        </span>
+                    </div>
+
+                    <div class="space-y-3 text-sm text-slate-400">
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            Alertas de partidas y anuncios del server
+                        </div>
+                        <div class="flex items-center gap-2.5">
+                            <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            Reportá tramposos y pedí soporte rápido
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Columna derecha: tarjeta de miembros conectados --}}
+                @include('partials.discord-community')
+            </div>
+        </section>
+    @endif
 </div>
 
 @if($discord)
