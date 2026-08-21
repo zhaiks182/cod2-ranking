@@ -76,20 +76,56 @@
                         </ul>
                     </li>
                 </ol>
+                @php
+                    // Iconos inline en vez de <pre> de texto plano -- carpeta (amber) para
+                    // directorios, archivo (slate) para el resto, y archivo con check
+                    // (emerald) para los 2 .dll que hay que reemplazar, calcando la
+                    // captura de referencia que paso el dueño.
+                    $iconFolder = '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>';
+                    $iconFile = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>';
+                    $iconFileCheck = $iconFile.'<path d="m9.5 14.5 1.5 1.5 3-3"/>';
+                @endphp
                 <p>La estructura final debería incluir entradas como:</p>
-                <pre class="px-3 py-2.5 rounded-lg bg-panel2 border border-slate-800 text-xs leading-relaxed overflow-x-auto"><span class="text-gsaccent">Call of Duty 2/</span>
-  <span class="text-slate-500">Docs/</span>
-  <span class="text-slate-500">main/</span>
-  <span class="text-slate-500">miles/</span>
-  <span class="text-slate-500">pb/</span>
-  <span class="text-slate-400">CoD2MP_s.exe</span>
-  <span class="text-slate-400">CoD2SP_s.exe</span>
-  <span class="text-slate-400">gfx_d3d_mp_x86_s.dll</span>
-  <span class="text-slate-400">gfx_d3d_x86_s.dll</span>
-  <span class="text-emerald-400">mss32.dll</span>
-  <span class="text-emerald-400">mss32_original.dll</span>
-  <span class="text-slate-600">... (otros archivos)</span></pre>
-                <p class="text-slate-500 text-xs">El archivo descargado también puede incluir <code class="bg-panel2 border border-slate-800 rounded px-1">CoD2x Installation and uninstallation manual.txt</code>, que no es necesario para instalar.</p>
+                <div class="rounded-lg bg-panel2 border border-slate-800 text-xs px-3 py-2.5 overflow-x-auto">
+                    <div class="flex items-center gap-1.5 text-gsaccent font-medium">
+                        <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFolder !!}</svg>
+                        Call of Duty 2/
+                    </div>
+                    <div class="pl-4 space-y-1 mt-1">
+                        @foreach(['Docs/', 'main/', 'miles/', 'pb/'] as $folder)
+                            <div class="flex items-center gap-1.5 text-slate-500">
+                                <span class="text-slate-700">—</span>
+                                <svg class="w-3.5 h-3.5 shrink-0 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFolder !!}</svg>
+                                {{ $folder }}
+                            </div>
+                        @endforeach
+                        @foreach(['CoD2MP_s.exe', 'CoD2SP_s.exe', 'gfx_d3d_mp_x86_s.dll', 'gfx_d3d_x86_s.dll'] as $file)
+                            <div class="flex items-center gap-1.5 text-slate-400">
+                                <span class="text-slate-700">—</span>
+                                <svg class="w-3.5 h-3.5 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFile !!}</svg>
+                                {{ $file }}
+                            </div>
+                        @endforeach
+                        @foreach(['mss32.dll', 'mss32_original.dll'] as $file)
+                            <div class="flex items-center gap-1.5 text-emerald-400">
+                                <span class="text-slate-700">—</span>
+                                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFileCheck !!}</svg>
+                                {{ $file }}
+                            </div>
+                        @endforeach
+                        <div class="flex items-center gap-1.5 text-slate-600">
+                            <span class="text-slate-700">—</span>
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFile !!}</svg>
+                            ... (otros archivos)
+                        </div>
+                    </div>
+                </div>
+                <p class="text-slate-500 text-xs">El archivo descargado también puede incluir</p>
+                <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-panel2 border border-slate-800 text-xs text-slate-400">
+                    <svg class="w-3.5 h-3.5 shrink-0 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{!! $iconFile !!}</svg>
+                    CoD2x Installation and uninstallation manual.txt
+                </div>
+                <p class="text-slate-600 text-xs">, que no es necesario para instalar.</p>
             </div>
         </details>
 
