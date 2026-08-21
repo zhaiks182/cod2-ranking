@@ -17,15 +17,15 @@
         <p class="text-xs text-slate-500 mt-1">Demos subidos automáticamente por los jugadores al terminar cada partida SD.</p>
     </div>
 
-    <div class="rounded-xl border border-slate-800 bg-panel p-4">
-        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-            <span class="text-[11px] uppercase tracking-wide text-slate-500">Retención de demos</span>
-            <div class="text-right">
-                <div class="text-xl font-semibold tabular-nums text-cyan-400">{{ $totalLabel }}</div>
-                <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ number_format($totalDemos) }} demos en total</div>
-            </div>
+    <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Retención de demos</span>
+            <span class="text-sm tabular-nums text-slate-300">
+                <span class="font-semibold text-cyan-400">{{ $totalLabel }}</span>
+                <span class="text-slate-500">· {{ number_format($totalDemos) }} demos en total</span>
+            </span>
         </div>
-        <form method="POST" action="{{ route('admin.settings.update') }}" class="flex flex-wrap items-end gap-3">
+        <form method="POST" action="{{ route('admin.settings.update') }}" class="flex flex-wrap items-end gap-3 p-4">
             @csrf
             @method('PUT')
             <div>
