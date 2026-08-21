@@ -12,23 +12,23 @@
     $totalLabel = $totalMb >= 1024 ? number_format($totalMb / 1024, 2).' GB' : number_format($totalMb, 1).' MB';
 @endphp
 <div class="space-y-4">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-            <h1 class="text-lg font-semibold">Demos</h1>
-            <p class="text-xs text-slate-500 mt-1">Demos subidos automáticamente por los jugadores al terminar cada partida SD.</p>
-        </div>
-        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-2.5 text-right">
-            <div class="text-2xl font-semibold tabular-nums text-cyan-400">{{ $totalLabel }}</div>
-            <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ number_format($totalDemos) }} demos en total</div>
-        </div>
+    <div>
+        <h1 class="text-lg font-semibold">Demos</h1>
+        <p class="text-xs text-slate-500 mt-1">Demos subidos automáticamente por los jugadores al terminar cada partida SD.</p>
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+            <span class="text-[11px] uppercase tracking-wide text-slate-500">Retención de demos</span>
+            <div class="text-right">
+                <div class="text-xl font-semibold tabular-nums text-cyan-400">{{ $totalLabel }}</div>
+                <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ number_format($totalDemos) }} demos en total</div>
+            </div>
+        </div>
         <form method="POST" action="{{ route('admin.settings.update') }}" class="flex flex-wrap items-end gap-3">
             @csrf
             @method('PUT')
             <div>
-                <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Retención de demos</label>
                 <select name="demo_retention_days" class="bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
                     <option value="" {{ $setting->demo_retention_days === null ? 'selected' : '' }}>Sin límite</option>
                     @foreach([3, 5, 10, 20, 30, 60, 90] as $days)
