@@ -11,10 +11,10 @@
 @if($discord)
 <div id="discord-widget" data-refresh-url="{{ route('dashboard.discord-widget') }}" data-online="{{ $discord['online'] }}">
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-800">
-            <div class="text-[11px] uppercase tracking-wide text-slate-500">Miembros conectados</div>
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
+            <span class="text-[11px] uppercase tracking-wide text-slate-500">Miembros conectados</span>
             @if($discord['name'] ?? null)
-                <div class="text-sm font-semibold text-white mt-0.5">{{ $discord['name'] }}</div>
+                <span class="text-sm font-semibold text-white">{{ $discord['name'] }}</span>
             @endif
         </div>
 
