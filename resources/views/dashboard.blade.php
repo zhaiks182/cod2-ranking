@@ -26,7 +26,7 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
             <div class="relative px-6 py-16 md:py-24 text-center">
-                <h1 class="font-display text-3xl md:text-5xl font-bold text-white">Bienvenidos a <span class="text-gsaccent">Pug</span> <span class="text-rose-400">Latam</span></h1>
+                <h1 class="font-display text-3xl md:text-5xl font-bold text-white">Bienvenidos a <span class="text-gsaccent">Pug Latam</span></h1>
                 <p class="mt-3 text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
 
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
