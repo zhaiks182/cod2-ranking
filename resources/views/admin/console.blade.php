@@ -114,26 +114,12 @@
         @php
             // Listado completo de mapas custom instalados en el server (confirmado
             // 2026-08-18 contra el directorio real de mapas del dueño, los .d3dbsp/
-            // .gsc de cada variante) — mp_chelm_fix, mp_crossroads y mp_vallente_fix
-            // no tienen entrada en MapCatalog::MAPS (no son mapas stock de CoD2,
-            // asi que mapLabel() cae al fallback generico basado en el codigo) y
-            // wawa_3daim no lleva el prefijo "mp_" (es el mapa de aim-trainer para
-            // Deathmatch, ver "Cuando se crea una partida" en CLAUDE.md).
-            $mapVariants = [
-                'mp_breakout_tls' => 'TLS',
-                'mp_burgundy_fix' => 'FIX',
-                'mp_carentan_bal' => 'BAL', 'mp_carentan_fix' => 'FIX',
-                'mp_chelm_fix' => 'FIX',
-                'mp_crossroads' => null,
-                'mp_dawnville_fix' => 'FIX', 'mp_dawnville_sun' => 'SUN',
-                'mp_leningrad_mjr' => 'MJR', 'mp_leningrad_tls' => 'TLS',
-                'mp_matmata_fix' => 'FIX',
-                'mp_railyard_mjr' => 'MJR',
-                'mp_toujane_fix' => 'FIX',
-                'mp_trainstation_bhg' => 'BHG', 'mp_trainstation_fix' => 'FIX',
-                'mp_vallente_fix' => 'FIX',
-                'wawa_3daim' => null,
-            ];
+            // .gsc de cada variante). El mapeo codigo->sufijo vive centralizado en
+            // MapCatalog::variantSuffix() (antes duplicado aca) para no tener dos
+            // listas que mantener sincronizadas.
+            $mapVariants = collect(\App\Support\MapCatalog::variantCodes())->mapWithKeys(
+                fn ($code) => [$code => \App\Support\MapCatalog::variantSuffix($code)]
+            )->all();
             $mapOptions = [];
             foreach (\App\Support\MapCatalog::all() as $code => $label) {
                 $mapOptions[$code] = ['label' => $label, 'suffix' => null];

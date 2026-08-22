@@ -44,6 +44,9 @@
                             <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">
                                 {{ $m->mapLabel }}
+                                @if($suffix = \App\Support\MapCatalog::variantSuffix($m->map))
+                                    <span class="text-cyan-400">{{ $suffix }}</span>
+                                @endif
                                 <span class="block text-[10px] font-normal text-slate-500">{{ $m->mapCodes }}</span>
                             </td>
                             <td class="px-4 py-2">

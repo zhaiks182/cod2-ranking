@@ -451,37 +451,36 @@ class SpecialtyController extends Controller
         $maps = collect();
 
         if ($server) {
-            // Agrupar por mapa REAL (mp_dawnville_fix y mp_dawnville_sun son el mismo
-            // mapa, "St. Mere Eglise, France") -- agrupar por el codigo crudo duplicaba
-            // la fila para el mismo mapa y, peor, partia las bajas de un mismo jugador
-            // entre las dos variantes, asi que ninguna de las dos reflejaba su total
-            // real y el "rey" verdadero podia terminar ni siquiera apareciendo. Mismo
-            // patron que MapCatalog::mergeVariants() usa en el perfil de jugador.
-            $rows = PlayerMapStat::with('player')
+            // Una fila por codigo de mapa CRUDO (no fusionado) a pedido explicito --
+            // mp_dawnville_fix y mp_dawnville_sun quedan separados. Se agrega el codigo
+            // crudo debajo del nombre bonito para que dos filas con la misma etiqueta
+            // ("St. Mere Eglise, France") no se vean como si fueran un duplicado.
+            $totals = PlayerMapStat::where('server_id', $server->id)
+                ->selectRaw('map, sum(kills) as uses')
+                ->groupBy('map')
+                ->orderByDesc('uses')
+                ->get();
+
+            $topByMap = PlayerMapStat::with('player')
                 ->where('server_id', $server->id)
                 ->whereHas('player')
                 ->get()
-                ->groupBy(fn ($row) => \App\Support\MapCatalog::normalize($row->map));
+                ->groupBy('map')
+                ->map(fn ($rows) => $rows->sortByDesc('kills')->first());
 
-            $maps = $rows->map(function ($group, $normalizedMap) {
-                $uses = $group->sum('kills');
-
-                $topPerPlayer = $group->groupBy('player_id')->map(fn ($playerRows) => (object) [
-                    'player' => $playerRows->first()->player,
-                    'kills' => $playerRows->sum('kills'),
-                    'deaths' => $playerRows->sum('deaths'),
-                ])->sortByDesc('kills')->first();
+            $maps = $totals->map(function ($row) use ($topByMap) {
+                $top = $topByMap->get($row->map);
 
                 return (object) [
-                    'map' => $normalizedMap,
-                    'mapLabel' => \App\Support\MapCatalog::mapLabel($normalizedMap),
-                    'mapCodes' => $group->pluck('map')->unique()->sort()->values()->implode(', '),
-                    'uses' => $uses,
-                    'topPlayer' => $topPerPlayer?->player,
-                    'topKills' => $topPerPlayer->kills ?? 0,
-                    'topDeaths' => $topPerPlayer->deaths ?? 0,
+                    'map' => $row->map,
+                    'mapLabel' => \App\Support\MapCatalog::mapLabel($row->map),
+                    'mapCodes' => $row->map,
+                    'uses' => $row->uses,
+                    'topPlayer' => $top?->player,
+                    'topKills' => $top->kills ?? 0,
+                    'topDeaths' => $top->deaths ?? 0,
                 ];
-            })->filter(fn ($m) => $m->topPlayer)->sortByDesc('uses')->values();
+            })->filter(fn ($m) => $m->topPlayer && $m->uses > 0)->values();
         }
 
         return view('specialties.map-kings', compact('servers', 'server', 'maps'));

@@ -60,6 +60,44 @@ class MapCatalog
     }
 
     /**
+     * Listado completo de mapas custom instalados en el server (confirmado 2026-08-18
+     * contra el directorio real de mapas del dueño, los .d3dbsp/.gsc de cada variante)
+     * — mp_chelm_fix, mp_crossroads y mp_vallente_fix no tienen entrada en MAPS (no
+     * son mapas stock de CoD2, mapLabel() cae al fallback generico basado en el
+     * codigo) y wawa_3daim no lleva el prefijo "mp_" (mapa de aim-trainer para
+     * Deathmatch, ver "Cuando se crea una partida" en CLAUDE.md). Vivia duplicada
+     * como un @php local en admin/console.blade.php; centralizada aca para no tener
+     * que acordarse de actualizar dos listas cuando aparezca una variante nueva.
+     */
+    private const VARIANT_SUFFIXES = [
+        'mp_breakout_tls' => 'TLS',
+        'mp_burgundy_fix' => 'FIX',
+        'mp_carentan_bal' => 'BAL', 'mp_carentan_fix' => 'FIX',
+        'mp_chelm_fix' => 'FIX',
+        'mp_crossroads' => null,
+        'mp_dawnville_fix' => 'FIX', 'mp_dawnville_sun' => 'SUN',
+        'mp_leningrad_mjr' => 'MJR', 'mp_leningrad_tls' => 'TLS',
+        'mp_matmata_fix' => 'FIX',
+        'mp_railyard_mjr' => 'MJR',
+        'mp_toujane_fix' => 'FIX',
+        'mp_trainstation_bhg' => 'BHG', 'mp_trainstation_fix' => 'FIX',
+        'mp_vallente_fix' => 'FIX',
+        'wawa_3daim' => null,
+    ];
+
+    /** Etiqueta corta de variante (FIX, SUN, MJR, ...) para distinguir codigos crudos que comparten mapLabel(), o null si no es una variante conocida. */
+    public static function variantSuffix(string $code): ?string
+    {
+        return self::VARIANT_SUFFIXES[$code] ?? null;
+    }
+
+    /** @return array<int,string> todos los codigos de variante conocidos (con o sin sufijo visible) */
+    public static function variantCodes(): array
+    {
+        return array_keys(self::VARIANT_SUFFIXES);
+    }
+
+    /**
      * Suma stats de variantes del mismo mapa real (mp_dawnville_fix + mp_dawnville_sun
      * -> "St. Mere Eglise, France" una sola vez, en vez de dos filas identicas en
      * "Mejores mapas" con distinto codigo pero la misma etiqueta -- confirmado que
