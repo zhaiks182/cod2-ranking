@@ -99,8 +99,15 @@ class DemoMatchResolver
     {
         // La abreviatura es el segmento antes de un posible "_ot"/"_r<N>" final (sufijos
         // de overtime/ronda que generateDemoName() agrega solo para sd/re) o antes de un
-        // "#gametype" (para el resto de los gametypes) -- ver _record.gsc.
-        if (! preg_match('/_([a-z]{2,3})(?:_ot)?(?:_r\d+)?$/', $demoName, $m)
+        // "#gametype" (para el resto de los gametypes) -- ver _record.gsc. La "r" del
+        // sufijo de ronda es OPCIONAL a proposito: confirmado en vivo 2026-08-21/22 que
+        // el CLIENTE (no el mod) le agrega un "_N" pelado, sin la "r", cuando ya existe
+        // un archivo local con ese mismo nombre exacto (mismo patron que "foto(1).jpg")
+        // -- ej. "an_nosoymariobrosok_tj_1". Sin el "?" ese sufijo no matcheaba nada,
+        // la abreviatura se perdia, y el demo caia al fallback por tiempo -- asi
+        // terminaron demos con "_tj" colgados de la partida de Railyard mas reciente
+        // en vez de la de Toujane real.
+        if (! preg_match('/_([a-z]{2,3})(?:_ot)?(?:_r?\d+)?$/', $demoName, $m)
             && ! preg_match('/_([a-z]{2,3})#/', $demoName, $m)) {
             return null;
         }
