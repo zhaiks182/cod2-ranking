@@ -23,4 +23,9 @@ class HelpController extends Controller
 
         return view('help.faq', compact('connectString', 'connectUri'));
     }
+
+    public function downloads()
+    {
+        return view('help.downloads');
+    }
 }

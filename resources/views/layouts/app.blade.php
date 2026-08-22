@@ -138,7 +138,7 @@
                     </button>
                     <div id="help-dropdown" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ Preguntas frecuentes</a>
-                        {{-- "Descargas" se agrega aca cuando este definido el contenido. --}}
+                        <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ Descargas</a>
                     </div>
                 </div>
             </nav>

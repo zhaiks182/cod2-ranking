@@ -63,6 +63,7 @@ Route::get('/desconexiones', [SpecialtyController::class, 'disconnects'])->name(
 Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])->name('specialties.grenade-deaths');
 
 Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
+Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
 // La ruta para "Descargas" (menu Ayuda) se agrega cuando este definido el contenido.
 
 // Subida automatica de demos por HWID desde el cliente CoD2x (ver _record.gsc en el
