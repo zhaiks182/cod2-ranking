@@ -125,6 +125,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/respaldos', [BackupController::class, 'index'])->name('backups.index');
         Route::post('/respaldos', [BackupController::class, 'store'])->name('backups.store');
+        Route::post('/respaldos/importar', [BackupController::class, 'import'])->name('backups.import');
         Route::get('/respaldos/{filename}/descargar', [BackupController::class, 'download'])->name('backups.download');
         Route::post('/respaldos/{filename}/restaurar', [BackupController::class, 'restore'])->name('backups.restore');
         Route::delete('/respaldos/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');

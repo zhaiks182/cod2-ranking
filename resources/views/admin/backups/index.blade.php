@@ -19,6 +19,17 @@
         </form>
     </div>
 
+    <div class="rounded-xl border border-slate-800 bg-panel p-4">
+        <h2 class="text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Importar base de datos</h2>
+        <p class="text-xs text-slate-500 mb-3">Para instalar el panel en un server nuevo sin respaldos locales todavía — subí un <code class="text-cyan-300">.sql</code> o <code class="text-cyan-300">.sql.gz</code> (por ejemplo, uno bajado con "Descargar" desde otro server) y se importa entero. Funciona incluso con la base de datos vacía. Límite: 25 MB.</p>
+        <form method="POST" action="{{ route('admin.backups.import') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3"
+            onsubmit="return confirm('¿Importar este archivo? Esto REEMPLAZA toda la base de datos actual. Se guarda un respaldo del estado actual antes de importar, por las dudas.\n\n¿Confirmar?')">
+            @csrf
+            <input type="file" name="dump" accept=".sql,.gz" required class="text-xs text-slate-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-panel2 file:text-slate-200 file:text-xs hover:file:bg-slate-700">
+            <button type="submit" class="px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium whitespace-nowrap">Importar</button>
+        </form>
+    </div>
+
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
             <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Total guardado</span>
