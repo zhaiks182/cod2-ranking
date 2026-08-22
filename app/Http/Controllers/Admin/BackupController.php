@@ -18,7 +18,13 @@ class BackupController extends Controller
                 'path' => $path,
                 'name' => basename($path),
                 'size' => Storage::disk('local')->size($path),
-                'date' => \Illuminate\Support\Carbon::createFromTimestamp(Storage::disk('local')->lastModified($path)),
+                // createFromTimestamp() sin segundo argumento devuelve el Carbon en UTC
+                // -- el timestamp del filesystem es correcto (epoch, sin zona), pero
+                // mostrarlo sin convertir a la zona de la app lo dejaba 5 horas
+                // adelantado (mismo bug ya documentado en CLAUDE.md para el timezone
+                // de Laravel en general). Confirmado en vivo 2026-08-22: un respaldo
+                // creado a las 17:15 local aparecia en la lista como "22:2x".
+                'date' => \Illuminate\Support\Carbon::createFromTimestamp(Storage::disk('local')->lastModified($path), config('app.timezone')),
             ])
             ->sortByDesc('date')
             ->values();
