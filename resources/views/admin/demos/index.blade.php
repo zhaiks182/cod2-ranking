@@ -51,6 +51,7 @@
                     <th class="px-4 py-2 font-medium">Fecha</th>
                     <th class="px-4 py-2 font-medium text-right">Demos</th>
                     <th class="px-4 py-2 font-medium text-right">Tamaño total</th>
+                    <th class="px-4 py-2 font-medium text-right"></th>
                 </tr>
             </thead>
             <tbody>
@@ -63,9 +64,17 @@
                         <td class="px-4 py-2 text-slate-400">{{ $match->started_at->format('d/m/Y H:i') }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $match->demos_count }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ number_format($match->demos_sum_size_bytes / 1024 / 1024, 1) }} MB</td>
+                        <td class="px-4 py-2 text-right">
+                            <form method="POST" action="{{ route('admin.demos.destroy-match', $match) }}"
+                                onsubmit="return confirm('¿Borrar los {{ $match->demos_count }} demo(s) de {{ \App\Support\MapCatalog::mapLabel($match->map) }} ({{ $match->started_at->format('d/m/Y H:i') }})? No se puede deshacer.')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-xs px-2 py-1 rounded border border-slate-700 hover:border-red-500 hover:text-red-400">Borrar</button>
+                            </form>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Todavia no se subio ningun demo.</td></tr>
+                    <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Todavia no se subio ningun demo.</td></tr>
                 @endforelse
             </tbody>
         </table>

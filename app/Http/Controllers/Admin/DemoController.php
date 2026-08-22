@@ -51,4 +51,21 @@ class DemoController extends Controller
             ? redirect()->route('admin.demos.show', $matchId)->with('status', "Demo eliminado ({$label}).")
             : redirect()->route('admin.demos.index')->with('status', "Demo eliminado ({$label}).");
     }
+
+    /** Borra de una todos los demos de una partida (mapa+fecha), desde la fila del listado. */
+    public function destroyByMatch(GameMatch $match)
+    {
+        $demos = $match->demos;
+        $count = $demos->count();
+        $label = \App\Support\MapCatalog::mapLabel($match->map).' — '.$match->started_at->format('d/m/Y H:i');
+
+        foreach ($demos as $demo) {
+            Storage::disk('local')->delete($demo->file_path);
+            $demo->delete();
+        }
+
+        AdminAction::record('demos.destroy-match', "Elimino {$count} demo(s) de {$label}");
+
+        return redirect()->route('admin.demos.index')->with('status', "Se eliminaron {$count} demo(s) de {$label}.");
+    }
 }

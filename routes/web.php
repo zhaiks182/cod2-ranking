@@ -96,6 +96,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/demos', [AdminDemoController::class, 'index'])->name('demos.index');
         Route::delete('/demos/{demo}', [AdminDemoController::class, 'destroy'])->name('demos.destroy');
+        Route::delete('/demos/match/{match}', [AdminDemoController::class, 'destroyByMatch'])->name('demos.destroy-match');
         Route::get('/demos/{match}', [AdminDemoController::class, 'show'])->name('demos.show');
 
         Route::get('/maps', [MapImageController::class, 'index'])->name('maps.index');
