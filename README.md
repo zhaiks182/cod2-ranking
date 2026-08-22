@@ -261,6 +261,45 @@ echo 'www-data ALL=(root) NOPASSWD: /usr/bin/systemctl restart cod2server.servic
 visudo -cf /tmp/cod2-panel-sudoers && sudo install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel
 ```
 
+### Respaldos y migración a otro servidor
+
+`/adm_cod2/respaldos` tiene todo lo necesario para mover el sitio entero a otra
+máquina:
+
+- **Crear respaldo** — volcado completo de la base de datos (`mysqldump`
+  comprimido), todos los módulos (partidas, jugadores, demos, bans, auditoría,
+  configuración). También corre uno automático por día, borrando los que
+  tengan más de 10 días.
+- **Restaurar** — reemplaza la base de datos actual por un respaldo ya
+  guardado en ese mismo server.
+- **Importar** — subís un `.sql`/`.sql.gz` desde tu computadora (por ejemplo,
+  uno que bajaste con "Descargar" desde el server viejo) y lo importa entero.
+  Funciona aunque la base de datos destino esté completamente vacía —
+  `mysqldump` incluye el esquema (`CREATE TABLE`) además de los datos, no
+  hace falta correr `php artisan migrate` antes.
+
+> ⚠️ **Al importar/restaurar en un server CON UN `APP_KEY` DISTINTO al que
+> generó el respaldo, el sitio se rompe** (`DecryptException: The MAC is
+> invalid`, apenas intenta leer la contraseña RCON de algún servidor CoD2 —
+> `servers.rcon_password` se guarda encriptado con `APP_KEY`, no en texto
+> plano). Pasa siempre que migrás a una instalación nueva, porque
+> `install.sh`/`php artisan key:generate` generan una `APP_KEY` propia cada
+> vez. **Arreglo:** copiar el `APP_KEY` del server de origen al `.env` del
+> server de destino (reemplazando la línea entera) y correr
+> `php artisan config:clear`:
+>
+> ```bash
+> # en el server de origen, ver la key actual:
+> grep APP_KEY .env
+>
+> # en el server de destino, pegar esa misma linea en .env (reemplazando la
+> # que ya estaba), despues:
+> php artisan config:clear
+> ```
+>
+> Con esto no hace falta re-escribir ninguna contraseña RCON a mano — vuelven
+> a leerse bien apenas coincide la key.
+
 ## Servir la aplicación
 
 Cualquier método estándar de Laravel sirve — Apache/Nginx + PHP-FPM apuntando a
