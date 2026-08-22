@@ -14,3 +14,4 @@ Schedule::command('cod2:sample-resources')->everyMinute()->withoutOverlapping();
 Schedule::command('geoip:update')->monthly();
 Schedule::command('demos:prune-old')->daily();
 Schedule::command('cod2:prune-resource-samples')->daily();
+Schedule::command('backup:run')->dailyAt('03:00');

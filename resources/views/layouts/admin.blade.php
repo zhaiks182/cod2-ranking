@@ -44,6 +44,7 @@
                     <a href="{{ route('admin.maps.index') }}" class="text-slate-300 hover:text-gsaccent">Mapas</a>
                     <a href="{{ route('admin.players.index') }}" class="text-slate-300 hover:text-gsaccent">Países</a>
                     <a href="{{ route('admin.bans.index') }}" class="text-slate-300 hover:text-gsaccent">Bans</a>
+                    <a href="{{ route('admin.backups.index') }}" class="text-slate-300 hover:text-gsaccent">Respaldos</a>
                     <a href="{{ route('admin.discord.edit') }}" class="text-slate-300 hover:text-gsaccent">Discord</a>
                     <a href="{{ route('admin.audit.index') }}" class="text-slate-300 hover:text-gsaccent">Auditoría</a>
                     <a href="{{ route('admin.password.edit') }}" class="text-slate-300 hover:text-gsaccent">Contraseña</a>

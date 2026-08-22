@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BanController;
 use App\Http\Controllers\Admin\ConsoleController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
@@ -121,5 +122,10 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/bans', [BanController::class, 'index'])->name('bans.index');
         Route::delete('/bans/{ban}', [BanController::class, 'destroy'])->name('bans.destroy');
+
+        Route::get('/respaldos', [BackupController::class, 'index'])->name('backups.index');
+        Route::post('/respaldos', [BackupController::class, 'store'])->name('backups.store');
+        Route::get('/respaldos/{filename}/descargar', [BackupController::class, 'download'])->name('backups.download');
+        Route::delete('/respaldos/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
     });
 });
