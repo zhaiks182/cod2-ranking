@@ -30,12 +30,12 @@
                 <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
 
                 <div class="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3">
-                    <a href="#servidor-en-vivo" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors w-full sm:w-auto">
+                    <a href="#servidor-en-vivo" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors">
                         <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
                         Estado del servidor
                     </a>
                     @if($discordSetting->discord_invite_url ?? null)
-                        <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors w-full sm:w-auto">
+                        <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
                             <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             Unirme a Discord
                         </a>
