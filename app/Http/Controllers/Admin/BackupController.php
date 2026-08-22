@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminAction;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\Process;
 
 class BackupController extends Controller
 {
     private const DIR = 'backups';
+
+    private const FILENAME_PATTERN = '/^cod2_stats_\d{4}-\d{2}-\d{2}_\d{6}\.sql\.gz$/';
 
     public function index()
     {
@@ -50,7 +53,7 @@ class BackupController extends Controller
      */
     public function download(string $filename)
     {
-        if (! preg_match('/^cod2_stats_\d{4}-\d{2}-\d{2}_\d{6}\.sql\.gz$/', $filename)) {
+        if (! preg_match(self::FILENAME_PATTERN, $filename)) {
             abort(404);
         }
 
@@ -65,7 +68,7 @@ class BackupController extends Controller
 
     public function destroy(string $filename)
     {
-        if (! preg_match('/^cod2_stats_\d{4}-\d{2}-\d{2}_\d{6}\.sql\.gz$/', $filename)) {
+        if (! preg_match(self::FILENAME_PATTERN, $filename)) {
             abort(404);
         }
 
@@ -75,5 +78,53 @@ class BackupController extends Controller
         AdminAction::record('backups.destroy', "Elimino el respaldo ({$filename})");
 
         return back()->with('status', "Respaldo eliminado ({$filename}).");
+    }
+
+    /**
+     * Reemplaza TODA la base de datos actual con el contenido de un respaldo --
+     * restaura las 20+ tablas de una (partidas, jugadores, demos, bans,
+     * auditoria, settings, todo lo que haya en el dump), no modulo por modulo,
+     * porque el dump de mysqldump ya es de la base completa. Antes de tocar
+     * nada se toma un respaldo de seguridad del estado actual (por si la
+     * restauracion fue un error, queda algo para volver atras).
+     */
+    public function restore(string $filename)
+    {
+        if (! preg_match(self::FILENAME_PATTERN, $filename)) {
+            abort(404);
+        }
+
+        $path = self::DIR.'/'.$filename;
+
+        if (! Storage::disk('local')->exists($path)) {
+            abort(404);
+        }
+
+        Artisan::call('backup:run');
+
+        $config = config('database.connections.'.config('database.default'));
+
+        $credsFile = tempnam(sys_get_temp_dir(), 'db_restore_');
+        file_put_contents($credsFile, "[client]\nuser={$config['username']}\npassword={$config['password']}\nhost={$config['host']}\nport={$config['port']}\n");
+        chmod($credsFile, 0600);
+
+        try {
+            $sql = gzdecode(Storage::disk('local')->get($path));
+
+            $restore = new Process([
+                'mysql',
+                '--defaults-extra-file='.$credsFile,
+                $config['database'],
+            ]);
+            $restore->setTimeout(300);
+            $restore->setInput($sql);
+            $restore->mustRun();
+        } finally {
+            @unlink($credsFile);
+        }
+
+        AdminAction::record('backups.restore', "Restauro la base de datos desde el respaldo ({$filename})");
+
+        return back()->with('status', "Base de datos restaurada desde {$filename}. Se guardo un respaldo del estado anterior antes de restaurar.");
     }
 }

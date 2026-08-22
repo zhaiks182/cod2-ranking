@@ -11,7 +11,7 @@
     <div class="flex items-start justify-between gap-3">
         <div>
             <h1 class="text-lg font-semibold">Respaldos</h1>
-            <p class="text-xs text-slate-500 mt-1">Volcado de la base de datos (mysqldump comprimido). Se crea uno automático por día y se borran los que tengan más de 10 días.</p>
+            <p class="text-xs text-slate-500 mt-1">Volcado completo de la base de datos (mysqldump comprimido) — todos los módulos (partidas, jugadores, demos, bans, auditoría, configuración). Se crea uno automático por día y se borran los que tengan más de 10 días.</p>
         </div>
         <form method="POST" action="{{ route('admin.backups.store') }}">
             @csrf
@@ -45,6 +45,10 @@
                         <td class="px-4 py-2 text-right tabular-nums">{{ number_format($b->size / 1024, 1) }} KB</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">
                             <a href="{{ route('admin.backups.download', $b->name) }}" class="text-xs px-2 py-1 rounded border border-slate-700 hover:border-cyan-500 hover:text-cyan-400">Descargar</a>
+                            <form method="POST" action="{{ route('admin.backups.restore', $b->name) }}" class="inline" onsubmit="return confirm('¿Restaurar la base de datos completa desde {{ $b->name }}?\n\nEsto REEMPLAZA todo lo actual (partidas, jugadores, demos, bans, todo) por lo que había en ese momento. Se pierde cualquier cosa que haya pasado después. Se guarda un respaldo del estado actual antes de restaurar, por las dudas.\n\n¿Confirmar?')">
+                                @csrf
+                                <button type="submit" class="text-xs px-2 py-1 rounded border border-amber-900 text-amber-400 hover:bg-amber-950/40">Restaurar</button>
+                            </form>
                             <form method="POST" action="{{ route('admin.backups.destroy', $b->name) }}" class="inline" onsubmit="return confirm('¿Borrar el respaldo {{ $b->name }}? No se puede deshacer.')">
                                 @csrf
                                 @method('DELETE')
