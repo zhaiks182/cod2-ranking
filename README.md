@@ -112,7 +112,7 @@ server {
     listen 80;
     server_name tu-dominio-o-ip;
 
-    root /ruta/a/cod2-ranking/public;
+    root /var/www/html/public;   # o /ruta/a/cod2-ranking/public si clonaste en otro lado
     index index.php;
 
     location / {
@@ -139,11 +139,21 @@ nginx -t && systemctl reload nginx
 
 ### Opción rápida: `install.sh`
 
+Ruta recomendada: `/var/www/html` (el DocumentRoot por defecto de la mayoría de
+las instalaciones de Apache/nginx — evita tener que inventar una ruta nueva y
+armar el vhost desde cero). Si tu Apache/nginx recién instalado ya dejó algo
+ahí (una página de bienvenida placeholder), hay que vaciarlo primero:
+
 ```bash
-git clone https://github.com/zhaiks182/cod2-ranking.git
-cd cod2-ranking
+rm -rf /var/www/html/* /var/www/html/.[!.]*
+git clone https://github.com/zhaiks182/cod2-ranking.git /var/www/html
+cd /var/www/html
 chmod +x install.sh && ./install.sh
 ```
+
+> Si preferís otra ruta (por ejemplo para tener varios sitios en el mismo VPS,
+> como `/var/www/tu-dominio.com`), cloná ahí en vez de `/var/www/html` — el
+> resto de la guía funciona igual, `install.sh` se auto-detecta.
 
 Pide por prompts todo lo necesario (dominio, base de datos, datos del server de
 CoD2, usuario/contraseña del panel admin) y hace el resto: `composer install`,
@@ -154,8 +164,9 @@ resumen con las credenciales — el panel queda en `/adm_cod2/login`.
 ### Manual, paso a paso
 
 ```bash
-git clone https://github.com/zhaiks182/cod2-ranking.git
-cd cod2-ranking
+rm -rf /var/www/html/* /var/www/html/.[!.]*
+git clone https://github.com/zhaiks182/cod2-ranking.git /var/www/html
+cd /var/www/html
 composer install
 cp .env.example .env
 php artisan key:generate
