@@ -663,11 +663,22 @@ class ParseCod2Log extends Command
         $player = Player::firstOrNew(['guid' => $guid]);
         $isNew = ! $player->exists;
 
+        // Un nombre entrante SIN codigos de color (^N) que trae el mismo texto visible
+        // que el que ya esta guardado CON colores es casi seguro un dato mal parseado
+        // (misma familia que el incidente ZHAIKS del 2026-08-10 de abajo), no un cambio
+        // real de nombre -- confirmado en vivo 2026-08-22: una fila de status/log le
+        // piso a un jugador real su nombre bien coloreado con la version en texto
+        // plano, y quedo asi hasta que se detecto a mano. Se ignora el nuevo valor en
+        // ese caso puntual para no perder el formato.
+        $incomingHasColors = $name !== $plain;
+        $existingHasColors = $player->last_name && $player->last_name !== Cod2Colors::stripColors($player->last_name);
+        $looksLikeColorLoss = ! $isNew && ! $incomingHasColors && $existingHasColors && $plain === $player->last_name_plain;
+
         // A name with zero visible characters (just color codes, e.g. "^7") is never a
         // real rename — it's what a truncated/misparsed RCON "status" row looks like
         // (see the 2026-08-10 ZHAIKS incident). Keep whatever good name is already on
         // file rather than clobbering it with garbage; still record that we saw them.
-        if ($plain !== '' || $isNew) {
+        if (($plain !== '' || $isNew) && ! $looksLikeColorLoss) {
             $player->last_name = $name;
             $player->last_name_plain = $plain ?: $name;
         }
