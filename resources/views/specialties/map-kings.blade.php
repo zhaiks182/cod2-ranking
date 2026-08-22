@@ -47,7 +47,6 @@
                                 @if($suffix = \App\Support\MapCatalog::variantSuffix($m->map))
                                     <span class="text-cyan-400">{{ $suffix }}</span>
                                 @endif
-                                <span class="block text-[10px] font-normal text-slate-500">{{ $m->mapCodes }}</span>
                             </td>
                             <td class="px-4 py-2">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif

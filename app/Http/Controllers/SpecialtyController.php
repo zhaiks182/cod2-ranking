@@ -474,7 +474,6 @@ class SpecialtyController extends Controller
                 return (object) [
                     'map' => $row->map,
                     'mapLabel' => \App\Support\MapCatalog::mapLabel($row->map),
-                    'mapCodes' => $row->map,
                     'uses' => $row->uses,
                     'topPlayer' => $top?->player,
                     'topKills' => $top->kills ?? 0,
