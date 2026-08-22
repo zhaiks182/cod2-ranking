@@ -151,7 +151,7 @@
             </summary>
             <div class="px-4 pb-4 text-sm text-slate-400 space-y-3">
                 <p>Usá estos valores estables en tu config:</p>
-                <code class="block px-3 py-2 rounded-lg bg-panel2 border border-slate-800 text-cyan-300 text-xs">/cl_maxpackets 100 /rate 25000 /snaps 20</code>
+                <code class="block px-3 py-2 rounded-lg bg-panel2 border border-slate-800 text-cyan-300 text-xs">/cl_maxpackets 125 /rate 25000 /snaps 40</code>
                 <p class="text-slate-500 text-xs">Mantené el FPS estable y evitá picos de pérdida de paquetes. Se recomienda conexión por cable.</p>
             </div>
         </details>
