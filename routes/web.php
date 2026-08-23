@@ -68,6 +68,11 @@ Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq')
 Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
 // La ruta para "Descargas" (menu Ayuda) se agrega cuando este definido el contenido.
 
+// Endpoint liviano para medir latencia al VPS desde el navegador (ver el badge de
+// "ms" en hosted-servers/create.blade.php) -- sin DB, sin vista, 204 vacio para que
+// la unica variable que se mida sea la ida y vuelta de red.
+Route::get('/ping', fn () => response()->noContent())->name('ping');
+
 // Servidores temporales self-service (publico, sin login) -- ver CLAUDE.md, seccion
 // "Servidores temporales". management_token en la URL es la unica "credencial" del
 // creador (no hay cuentas), por eso show/stop llevan {token} ademas del id.

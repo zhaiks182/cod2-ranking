@@ -1033,6 +1033,13 @@ imagen descargada de otro lado.
   grilla de botones con imagen, mismo patrón que ya usa el selector de mapas del
   admin (`admin/console.blade.php`, `MapImage::url($code)`) — mapas sin imagen
   subida muestran un ícono genérico en vez de romper el layout.
+- **Medidor de latencia real** (2026-08-23), a la derecha del badge "N disponibles"
+  en el hero — `GET /ping` (`routes/web.php`) es una ruta nueva sin DB ni vista,
+  solo `response()->noContent()` (204), para que la única variable que se mida
+  desde el navegador sea la ida y vuelta de red real hasta el VPS (Miami), no
+  tiempo de render. El JS del hero hace 3 fetch con `cache: 'no-store'`, descarta
+  la primera muestra (siempre sale más alta por el warmup de la conexión TLS) y
+  promedia las últimas 2 — verde `<80ms`, amarillo `<150ms`, rojo el resto.
 - **`MapCatalog::pickerOptions()`** (nuevo): un código por mapa real para selectores
   públicos — usa la variante `_fix`/`_bal` instalada si existe (`toujane_fix`,
   `dawnville_fix`, `burgundy_fix`, etc.), el código base si no. A diferencia del

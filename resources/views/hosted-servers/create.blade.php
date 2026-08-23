@@ -26,6 +26,8 @@
                     <span>Miami, FL</span>
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                     <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available }} disponible{{ $available === 1 ? '' : 's' }}</span>
+                    <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
+                    <span id="hosted-server-ping" class="text-slate-500">midiendo…</span>
                     @if ($active > 0)
                         <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                         <span class="inline-flex items-center gap-1.5 text-slate-400">
@@ -49,6 +51,42 @@
                     i = (i + 1) % slides.length;
                     slides[i].classList.replace('opacity-0', 'opacity-100');
                 }, 6000);
+            })();
+
+            // Latencia real hacia el VPS (Miami) -- /ping es un 204 vacio, sin DB ni
+            // vista, para que lo unico que se mida sea la ida y vuelta de red. 3
+            // muestras (la primera suele salir mas alta por el warmup de la conexion
+            // TLS) y se promedian las ultimas 2.
+            (async function () {
+                var el = document.getElementById('hosted-server-ping');
+                if (!el) return;
+
+                async function ping() {
+                    var start = performance.now();
+                    try {
+                        await fetch('{{ route('ping') }}', { cache: 'no-store' });
+                        return performance.now() - start;
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                var samples = [];
+                for (var i = 0; i < 3; i++) {
+                    var ms = await ping();
+                    if (ms !== null) samples.push(ms);
+                }
+
+                if (samples.length < 2) {
+                    el.textContent = 'sin datos de latencia';
+                    return;
+                }
+
+                samples.shift(); // descarta la primera (warmup)
+                var avg = Math.round(samples.reduce(function (a, b) { return a + b; }, 0) / samples.length);
+                var color = avg < 80 ? 'text-emerald-400' : (avg < 150 ? 'text-amber-400' : 'text-red-400');
+                el.className = color + ' font-medium';
+                el.textContent = '~' + avg + 'ms';
             })();
         </script>
     @else
