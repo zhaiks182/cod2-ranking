@@ -781,6 +781,169 @@ client slot" (confirma que el comando existe y se ejecuta), y el ciclo
 crear/desbanear se probó con un registro sintético en la tabla `bans` (sin
 afectar a ningún jugador real).
 
+## Servidores temporales self-service (2026-08-22)
+
+Cualquier visitante (sin login) puede crear su propio servidor de CoD2 temporal desde
+`/servidores/crear` — hostname, cantidad de jugadores, mapa, contraseña de acceso
+opcional, cracked sí/no. Corre en el MISMO VPS de producción, comparte el binario/mod
+compartido con el server real de Pug Latam pero en su propio proceso systemd aislado.
+Se auto-apaga solo (por tiempo o por estar vacío) — **es la primera feature pública sin
+login que hace fork de un proceso de sistema real en producción**, así que el diseño
+entero prioriza que un visitante anónimo nunca pueda tumbar ni degradar el server real
+ni el resto del sitio. Config completa en `config/hosted_servers.php` (topes,
+duración, rango de puertos — todo vía `.env`, nada hardcodeado).
+
+### Modelo y ciclo de vida
+
+Tabla `hosted_servers`, completamente separada de `servers` — `cod2:parse-log` no la
+conoce, así que estas instancias quedan automáticamente fuera del pipeline de
+stats/ranking, sin código extra de por medio. `app/Models/HostedServer.php`.
+
+Estados: `starting` → `running` → `stopped`/`expired`/`failed`. `management_token`
+(string random de 40) es la ÚNICA "credencial" del creador — no hay cuentas, la URL de
+`/servidores/{id}/{token}` es lo único que permite ver/detener ese server
+(`HostedServerController::authorizeToken()`, `hash_equals`, 404 si no matchea).
+
+### Por qué el orden de provisioning importa (`HostedServerProvisioner`)
+
+1. Se crea y commitea la fila en BD (`status=starting`, puerto ya reservado) **antes**
+   de tocar el sistema operativo — así nunca puede quedar un proceso real corriendo
+   sin una fila que lo controle, aunque el request PHP se corte a mitad de camino.
+2. Se escribe el directorio/config de la instancia.
+3. `sudo systemctl start cod2-temp@{id}.service`.
+4. Se hace poll de `Cod2RconClient::status()` hasta ~15s antes de marcar `running` —
+   `systemctl start` sobre un `Type=simple` vuelve apenas systemd hace fork+exec, NO
+   cuando el gameserver terminó de inicializar (mismo tipo de gotcha ya documentado
+   en `ConsoleController` sobre RCON/`sv_floodProtect`). Si nunca responde, se hace
+   `stop` best-effort, se limpia el directorio, se libera el puerto, y la fila queda
+   `failed`. Esto significa que el POST a `/servidores/crear` puede tardar hasta ~15s
+   en responder — es a propósito (mejor que mostrarle un connect string a alguien
+   antes de confirmar que el server realmente está arriba), pero hay que tenerlo en
+   cuenta si algún día se agrega un timeout más corto en el proxy/PHP-FPM delante de
+   esto.
+
+`hosted-servers:expire` (cron cada minuto) limpia tres casos: vencidas por
+`expires_at`, vacías hace más de `idle_minutes` (el reloj arranca cuando el server se
+confirma arriba, no cuando se crea la fila — así un boot lento no le come ventana de
+inactividad a nadie), y filas trabadas en `starting` hace más de 2 minutos
+(provisioning que murió a mitad de camino — deploy, worker reciclado, etc.).
+`hosted-servers:poll` (cron cada minuto) actualiza `player_count`/
+`last_seen_players_at` por RCON.
+
+### Asignación de puerto y tope de concurrencia — sin carreras
+
+`HostedServerPortAllocator` NO usa un `SELECT` + `lockForUpdate()` (no sirve de nada
+lockear filas que todavía no existen si el rango de puertos está mayormente libre) —
+prueba insertar con cada puerto candidato del rango y confía en la unique key real de
+`hosted_servers.port` (nullable — MySQL/MariaDB permiten múltiples `NULL`, así que
+instancias expiradas no bloquean nada) como el verdadero guardia atómico: si otro
+request se quedó con ese puerto un instante antes, el INSERT tira duplicate-key
+(código 1062) y se reintenta con el siguiente. El tope global de concurrencia (evitar
+que dos creaciones simultáneas se cuelen las dos aunque solo quede 1 lugar) usa
+`Cache::lock()` — un mutex real entre requests — en vez de una simple comparación en
+PHP, en `HostedServerController::store()`.
+
+### Inyección de config — el hallazgo más importante de este módulo
+
+`hostname`/`join_password` terminan escritos crudos dentro de un `server.cfg` que el
+motor `+exec`uta línea por línea — sin sanear, un valor como `foo"; set rcon_password
+"hijacked` cierra la comilla del `set` y le agrega comandos propios al cfg de esa
+instancia. `HostedServerSanitizer::cfgValue()` usa un **allowlist** (letras/números/
+espacios/puntuación básica/códigos de color `^0`-`^9`), no un blocklist — más fácil de
+auditar. `map` no tiene este riesgo porque se valida contra un enum
+(`MapCatalog::all()` + `MapCatalog::variantCodes()`, mismo listado que ya usa el
+selector de mapas del admin), nunca un string libre.
+
+### `scr_recording` forzado a `"0"` — el segundo hallazgo importante
+
+El mod (cargado desde la base compartida de producción) tiene la URL de subida de
+demos **hardcodeada** a `https://cod2.4livepro.com/api/demos/upload/...` (ver sección
+"Subida automática de demos por HWID" más abajo) — sin forzar `scr_recording "0"` en
+el `server.cfg` generado, cualquier partida SD jugada en un server de prueba
+terminaría subiendo demos reales al catálogo `/demos` de producción, sin partida
+asociada. `HostedServerConfigWriter` lo fuerza explícitamente, no lo deja en manos del
+default del mod.
+
+### `HostedServerConfigWriter` — de dónde sale el ruleset
+
+El `server.cfg` generado **lee el `server.cfg` REAL de producción** en
+`config('hosted_servers.game_base_dir')` (el ruleset completo de zPAM: `scr_sd_*`,
+límites de armas, `scr_readyup`, MOTD, `sv_wwwBaseURL`, etc.) y le pisa abajo, en
+orden, los cvars propios de la instancia (`sv_hostname`, `g_password`,
+`rcon_password`, `sv_maxclients`, `sv_cracked`, `scr_recording`) — CoD2 ejecuta un cfg
+línea por línea, así que un `set` posterior gana. Se lee del archivo real en vez de
+duplicar ~250 líneas a mano para que un ajuste de reglas en producción se refleje acá
+solo. `sv_wwwBaseURL`/`scr_motd` se conservan tal cual (no son datos de identidad, son
+la URL de descarga del mismo mod compartido).
+
+`net_port` y el mapa inicial (`+map`) son cvars que tienen que estar disponibles ANTES
+de que el server termine de inicializar — no alcanza con un `set` dentro del cfg
+(mismo motivo por el que `start_libcod.sh` de producción ya los pasa por línea de
+comandos). Ninguno de los dos es secreto, así que viajan en un sidecar plano
+`instance.env` (`PORT=`/`MAP=`) que `start_libcod_temp.sh` lee con `source`. Todo lo
+que SÍ es sensible (`rcon_password`, `g_password`) va dentro del `.cfg`, nunca por
+argv — un argumento de línea de comandos queda visible entero para cualquier otro
+usuario del VPS vía `ps aux` mientras el proceso corre (mismo motivo por el que
+`RunDatabaseBackup` ya usa un `--defaults-extra-file` en vez de pasar la password de
+mysql por CLI).
+
+### Filesystem: base compartida de solo lectura + directorio propio por instancia
+
+`fs_basepath` (assets, solo lectura) apunta a la base real de producción
+(`/home/gameserver/1.3/puG`) — nunca se duplica. `fs_homepath` (escritura:
+config/logs/demos) apunta al directorio propio y chico de cada instancia
+(`/home/gameserver/1.3/temp/{id}/`). **Esto todavía no se probó a mano contra el
+binario/mod real** — antes de confiar en la automatización conviene lanzar
+`cod2_lnxded` una vez manualmente en el VPS con `fs_basepath`/`fs_homepath` separados
+para confirmar que el server.cfg se lee desde `fs_homepath` como se espera.
+
+### Systemd + sudoers — SOLO en el VPS, no versionado en este repo
+
+Mismo precedente que `/etc/sudoers.d/cod2-panel` (ver "Auditoría de admin y reinicio
+de servicio" más abajo): un unit systemd **template** `cod2-temp@.service` (`%i` =
+`hosted_servers.id`) y dos líneas nuevas de sudoers, **ninguno de los dos está
+instalado todavía en el VPS real** — quedan como pasos manuales pendientes:
+
+```
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start cod2-temp@*.service
+www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop cod2-temp@*.service
+```
+
+Copias de referencia versionadas en el repo `ZPAM COD2` (mismo patrón que
+`cod2server.service`/`start_libcod.sh`): `cod2-temp@.service`,
+`start_libcod_temp.sh`. `CPUWeight=100` (muy por debajo del `9500` del server real, a
+propósito, para que jamás le compita por CPU), sin `Nice` negativo, `MemoryMax=250M`,
+`Restart=on-failure` (no `always` — una instancia temporal que crashea no debe
+resucitar sola contra su propio presupuesto de expiración).
+
+Pasos manuales para activar esto en el VPS (ninguno hecho todavía):
+1. Copiar `cod2-temp@.service` a `/etc/systemd/system/`, ajustar `WorkingDirectory`/
+   `ExecStart` a la ruta real, `systemctl daemon-reload`.
+2. Agregar las dos líneas de sudoers de arriba a `/etc/sudoers.d/cod2-panel`,
+   `visudo -c` antes de instalar (igual que la regla existente).
+3. Confirmar que el rango de puertos configurado (28970-28972 por default) no está
+   ya en uso por otro proceso/sitio del VPS.
+4. Migrar (`php artisan migrate`) y confirmar `hosted-servers:poll`/
+   `hosted-servers:expire` están corriendo (ya agregados a `routes/console.php`, el
+   cron del sistema que llama a `schedule:run` cada minuto ya existe, no hace falta
+   tocarlo).
+
+### Gametype fijo en SD, con su limitación conocida
+
+Las instancias temporales arrancan en Search & Destroy, igual que Pug Latam — decisión
+explícita del dueño (2026-08-22) sabiendo que zPAM usa "ready up" (ambos equipos deben
+confirmar listos antes de que arranque la ronda): una sola persona probando su server
+no va a ver acción hasta que se sume alguien más. Se avisa explícitamente en la UI
+(`hosted-servers/create.blade.php` y `show.blade.php`), no se oculta.
+
+### Mitigación de abuso (v1, sin captcha de terceros)
+
+`throttle:3,60` por IP en la ruta de creación + tope global de concurrencia (ver
+arriba) + un campo honeypot (`website`, oculto con `sr-only`, regla `prohibited`) en
+el form. Si esto no alcanza en la práctica, evaluar Cloudflare Turnstile más adelante
+(el sitio ya está detrás de Cloudflare) — no se sumó de entrada para no meter una
+dependencia de API key de terceros en la v1.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y
@@ -820,6 +983,14 @@ se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
 
 ## Pendientes / conocido-roto
 
+- **Servidores temporales self-service (2026-08-22) — código completo, pero NADA
+  instalado todavía en el VPS real.** Falta: copiar `cod2-temp@.service` (repo
+  `ZPAM COD2`) a `/etc/systemd/system/` + `daemon-reload`, agregar las dos líneas
+  nuevas a `/etc/sudoers.d/cod2-panel`, correr la migración de `hosted_servers`, y
+  probar a mano un lanzamiento con `fs_basepath`/`fs_homepath` separados antes de
+  confiar en la automatización (nunca se probó contra el binario/mod real). Ver
+  sección "Servidores temporales self-service" más arriba para el detalle completo y
+  la lista exacta de pasos.
 - **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
   DB-IP en vez de MaxMind — ver sección "GeoIP y banderas de país" más arriba para
   el detalle completo y cómo volver a MaxMind si algún día se resuelve.

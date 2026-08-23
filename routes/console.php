@@ -15,3 +15,5 @@ Schedule::command('geoip:update')->monthly();
 Schedule::command('demos:prune-old')->daily();
 Schedule::command('cod2:prune-resource-samples')->daily();
 Schedule::command('backup:run')->dailyAt('03:00');
+Schedule::command('hosted-servers:poll')->everyMinute();
+Schedule::command('hosted-servers:expire')->everyMinute()->withoutOverlapping();

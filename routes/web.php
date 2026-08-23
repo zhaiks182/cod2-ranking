@@ -17,6 +17,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
 use App\Http\Controllers\DemoUploadController;
 use App\Http\Controllers\HelpController;
+use App\Http\Controllers\HostedServerController;
 use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\MatchController;
@@ -66,6 +67,16 @@ Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])-
 Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
 Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
 // La ruta para "Descargas" (menu Ayuda) se agrega cuando este definido el contenido.
+
+// Servidores temporales self-service (publico, sin login) -- ver CLAUDE.md, seccion
+// "Servidores temporales". management_token en la URL es la unica "credencial" del
+// creador (no hay cuentas), por eso show/stop llevan {token} ademas del id.
+Route::prefix('servidores')->name('hosted-servers.')->group(function () {
+    Route::get('/crear', [HostedServerController::class, 'create'])->name('create');
+    Route::post('/crear', [HostedServerController::class, 'store'])->middleware('throttle:3,60')->name('store');
+    Route::get('/{hostedServer}/{token}', [HostedServerController::class, 'show'])->name('show');
+    Route::post('/{hostedServer}/{token}/detener', [HostedServerController::class, 'stop'])->name('stop');
+});
 
 // Subida automatica de demos por HWID desde el cliente CoD2x (ver _record.gsc en el
 // mod zPAM). Sin auth: el cliente del juego no puede autenticarse, y exento de CSRF
