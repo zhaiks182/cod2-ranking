@@ -912,17 +912,27 @@ www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop cod2-temp@*.service
 Copias de referencia versionadas en el repo `ZPAM COD2` (mismo patrón que
 `cod2server.service`/`start_libcod.sh`): `cod2-temp@.service`,
 `start_libcod_temp.sh`. `CPUWeight=100` (muy por debajo del `9500` del server real, a
-propósito, para que jamás le compita por CPU), sin `Nice` negativo, `MemoryMax=250M`,
+propósito, para que jamás le compita por CPU), sin `Nice` negativo, `MemoryMax=150M`,
 `Restart=on-failure` (no `always` — una instancia temporal que crashea no debe
 resucitar sola contra su propio presupuesto de expiración).
+
+**`max_concurrent=1` y un solo puerto (28970), no 3 — confirmado en vivo 2026-08-22.**
+El VPS tiene mucho menos margen del que se asumió al diseñar esto: 913MB de RAM
+totales con solo ~286MB disponibles (`free -h`) — el server real de Pug Latam usa
+128.8M reales él solo, más MySQL (~83M), Apache (varios workers, ~280M en total) y el
+queue worker (~64M) ya se comen el resto, y el swap ya tenía uso (154M) antes de sumar
+nada nuevo. El disco también está al 93% (1.1GB libres de 14GB). Con eso, ni 2
+instancias concurrentes son seguras todavía — subir `max_concurrent`/el rango de
+puertos recién después de ampliar RAM/disco del VPS o confirmar más margen real en la
+práctica, nunca por confianza en la teoría.
 
 Pasos manuales para activar esto en el VPS (ninguno hecho todavía):
 1. Copiar `cod2-temp@.service` a `/etc/systemd/system/`, ajustar `WorkingDirectory`/
    `ExecStart` a la ruta real, `systemctl daemon-reload`.
 2. Agregar las dos líneas de sudoers de arriba a `/etc/sudoers.d/cod2-panel`,
    `visudo -c` antes de instalar (igual que la regla existente).
-3. Confirmar que el rango de puertos configurado (28970-28972 por default) no está
-   ya en uso por otro proceso/sitio del VPS.
+3. ~~Confirmar que el rango de puertos no está en uso~~ — confirmado 2026-08-22,
+   28970-28980 estaba libre (solo 28960, el server real, en uso).
 4. Migrar (`php artisan migrate`) y confirmar `hosted-servers:poll`/
    `hosted-servers:expire` están corriendo (ya agregados a `routes/console.php`, el
    cron del sistema que llama a `schedule:run` cada minuto ya existe, no hace falta
