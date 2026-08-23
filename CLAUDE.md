@@ -946,6 +946,35 @@ directo desde el navegador), no solo por SSH como `root` — root puede escribir
 cualquier lado y esconde este tipo de bug de permisos hasta que ya está en
 producción.
 
+**El directorio de la instancia se borra bien al detener un server temporal, pero el
+journal de systemd NO — encontrado en vivo 2026-08-23, durante una crisis de disco
+real (98% usado, 354MB libres).** `HostedServerProvisioner::teardown()` borra el
+directorio completo de la instancia (`server.cfg`, `instance.env`, `games_mp.log`),
+pero la salida de consola del proceso (`cod2-temp@{id}.service`) queda capturada por
+`systemd-journald` en `/var/log/journal/`, completamente separada del directorio de
+la instancia — sin ningún límite configurado, journald usaba el default de systemd
+(~10% del filesystem), y con 14 instancias creadas desde el lanzamiento ya se habían
+acumulado 91.2MB solo de esos logs. Fix aplicado en `/etc/systemd/journald.conf`
+(archivo de sistema, **no versionado en este repo** — si el VPS se reconstruye hay
+que volver a agregar esto a mano):
+
+```
+[Journal]
+SystemMaxUse=300M
+MaxRetentionSec=14day
+```
+
+(`cp` a `/etc/systemd/journald.conf.bak-20260823` antes de tocarlo, por las dudas.)
+Aplica a **todo** el journal del sistema, no solo a `cod2-temp@*` — journald no separa
+límites por unit sin usar namespaces de journal (`LogNamespace=`, no configurado, más
+complejidad de la que hacía falta acá). 300M es generoso dado el ritmo real (~6.5MB
+por sesión de server temporal) pero sigue estando muy por debajo de lo que el disco de
+14GB puede tolerar. Requiere `sudo systemctl restart systemd-journald` para aplicarse
+(probado en vivo: Apache/MySQL/el gameserver real siguieron arriba sin interrupción
+durante el reinicio — journald no los toca). Si en el futuro se agregan más servicios
+ruidosos en journal, reconsiderar `SystemMaxUse` hacia arriba junto con la RAM/disco
+del VPS en general, no solo por este módulo.
+
 **`max_concurrent=2`, puertos 28970-28971 — subido de 1 a 2 a pedido del dueño
 (2026-08-22), sabiendo que es ajustado.** El VPS tiene mucho menos margen del que se
 asumió al diseñar esto: 913MB de RAM totales, y una prueba real en vivo con UNA sola
@@ -953,12 +982,15 @@ instancia corriendo (119M de uso real de 150M de tope) dejó solo 176MB "disponi
 (de 286MB que había libres antes de esa prueba) — el server real de Pug Latam usa
 128.8M él solo, más MySQL (~83M), Apache (~280M en varios workers) y el queue worker
 (~64M) ya se comen el resto, y el swap ya tenía uso antes de sumar nada nuevo. El
-disco también está al 93% (1.1GB libres de 14GB). Con 2 concurrentes el margen libre
-puede bajar a ~60MB en el peor caso — el `OOMScoreAdjust=500` de arriba es lo que hace
-que esto sea tolerable (una instancia temporal se sacrifica antes que el server real o
-el panel), pero si en la práctica da problemas, bajar `max_concurrent` de nuevo a 1
-antes que subirlo más. Subir esto más allá de 2 solo después de ampliar RAM/disco del
-VPS, nunca por confianza en la teoría.
+disco también está al 93% (1.1GB libres de 14GB) — y ese margen resultó ser incluso
+más frágil de lo pensado: al día siguiente (2026-08-23) llegó a 98%/354MB libres
+(retención de demos + journal de systemd sin límite, ver más abajo y la sección de
+Demos), una crisis real de espacio. Con 2 concurrentes el margen de RAM libre puede
+bajar a ~60MB en el peor caso — el `OOMScoreAdjust=500` de arriba es lo que hace que
+esto sea tolerable (una instancia temporal se sacrifica antes que el server real o el
+panel), pero si en la práctica da problemas, bajar `max_concurrent` de nuevo a 1 antes
+que subirlo más. Subir esto más allá de 2 solo después de ampliar RAM/disco del VPS,
+nunca por confianza en la teoría.
 
 **Probado en vivo de punta a punta 2026-08-22** (crear vía `tinker`, confirmar
 proceso/RCON/`fs_basepath`+`fs_homepath` separados, `stop()`, limpieza completa,
@@ -1172,6 +1204,63 @@ no son clickeables — no tiene sentido "cara a cara" contra un bot indistinguib
 Verificado contra datos reales de producción antes de desplegar (2026-08-22/23):
 DESTINATION#ZHAIKS mató a hardoso 19 veces, hardoso mató a ZHAIKS 7 — coincide con
 lo reportado por el dueño.
+
+## Crisis de disco y bug de vinculación de demos (2026-08-23)
+
+El disco llegó a **98% de uso (354MB libres de 14GB)**, un día después de haber
+arrancado ya ajustado (93%, ver nota en "Servidores temporales self-service" más
+arriba). Investigación completa antes de tocar nada:
+
+- **No había archivos huérfanos.** Se comparó cada archivo en
+  `storage/app/private/demos/` contra `demos.file_path` en la base — coincidencia
+  exacta 1:1, sin sobrantes de ningún lado. Los ~2.5GB de demos eran actividad real
+  dentro de la ventana de retención, no basura.
+- Los `.iwd` de `/home/gameserver/1.3/puG/main/` (3.7GB) son los assets base del
+  juego — fijos, no tocar.
+- **Bug real encontrado en `DemoMatchResolver`** (la clase que decide a qué partida
+  pertenece un demo subido, ver "Subida automática de demos por HWID" más arriba): la
+  rama que busca por abreviatura de mapa en el nombre del archivo no tenía **ningún**
+  tope de antigüedad (a diferencia del fallback por tiempo, que sí rechaza cualquier
+  partida de más de 3 horas). Si ese mapa puntual no se volvía a jugar en días, un
+  demo terminaba pegado a una partida vieja sin relación real. Confirmado con
+  casos reales: demos de Burgundy/Railyard/Matmata subidos 1-3 días después del 19-20
+  de agosto quedaron vinculados a partidas de esos días en vez de a la partida real
+  (o a ninguna, si no había una partida real cercana).
+
+  Fix en dos vueltas (la primera quedó mal, ver comentario en el código):
+  1. Se agregó un tope de 6 horas hacia atrás a la rama de búsqueda por mapa (más
+     generoso que las 3h del fallback, porque esta rama existe justamente para
+     sesiones de grabación largas que el fallback no cubre) más el mismo margen de
+     90s hacia adelante que ya tenía el fallback.
+  2. **Intento fallido**: al rechazar una partida vieja, el código caía al fallback
+     genérico (sin filtro de mapa) — un demo de Railyard sin partida cercana de
+     Railyard terminó pegado a una partida de **Burgundy** solo por cercanía de
+     horario. Se corrigió para que, si hay una pista de mapa confiable, nunca se
+     caiga a un mapa distinto — mejor dejar el demo sin partida (`match_id` null,
+     "huérfano" hasta que se revise a mano) que adivinar mal.
+
+  Se re-resolvieron los 129 demos existentes en producción con la lógica corregida
+  (`DemoMatchResolver::resolve()` contra cada fila) — 7 quedaron corregidos (2 de
+  Burgundy reasignados a su partida real, 5 de Railyard/Matmata desvinculados por no
+  tener partida real cercana). Esto fue un backfill manual único vía tinker, **no**
+  corre automático — `demos:reconcile-matches` solo revisa demos de los últimos 10
+  minutos (ver esa sección), así que un bug de este tipo en datos viejos no se
+  autocorrige con el fix de código solo, hay que re-correrlo a mano si se sospecha
+  algo similar de nuevo.
+
+- **`demo_retention_days` bajado de 3 a 2** (`settings` tabla, vía
+  `Admin\SettingController` o directo — se hizo por tinker en este incidente), a
+  pedido del dueño, para que el uso de disco de demos se estabilice más bajo de forma
+  sostenida. Se corrió `demos:prune-old` manualmente una vez con la nueva retención
+  (borró 51 demos de golpe) en vez de esperar al cron diario.
+- **Limpieza de journal de systemd** (~104MB liberados) y `apt-get clean` — ver la
+  nota de journald en "Systemd + sudoers + permisos" más arriba para el límite
+  permanente que se agregó (`SystemMaxUse=300M`) para que esto no se vuelva a
+  acumular sin límite.
+
+Resultado: **354MB → 1.3GB libres (98% → 91%)**. Sigue siendo un margen ajustado —
+si se sigue achicando, no asumir que es de nuevo lo mismo, repetir el diagnóstico
+completo (`df -h`, `du -sh` por directorio) antes de actuar.
 
 ## Pendientes / conocido-roto
 
