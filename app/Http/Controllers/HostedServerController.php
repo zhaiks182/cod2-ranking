@@ -8,6 +8,7 @@ use App\Support\HostedServerProvisioner;
 use App\Support\MapCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -107,6 +108,16 @@ class HostedServerController extends Controller
             return back()->withInput()->with('error', 'No se pudo iniciar el servidor. Probá de nuevo en un momento.');
         }
 
+        // Para que el visitante pueda volver a encontrar su server desde cualquier
+        // pagina (icono al lado del logo, ver AppServiceProvider::boot()) aunque
+        // pierda la URL -- no reemplaza al token como credencial real, solo evita
+        // que dependa de guardarse el link a mano. Dura lo mismo que el server.
+        Cookie::queue(
+            HostedServer::COOKIE_NAME,
+            "{$server->id}|{$server->management_token}",
+            now()->diffInMinutes($server->expires_at)
+        );
+
         return redirect()->route('hosted-servers.show', [$server, $server->management_token]);
     }
 
@@ -124,6 +135,8 @@ class HostedServerController extends Controller
         if ($hostedServer->isActive()) {
             $provisioner->stop($hostedServer, 'stopped');
         }
+
+        Cookie::queue(Cookie::forget(HostedServer::COOKIE_NAME));
 
         return redirect()->route('hosted-servers.show', [$hostedServer, $token])->with('status', 'Servidor detenido.');
     }
