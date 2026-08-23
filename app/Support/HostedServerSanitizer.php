@@ -15,10 +15,13 @@ class HostedServerSanitizer
 {
     public static function cfgValue(string $value, int $maxLength): string
     {
-        // Letras/numeros/espacios, puntuacion basica, y codigos de color de CoD2
-        // (^0-^9). Cualquier otra cosa (comillas, backticks, ;, $, saltos de linea) se
-        // descarta en vez de intentar escaparla.
-        $clean = preg_replace('/[^A-Za-z0-9 .,!?\'\-\^]/', '', $value) ?? '';
+        // Letras/numeros/espacios, puntuacion basica, codigos de color de CoD2 (^0-^9),
+        // y "@" (necesario para el sufijo fijo " @ Pug Latam" que HostedServerController
+        // le pega a todo hostname -- confirmado en vivo 2026-08-22 que sin "@" en esta
+        // lista el sufijo llegaba al juego como "Nombre  Pug Latam", sin el arroba,
+        // porque este mismo sanitizer se lo comia). Cualquier otra cosa (comillas,
+        // backticks, ;, $, saltos de linea) se descarta en vez de intentar escaparla.
+        $clean = preg_replace('/[^A-Za-z0-9 .,!?\'\-\^@]/', '', $value) ?? '';
 
         // Un "^" suelto (no seguido de digito) no es un codigo de color valido -- se
         // saca para no dejar basura visual ni casos raros en el parser de colores.
