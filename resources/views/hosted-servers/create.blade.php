@@ -118,7 +118,7 @@
         <div>
             <span class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Mapa</span>
             <input type="hidden" name="map" id="map-select-value" value="{{ old('map') }}">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 max-h-80 overflow-y-auto p-0.5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 p-0.5">
                 @foreach ($maps as $code => $label)
                     @php $mapImageUrl = \App\Support\MapImage::url($code); @endphp
                     <button type="button" data-map-option data-code="{{ $code }}"
