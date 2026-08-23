@@ -3,36 +3,50 @@
 @section('title', 'Crear servidor')
 
 @section('content')
-<div class="max-w-xl mx-auto space-y-6">
-    {{-- Banner -- usa el logo ya existente del repo (public/logo_cod2.webp), no una
-    imagen de un sitio de terceros, para no reproducir el arte compuesto de otro
-    hosting como si fuera nuestro. --}}
-    <div class="relative overflow-hidden rounded-xl border border-slate-800 h-36 sm:h-44 flex items-center justify-center"
-        style="background: radial-gradient(120% 140% at 50% 20%, #1e293b 0%, #0b1220 60%, #05070d 100%);">
-        <div class="absolute inset-0 opacity-40" style="background-image: linear-gradient(180deg, transparent 40%, #05070d 100%);"></div>
-        <img src="{{ asset('logo_cod2.webp') }}" alt="Call of Duty 2" class="relative w-40 sm:w-52 drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
-    </div>
+<div class="max-w-2xl mx-auto space-y-6">
+    {{-- Mismo hero que la home (fondo con mapas rotando, titulo grande) en vez de un
+    banner propio -- consistencia visual entre paginas, y evita reproducir el arte
+    de otro sitio de hosting (ver referencia fshost.me mencionada por el dueño). La
+    ubicacion real (Miami, FL, confirmado por geoip) y la disponibilidad en vivo
+    quedan en el badge de abajo, no en una tarjeta aparte. --}}
+    @if (count($heroMapImages) > 0)
+        <section class="relative rounded-2xl overflow-hidden border border-slate-800">
+            <div id="hero-bg-carousel" class="absolute inset-0">
+                @foreach ($heroMapImages as $i => $img)
+                    <div class="hero-bg absolute inset-0 bg-cover bg-center transition-opacity duration-[2000ms] {{ $i === 0 ? 'opacity-100' : 'opacity-0' }}" style="background-image:url('{{ $img }}')"></div>
+                @endforeach
+                <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
+            </div>
+            <div class="relative px-4 sm:px-6 py-10 sm:py-14 text-center">
+                <h1 class="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight">Creá tu <span class="text-gsaccent">servidor</span></h1>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Listo en segundos · Se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
 
-    <div>
-        <h1 class="font-display text-2xl md:text-3xl font-bold text-white">Crear tu servidor</h1>
-        <p class="text-sm text-slate-400 mt-1">Un servidor de CoD2 propio, listo en segundos. Se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas o si queda vacío {{ config('hosted_servers.idle_minutes') }} minutos.</p>
-    </div>
-
-    {{-- Ubicacion real del VPS (Miami, FL, confirmado por geoip) -- informativo, no
-    interactivo (a diferencia de paneles de otros hostings con selector de
-    datacenter): este sitio corre en un solo VPS, no hay nada para elegir aca. --}}
-    <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3 flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2.5 min-w-0">
-            {!! \App\Services\GeoIp::flagIconHtml('us', 24, 18) !!}
-            <span class="text-sm truncate">
-                <span class="font-semibold text-white">Miami, FL</span>
-                <span class="text-slate-500">, Estados Unidos</span>
-            </span>
+                <div class="mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">
+                    {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!}
+                    <span>Miami, FL</span>
+                    <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
+                    <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available }} disponible{{ $available === 1 ? '' : 's' }}</span>
+                </div>
+            </div>
+        </section>
+        <script>
+            (function () {
+                var slides = document.querySelectorAll('#hero-bg-carousel .hero-bg');
+                if (slides.length < 2) return;
+                var i = 0;
+                setInterval(function () {
+                    slides[i].classList.replace('opacity-100', 'opacity-0');
+                    i = (i + 1) % slides.length;
+                    slides[i].classList.replace('opacity-0', 'opacity-100');
+                }, 6000);
+            })();
+        </script>
+    @else
+        <div>
+            <h1 class="font-display text-2xl md:text-3xl font-bold text-white">Creá tu <span class="text-gsaccent">servidor</span></h1>
+            <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available }} disponible{{ $available === 1 ? '' : 's' }} · se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
         </div>
-        <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg border font-medium {{ $available > 0 ? 'border-emerald-900 bg-emerald-950/30 text-emerald-400' : 'border-amber-900 bg-amber-950/30 text-amber-400' }}">
-            {{ $available }} disponible{{ $available === 1 ? '' : 's' }}
-        </span>
-    </div>
+    @endif
 
     <div class="rounded-xl border border-amber-900 bg-amber-950/30 px-4 py-3 text-xs text-amber-300">
         Arranca en modo Search &amp; Destroy, igual que Pug Latam — necesita que <strong>2 jugadores confirmen "listo"</strong> antes de que empiece la primera ronda. Si estás probándolo solo, no va a pasar nada hasta que se sume alguien más.
@@ -52,7 +66,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('hosted-servers.store') }}" class="rounded-xl border border-slate-800 bg-panel p-5 space-y-4">
+    <form method="POST" action="{{ route('hosted-servers.store') }}" class="rounded-xl border border-slate-800 bg-panel p-5 sm:p-6 space-y-5">
         @csrf
 
         {{-- Honeypot: invisible para una persona real (sr-only no afecta el layout, a
@@ -74,19 +88,27 @@
             <p class="text-[11px] text-slate-500 mt-1">Todo servidor temporal se identifica como parte de Pug Latam — esa parte no se puede cambiar.</p>
         </div>
 
-        <div>
-            <label for="slots" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Jugadores</label>
-            <select name="slots" id="slots" required class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
-                @for ($i = $slotsMin; $i <= $slotsMax; $i++)
-                    <option value="{{ $i }}" @selected(old('slots', 12) == $i)>{{ $i }}</option>
-                @endfor
-            </select>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="slots" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Jugadores</label>
+                <select name="slots" id="slots" required class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
+                    @for ($i = $slotsMin; $i <= $slotsMax; $i++)
+                        <option value="{{ $i }}" @selected(old('slots', 12) == $i)>{{ $i }}</option>
+                    @endfor
+                </select>
+            </div>
+            <div>
+                <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Contraseña (opcional)</label>
+                <input type="text" name="join_password" id="join_password" value="{{ old('join_password') }}" maxlength="32"
+                    placeholder="Público si está vacío"
+                    class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
+            </div>
         </div>
 
         <div>
             <span class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Mapa</span>
             <input type="hidden" name="map" id="map-select-value" value="{{ old('map') }}">
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto p-0.5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-80 overflow-y-auto p-0.5">
                 @foreach ($maps as $code => $label)
                     @php $mapImageUrl = \App\Support\MapImage::url($code); @endphp
                     <button type="button" data-map-option data-code="{{ $code }}"

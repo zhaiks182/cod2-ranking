@@ -16,13 +16,12 @@ class StoreHostedServerRequest extends FormRequest
 
     public function rules(): array
     {
-        // Mismo listado que usa el selector de mapas del admin (console.blade.php) --
-        // los codigos base de MapCatalog::all() mas las variantes _fix/_sun/etc
-        // realmente instaladas (MapCatalog::variantCodes()). No se acepta un string
-        // libre para el mapa: solo estos, es el unico campo que si se dejara libre
-        // podria hacer que el `+map` falle o (peor, si algun dia se deja de validar)
-        // se use para inyectar algo en el cfg.
-        $validMaps = array_merge(array_keys(MapCatalog::all()), MapCatalog::variantCodes());
+        // Exactamente los mismos codigos que ofrece el picker (MapCatalog::pickerOptions(),
+        // un codigo por mapa real, ver ese metodo) -- no se acepta un string libre para
+        // el mapa: es el unico campo que si se dejara libre podria hacer que el `+map`
+        // falle o (peor, si algun dia se deja de validar) se use para inyectar algo en
+        // el cfg.
+        $validMaps = array_keys(MapCatalog::pickerOptions());
 
         return [
             // max:20 (NAME_MAX_LENGTH), no 32 -- deja lugar para el " @ Pug Latam" que

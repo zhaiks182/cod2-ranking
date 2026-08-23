@@ -15,10 +15,23 @@ class HostedServerController extends Controller
 {
     public function create()
     {
-        $maps = $this->mapOptions();
+        $maps = MapCatalog::pickerOptions();
 
         $active = HostedServer::whereIn('status', ['starting', 'running'])->count();
         $available = max(0, (int) config('hosted_servers.max_concurrent') - $active);
+
+        // Mismo fondo rotativo de mapas que ya usa el hero de la home
+        // (DashboardController::index()) -- reusa las imagenes que ya se suben desde
+        // adm_cod2/maps, no un asset nuevo, y mantiene el mismo lenguaje visual entre
+        // las dos paginas en vez de un banner distinto por pantalla.
+        $heroMapImages = collect(MapCatalog::all())
+            ->keys()
+            ->map(fn ($code) => \App\Support\MapImage::url($code))
+            ->filter()
+            ->shuffle()
+            ->take(8)
+            ->values()
+            ->all();
 
         return view('hosted-servers.create', [
             'maps' => $maps,
@@ -26,6 +39,7 @@ class HostedServerController extends Controller
             'slotsMax' => (int) config('hosted_servers.slots_max'),
             'available' => $available,
             'turnstileSiteKey' => config('services.turnstile.site_key'),
+            'heroMapImages' => $heroMapImages,
         ]);
     }
 
@@ -148,20 +162,5 @@ class HostedServerController extends Controller
         if (! hash_equals($hostedServer->management_token, $token)) {
             abort(404);
         }
-    }
-
-    /** @return array<string,string> codigo => etiqueta, mismos mapas que ya estan confirmados instalados (ver admin/console.blade.php) */
-    private function mapOptions(): array
-    {
-        $options = MapCatalog::all();
-
-        foreach (MapCatalog::variantCodes() as $code) {
-            $suffix = MapCatalog::variantSuffix($code);
-            $options[$code] = MapCatalog::mapLabel($code).($suffix ? " {$suffix}" : '');
-        }
-
-        asort($options);
-
-        return $options;
     }
 }

@@ -97,6 +97,60 @@ class MapCatalog
         return array_keys(self::VARIANT_SUFFIXES);
     }
 
+    // Orden pedido por el dueño (2026-08-22) para el selector publico de "Crear
+    // servidor" -- estos van primero, en este orden exacto; el resto se ordena
+    // alfabeticamente por etiqueta despues. Solo tiene sentido incluir aca codigos
+    // que realmente va a devolver pickerOptions() (ver ese metodo).
+    private const PICKER_PRIORITY = ['mp_toujane_fix', 'mp_dawnville_fix', 'mp_burgundy_fix', 'mp_railyard'];
+
+    /**
+     * Un codigo por mapa real para selectores publicos (a diferencia del picker del
+     * admin en console.blade.php, que a proposito muestra el codigo base Y todas las
+     * variantes para uso avanzado) -- si el mapa tiene una variante `_fix` o `_bal`
+     * instalada (el parche de la comunidad que de verdad se juega hoy), se usa esa;
+     * si no, el codigo base. Pedido explicito del dueño (2026-08-22).
+     *
+     * Recorre solo MAPS (los mapas stock reales) para elegir la variante, así que
+     * `mp_chelm_fix`, `mp_crossroads`, `mp_vallente_fix` y `wawa_3daim` quedan afuera
+     * automaticamente sin necesidad de una lista de exclusion aparte -- ninguno de
+     * los cuatro tiene una entrada base en MAPS (no son mapas stock / son de
+     * aim-trainer, ver el comentario de VARIANT_SUFFIXES mas arriba), asi que nunca
+     * se llega a ellos desde este recorrido.
+     *
+     * @return array<string,string> codigo => etiqueta (con sufijo FIX/BAL si aplica)
+     */
+    public static function pickerOptions(): array
+    {
+        $preferred = [];
+
+        foreach (array_keys(self::MAPS) as $base) {
+            $fixCode = $base.'_fix';
+            $balCode = $base.'_bal';
+
+            if (array_key_exists($fixCode, self::VARIANT_SUFFIXES)) {
+                $preferred[$fixCode] = self::mapLabel($fixCode).' '.self::VARIANT_SUFFIXES[$fixCode];
+            } elseif (array_key_exists($balCode, self::VARIANT_SUFFIXES)) {
+                $preferred[$balCode] = self::mapLabel($balCode).' '.self::VARIANT_SUFFIXES[$balCode];
+            } else {
+                $preferred[$base] = self::MAPS[$base];
+            }
+        }
+
+        $priority = array_values(array_filter(
+            self::PICKER_PRIORITY,
+            fn ($code) => array_key_exists($code, $preferred)
+        ));
+
+        $rest = collect(array_diff(array_keys($preferred), $priority))
+            ->sortBy(fn ($code) => $preferred[$code])
+            ->values()
+            ->all();
+
+        return collect(array_merge($priority, $rest))
+            ->mapWithKeys(fn ($code) => [$code => $preferred[$code]])
+            ->all();
+    }
+
     /**
      * Suma stats de variantes del mismo mapa real (mp_dawnville_fix + mp_dawnville_sun
      * -> "St. Mere Eglise, France" una sola vez, en vez de dos filas identicas en
