@@ -16,6 +16,14 @@ class HostedServer extends Model
     // ya usa HostedServerSanitizer::cfgValue() al escribir sv_hostname en el cfg.
     public const NAME_MAX_LENGTH = 32 - 12; // strlen(NAME_SUFFIX) = 12
 
+    // Cookie que le permite a quien creo un server volver a encontrarlo desde
+    // cualquier pagina del sitio (icono al lado del logo, ver AppServiceProvider) sin
+    // tener que guardarse la URL a mano -- no reemplaza el management_token como
+    // credencial real (el token en la cookie se sigue comparando con hash_equals
+    // igual que si viniera de la URL, ver HostedServerController::authorizeToken()),
+    // es solo para no perder el link.
+    public const COOKIE_NAME = 'hosted_server';
+
     protected $fillable = [
         'hostname', 'slots', 'map', 'join_password', 'rcon_password', 'cracked',
         'port', 'management_token', 'status', 'player_count', 'last_seen_players_at',
