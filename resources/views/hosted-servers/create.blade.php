@@ -17,7 +17,7 @@
                 @endforeach
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
-            <div class="relative px-4 sm:px-6 py-10 sm:py-16 md:py-24 text-center">
+            <div class="relative px-4 sm:px-6 py-12 sm:py-20 md:py-32 text-center">
                 <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">Crea tu <span class="text-gsaccent">servidor</span></h1>
                 <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Listo en segundos · Se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
 
@@ -118,7 +118,7 @@
         <div>
             <span class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Mapa</span>
             <input type="hidden" name="map" id="map-select-value" value="{{ old('map') }}">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 p-0.5">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-0.5">
                 @foreach ($maps as $code => $label)
                     @php $mapImageUrl = \App\Support\MapImage::url($code); @endphp
                     <button type="button" data-map-option data-code="{{ $code }}"
@@ -127,10 +127,10 @@
                             @if ($mapImageUrl)
                                 <img src="{{ $mapImageUrl }}" alt="" class="w-full h-full object-cover">
                             @else
-                                <svg class="w-6 h-6 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                <svg class="w-9 h-9 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                             @endif
                         </span>
-                        <span class="px-2 pb-2 text-xs font-medium text-slate-200 truncate w-full">{{ $label }}</span>
+                        <span class="px-2 pb-2 text-sm font-medium text-slate-200 truncate w-full">{{ $label }}</span>
                     </button>
                 @endforeach
             </div>

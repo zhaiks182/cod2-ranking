@@ -1052,6 +1052,20 @@ flujo en vivo — vale la pena tenerlos en cuenta si se vuelve a tocar esta part
   `create.blade.php` (junto a "N disponibles") — nuevo campo `active` que
   `HostedServerController::create()` ya calculaba mentalmente pero no pasaba a la
   vista.
+- **Ancho y tamaño del hero igualados a la home, en más de una vuelta.** Primero se
+  sacó el `max-w-4xl` propio de `create.blade.php`/`show.blade.php` para heredar el
+  `max-w-6xl` del layout. Después se notó que el hero se veía más bajo que el de la
+  home aun con el mismo padding (`py-10 sm:py-16 md:py-24`) — la causa real es que el
+  hero de la home tiene una fila extra de dos botones CTA ("Estado del servidor" /
+  Discord, ver `dashboard.blade.php`) que `create.blade.php` no necesita (el form ya
+  es el CTA), así que con contenido más corto quedaba más bajo pese a compartir el
+  mismo padding. Se subió el padding de `create.blade.php` a `py-12 sm:py-20
+  md:py-32` para compensar la altura del bloque de botones que falta, en vez de
+  agregar botones falsos solo para igualar el alto.
+- **Grilla de mapas con miniaturas más grandes**: bajada de `lg:grid-cols-6` a
+  `lg:grid-cols-5` (menos columnas, cada tarjeta más ancha), `gap-2.5` → `gap-3`, el
+  ícono de fallback (mapas sin imagen subida) de `w-6 h-6` a `w-9 h-9`, y el label de
+  `text-xs` a `text-sm`.
 
 ### Mitigación de abuso
 
