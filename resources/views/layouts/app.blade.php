@@ -319,7 +319,7 @@
                         </div>
                         ${clickable ? `
                         <div data-reverse-row class="hidden flex items-center justify-between gap-3 pb-1.5 -mt-0.5">
-                            <span class="text-slate-500 text-[11px]">Te mató a vos</span>
+                            <span class="text-slate-500 text-[11px]">Te mató</span>
                             <span class="text-red-400 shrink-0 text-[11px] font-medium">${k.reverse}</span>
                         </div>` : ''}
                     </li>`;
