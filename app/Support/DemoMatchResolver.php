@@ -56,6 +56,19 @@ class DemoMatchResolver
      * ULTIMA partida que estaban jugando al momento de subir, no la partida real donde
      * arranco la grabacion. Con la pista del mapa se busca directo en ese mapa en vez
      * de confiar en la proximidad de tiempo.
+     *
+     * Bug real encontrado 2026-08-23: esta busqueda por mapa no tenia NINGUN tope de
+     * antiguedad (a diferencia del fallback por tiempo de abajo, que rechaza cualquier
+     * partida de mas de 3 horas) -- si ese mapa puntual no se volvia a jugar en dias,
+     * un demo terminaba pegado a una partida vieja sin relacion real solo porque
+     * coincidia el mapa. Pasó con Railyard/Burgundy el 19/08: demos subidos 2-3 dias
+     * despues quedaron vinculados a la partida del 19 en vez de a la real (o a
+     * ninguna, si no habia una partida real cercana en el tiempo). Fix: mismo margen
+     * hacia adelante que el fallback (90s, para el mismo caso de "el parser todavia no
+     * creo la fila") y un tope hacia atras mas generoso que las 3 horas del fallback
+     * (esta rama existe justamente para sesiones largas que el fallback no cubre) pero
+     * de todos modos acotado -- 6 horas cubre una sesion nocturna entera sin permitir
+     * que se cuelgue de una partida de dias atras.
      */
     public static function resolve(Carbon $at, ?string $demoName = null): ?GameMatch
     {
@@ -70,11 +83,11 @@ class DemoMatchResolver
                         $q->orWhere('map', 'like', $code.'%');
                     }
                 })
-                ->where('started_at', '<=', $at)
+                ->where('started_at', '<=', $at->clone()->addSeconds(90))
                 ->orderByDesc('started_at')
                 ->first();
 
-            if ($match) {
+            if ($match && $match->started_at->gte($at->clone()->subHours(6))) {
                 return $match;
             }
         }
