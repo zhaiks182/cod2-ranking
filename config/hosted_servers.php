@@ -1,14 +1,16 @@
 <?php
 
 return [
-    // Arranca en 1 (no 3) -- confirmado en vivo 2026-08-22 que el VPS de produccion
-    // tiene MUY poco margen real: 913MB de RAM totales con solo ~286MB disponibles
-    // (Apache+MySQL+queue worker+el server real de Pug Latam ya se comen el resto,
-    // swap ya en uso) y el disco al 93% (1.1GB libres). Con eso, ni siquiera 2
-    // instancias concurrentes son seguras todavia -- subir esto recien despues de
-    // ampliar RAM/disco del VPS o confirmar mas margen real, no por confianza en la
-    // teoria. Ver CLAUDE.md, seccion "Servidores temporales self-service".
-    'max_concurrent' => env('HOSTED_SERVERS_MAX_CONCURRENT', 1),
+    // 2, a pedido del dueño (2026-08-22), sabiendo que es ajustado: una prueba real en
+    // vivo mostro que UNA instancia sola (150M de tope, 119M de uso real) dejo el VPS
+    // con solo 176MB de RAM "disponible" (de 286MB que habia libres antes de esa
+    // prueba). Con 2 concurrentes el margen libre puede bajar a ~60MB en el peor caso
+    // -- ajustado mas no imposible, y OOMScoreAdjust=500 en cod2-temp@.service hace
+    // que una instancia temporal sea la PRIMERA candidata del OOM killer si el sistema
+    // se queda sin memoria, protegiendo al server real y al panel. Si en la practica
+    // esto genera problemas, bajar de nuevo a 1. Ver CLAUDE.md, seccion "Servidores
+    // temporales self-service".
+    'max_concurrent' => env('HOSTED_SERVERS_MAX_CONCURRENT', 2),
 
     'expiry_hours' => env('HOSTED_SERVERS_EXPIRY_HOURS', 3),
 
@@ -17,7 +19,7 @@ return [
     // Debe tener exactamente max_concurrent puertos (o mas) -- ver CLAUDE.md, no
     // vale la pena tener dos numeros por sincronizar a mano cuando se sube el tope.
     'port_range_start' => env('HOSTED_SERVERS_PORT_START', 28970),
-    'port_range_end' => env('HOSTED_SERVERS_PORT_END', 28970),
+    'port_range_end' => env('HOSTED_SERVERS_PORT_END', 28971),
 
     'slots_min' => env('HOSTED_SERVERS_SLOTS_MIN', 2),
     'slots_max' => env('HOSTED_SERVERS_SLOTS_MAX', 12),

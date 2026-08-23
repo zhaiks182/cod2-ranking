@@ -897,12 +897,13 @@ binario/mod real** — antes de confiar en la automatización conviene lanzar
 `cod2_lnxded` una vez manualmente en el VPS con `fs_basepath`/`fs_homepath` separados
 para confirmar que el server.cfg se lee desde `fs_homepath` como se espera.
 
-### Systemd + sudoers — SOLO en el VPS, no versionado en este repo
+### Systemd + sudoers + permisos — SOLO en el VPS, no versionado en este repo
 
-Mismo precedente que `/etc/sudoers.d/cod2-panel` (ver "Auditoría de admin y reinicio
-de servicio" más abajo): un unit systemd **template** `cod2-temp@.service` (`%i` =
-`hosted_servers.id`) y dos líneas nuevas de sudoers, **ninguno de los dos está
-instalado todavía en el VPS real** — quedan como pasos manuales pendientes:
+**Activado en producción el 2026-08-22.** Mismo precedente que
+`/etc/sudoers.d/cod2-panel` (ver "Auditoría de admin y reinicio de servicio" más
+abajo): un unit systemd **template** `cod2-temp@.service` (`%i` =
+`hosted_servers.id`) instalado en `/etc/systemd/system/`, y dos líneas nuevas de
+sudoers:
 
 ```
 www-data ALL=(root) NOPASSWD: /usr/bin/systemctl start cod2-temp@*.service
@@ -911,32 +912,49 @@ www-data ALL=(root) NOPASSWD: /usr/bin/systemctl stop cod2-temp@*.service
 
 Copias de referencia versionadas en el repo `ZPAM COD2` (mismo patrón que
 `cod2server.service`/`start_libcod.sh`): `cod2-temp@.service`,
-`start_libcod_temp.sh`. `CPUWeight=100` (muy por debajo del `9500` del server real, a
-propósito, para que jamás le compita por CPU), sin `Nice` negativo, `MemoryMax=150M`,
-`Restart=on-failure` (no `always` — una instancia temporal que crashea no debe
-resucitar sola contra su propio presupuesto de expiración).
+`start_libcod_temp.sh` (este último vive además, copiado a mano, en
+`/home/gameserver/1.3/puG/start_libcod_temp.sh` en el VPS — mismo lugar que
+`start_libcod.sh` real, no en un checkout de git separado). `CPUWeight=100` (muy por
+debajo del `9500` del server real, a propósito, para que jamás le compita por CPU),
+sin `Nice` negativo, `MemoryMax=150M`, `Restart=on-failure` (no `always`), y
+`OOMScoreAdjust=500` — todo lo contrario al server real (`-900`, protegido): una
+instancia temporal debe ser la PRIMERA candidata del OOM killer si el sistema se
+queda sin RAM, nunca el server real ni el panel.
 
-**`max_concurrent=1` y un solo puerto (28970), no 3 — confirmado en vivo 2026-08-22.**
-El VPS tiene mucho menos margen del que se asumió al diseñar esto: 913MB de RAM
-totales con solo ~286MB disponibles (`free -h`) — el server real de Pug Latam usa
-128.8M reales él solo, más MySQL (~83M), Apache (varios workers, ~280M en total) y el
-queue worker (~64M) ya se comen el resto, y el swap ya tenía uso (154M) antes de sumar
-nada nuevo. El disco también está al 93% (1.1GB libres de 14GB). Con eso, ni 2
-instancias concurrentes son seguras todavía — subir `max_concurrent`/el rango de
-puertos recién después de ampliar RAM/disco del VPS o confirmar más margen real en la
-práctica, nunca por confianza en la teoría.
+**Permiso de escritura de `www-data` sobre `/home/gameserver/1.3/temp/` — encontrado
+en vivo, no estaba en el plan original.** Primera prueba manual (vía `tinker` por SSH
+como `root`) funcionó de punta a punta, pero el primer intento real desde la web
+(corriendo como `www-data`, el usuario real de Apache/PHP) falló con `mkdir():
+Permission denied` en `HostedServerConfigWriter.php:34` — todo `/home/gameserver/1.3/`
+es de `root` con `755`, así que `www-data` podía leer/atravesar pero no crear nada
+ahí. Fix (ya aplicado): `chown www-data:www-data /home/gameserver/1.3/temp` — SOLO ese
+directorio, no `puG/` (la base de assets/mod/binario compartida sigue siendo de
+`root`, de solo lectura para `www-data`, a propósito: si el panel se viera
+comprometido algún día, no debería poder tocar el binario/mod que usa el server
+real). **Lección para el próximo módulo que escriba archivos fuera de
+`storage/`**: probar el flujo real como `www-data` (`sudo -u www-data ...` o
+directo desde el navegador), no solo por SSH como `root` — root puede escribir en
+cualquier lado y esconde este tipo de bug de permisos hasta que ya está en
+producción.
 
-Pasos manuales para activar esto en el VPS (ninguno hecho todavía):
-1. Copiar `cod2-temp@.service` a `/etc/systemd/system/`, ajustar `WorkingDirectory`/
-   `ExecStart` a la ruta real, `systemctl daemon-reload`.
-2. Agregar las dos líneas de sudoers de arriba a `/etc/sudoers.d/cod2-panel`,
-   `visudo -c` antes de instalar (igual que la regla existente).
-3. ~~Confirmar que el rango de puertos no está en uso~~ — confirmado 2026-08-22,
-   28970-28980 estaba libre (solo 28960, el server real, en uso).
-4. Migrar (`php artisan migrate`) y confirmar `hosted-servers:poll`/
-   `hosted-servers:expire` están corriendo (ya agregados a `routes/console.php`, el
-   cron del sistema que llama a `schedule:run` cada minuto ya existe, no hace falta
-   tocarlo).
+**`max_concurrent=2`, puertos 28970-28971 — subido de 1 a 2 a pedido del dueño
+(2026-08-22), sabiendo que es ajustado.** El VPS tiene mucho menos margen del que se
+asumió al diseñar esto: 913MB de RAM totales, y una prueba real en vivo con UNA sola
+instancia corriendo (119M de uso real de 150M de tope) dejó solo 176MB "disponibles"
+(de 286MB que había libres antes de esa prueba) — el server real de Pug Latam usa
+128.8M él solo, más MySQL (~83M), Apache (~280M en varios workers) y el queue worker
+(~64M) ya se comen el resto, y el swap ya tenía uso antes de sumar nada nuevo. El
+disco también está al 93% (1.1GB libres de 14GB). Con 2 concurrentes el margen libre
+puede bajar a ~60MB en el peor caso — el `OOMScoreAdjust=500` de arriba es lo que hace
+que esto sea tolerable (una instancia temporal se sacrifica antes que el server real o
+el panel), pero si en la práctica da problemas, bajar `max_concurrent` de nuevo a 1
+antes que subirlo más. Subir esto más allá de 2 solo después de ampliar RAM/disco del
+VPS, nunca por confianza en la teoría.
+
+**Probado en vivo de punta a punta 2026-08-22** (crear vía `tinker`, confirmar
+proceso/RCON/`fs_basepath`+`fs_homepath` separados, `stop()`, limpieza completa,
+memoria recuperada, log de producción sin tocar, server real sin degradación) — ver
+historial de conversación si hace falta el detalle exacto de esa prueba.
 
 ### Gametype fijo en SD, con su limitación conocida
 
@@ -993,14 +1011,12 @@ se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
 
 ## Pendientes / conocido-roto
 
-- **Servidores temporales self-service (2026-08-22) — código completo, pero NADA
-  instalado todavía en el VPS real.** Falta: copiar `cod2-temp@.service` (repo
-  `ZPAM COD2`) a `/etc/systemd/system/` + `daemon-reload`, agregar las dos líneas
-  nuevas a `/etc/sudoers.d/cod2-panel`, correr la migración de `hosted_servers`, y
-  probar a mano un lanzamiento con `fs_basepath`/`fs_homepath` separados antes de
-  confiar en la automatización (nunca se probó contra el binario/mod real). Ver
-  sección "Servidores temporales self-service" más arriba para el detalle completo y
-  la lista exacta de pasos.
+- **Servidores temporales self-service — activo en producción desde 2026-08-22,
+  `max_concurrent=2`.** El VPS tiene poco margen real de RAM/disco (ver sección
+  "Servidores temporales self-service" más arriba) — si se nota degradación del
+  server real o del sitio con instancias temporales activas, lo primero es bajar
+  `max_concurrent` a 1 (`config/hosted_servers.php` / `.env`), no asumir que es otra
+  cosa.
 - **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
   DB-IP en vez de MaxMind — ver sección "GeoIP y banderas de país" más arriba para
   el detalle completo y cómo volver a MaxMind si algún día se resuelve.
