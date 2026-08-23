@@ -19,7 +19,7 @@
             </div>
             <div class="relative px-4 sm:px-6 py-12 sm:py-20 md:py-32 text-center">
                 <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">Crea tu <span class="text-gsaccent">servidor</span></h1>
-                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Listo en segundos · Se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
 
                 <div class="mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">
                     {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!}
