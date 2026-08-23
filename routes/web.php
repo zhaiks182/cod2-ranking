@@ -73,7 +73,13 @@ Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads'
 // creador (no hay cuentas), por eso show/stop llevan {token} ademas del id.
 Route::prefix('servidores')->name('hosted-servers.')->group(function () {
     Route::get('/crear', [HostedServerController::class, 'create'])->name('create');
-    Route::post('/crear', [HostedServerController::class, 'store'])->middleware('throttle:3,60')->name('store');
+    // throttle:3,60 sacado temporalmente (2026-08-22) para que el dueño pueda probar
+    // el flujo repetidas veces sin pegarle al 429 -- Turnstile (ver
+    // HostedServerController::passesTurnstile()) ya filtra bots, y el tope global de
+    // concurrencia sigue limitando cuantos servers pueden estar activos a la vez de
+    // todos modos. Reconsiderar reactivar esto (o subirlo bastante, ej. throttle:20,60)
+    // antes de promocionar la feature ampliamente en vez de dejarla solo para pruebas.
+    Route::post('/crear', [HostedServerController::class, 'store'])->name('store');
     Route::get('/{hostedServer}/{token}', [HostedServerController::class, 'show'])->name('show');
     Route::post('/{hostedServer}/{token}/detener', [HostedServerController::class, 'stop'])->name('stop');
 });
