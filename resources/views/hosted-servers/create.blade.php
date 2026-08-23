@@ -129,13 +129,6 @@
             @enderror
         </div>
 
-        <div>
-            <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Contraseña de acceso (opcional)</label>
-            <input type="text" name="join_password" id="join_password" value="{{ old('join_password') }}" maxlength="32"
-                placeholder="Dejalo vacío para que sea público"
-                class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
-        </div>
-
         <label class="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" name="cracked" value="1" @checked(old('cracked')) class="rounded border-slate-700 bg-panel2 text-cyan-500 focus:ring-cyan-500">
             Permitir clientes no originales (cracked)
