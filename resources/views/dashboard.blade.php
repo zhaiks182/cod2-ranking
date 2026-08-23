@@ -54,7 +54,12 @@
             </div>
         </section>
         <script>
-            cod2MeasurePing('dashboard-ping');
+            // cod2MeasurePing se define en un <script> del layout que va DESPUES de
+            // @yield('content') -- hay que esperar a DOMContentLoaded, si no todavia
+            // no existe en este punto del parseo.
+            document.addEventListener('DOMContentLoaded', function () {
+                cod2MeasurePing('dashboard-ping');
+            });
 
             (function () {
                 var slides = document.querySelectorAll('#hero-bg-carousel .hero-bg');

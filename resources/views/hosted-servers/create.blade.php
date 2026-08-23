@@ -54,8 +54,13 @@
             })();
 
             // window.cod2MeasurePing definida en layouts/app.blade.php -- compartida
-            // con la home (dashboard.blade.php).
-            cod2MeasurePing('hosted-server-ping');
+            // con la home (dashboard.blade.php). Esa definicion vive en un <script>
+            // DESPUES de @yield('content') en el layout, asi que llamarla directo
+            // ahi tira "cod2MeasurePing is not defined" -- hay que esperar a
+            // DOMContentLoaded para que el resto del documento ya haya cargado.
+            document.addEventListener('DOMContentLoaded', function () {
+                cod2MeasurePing('hosted-server-ping');
+            });
         </script>
     @else
         <div>
