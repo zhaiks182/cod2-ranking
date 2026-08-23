@@ -142,7 +142,9 @@
         </label>
 
         @if ($turnstileSiteKey)
-            <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="dark"></div>
+            <div class="flex justify-center">
+                <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="light"></div>
+            </div>
         @endif
 
         <button type="submit" class="w-full px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors">Crear servidor</button>
