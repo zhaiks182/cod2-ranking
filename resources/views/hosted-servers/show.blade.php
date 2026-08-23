@@ -13,15 +13,32 @@
     ];
     [$statusLabel, $statusClasses] = $statusLabels[$server->status] ?? ['Desconocido', 'text-slate-400 border-slate-700'];
     $connect = $server->connectString();
+    // Mismo estilo de hero que crear-servidor (fondo con mapa, titulo grande) -- a
+    // diferencia de ese, que rota varios mapas, aca es UNA imagen fija: la del mapa
+    // real de este server, mas relevante que un carrusel generico. Si no hay imagen
+    // subida para ese mapa, cae al encabezado simple de siempre (sin dejar un hueco).
+    $heroImage = \App\Support\MapImage::url($server->map);
 @endphp
 <div class="max-w-4xl mx-auto space-y-6">
-    <div class="flex items-start justify-between gap-3">
-        <div>
-            <h1 class="font-display text-2xl md:text-3xl font-bold text-white break-words">{{ $server->hostname }}</h1>
-            <p class="text-sm text-slate-400 mt-1">{{ \App\Support\MapCatalog::mapLabel($server->map) }} · {{ $server->slots }} jugadores</p>
+    @if ($heroImage)
+        <section class="relative rounded-2xl overflow-hidden border border-slate-800">
+            <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('{{ $heroImage }}')"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
+            <div class="relative px-4 sm:px-6 py-10 sm:py-14 text-center">
+                <span class="inline-block text-xs px-2.5 py-1 rounded-lg border {{ $statusClasses }} mb-3">{{ $statusLabel }}</span>
+                <h1 class="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight break-words">{{ $server->hostname }}</h1>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">{{ \App\Support\MapCatalog::mapLabel($server->map) }} · {{ $server->slots }} jugadores</p>
+            </div>
+        </section>
+    @else
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h1 class="font-display text-2xl md:text-3xl font-bold text-white break-words">{{ $server->hostname }}</h1>
+                <p class="text-sm text-slate-400 mt-1">{{ \App\Support\MapCatalog::mapLabel($server->map) }} · {{ $server->slots }} jugadores</p>
+            </div>
+            <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg border {{ $statusClasses }}">{{ $statusLabel }}</span>
         </div>
-        <span class="shrink-0 text-xs px-2.5 py-1 rounded-lg border {{ $statusClasses }}">{{ $statusLabel }}</span>
-    </div>
+    @endif
 
     @if (session('status'))
         <div class="rounded-xl border border-emerald-900 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
