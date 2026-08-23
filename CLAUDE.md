@@ -1061,15 +1061,29 @@ imagen descargada de otro lado.
   - El `RewriteCond %{SERVER_NAME} =cod2.4livepro.com` del vhost `:80` (redirect a
     HTTPS) se amplió con `[OR]` + una segunda condición para el alias — sin esto,
     una visita a `http://direct...` (sin `s`) no hubiera redirigido.
-  - `Access-Control-Allow-Origin: https://cod2.4livepro.com` agregado a mano en la
-    respuesta de la ruta `/ping` (no hay `config/cors.php` en este proyecto, no
-    valía la pena agregar el paquete completo por una sola ruta) — sin esto el
-    fetch cross-origin desde `cod2.4livepro.com` hacia `direct.cod2.4livepro.com`
-    lo bloquea el navegador aunque el request en sí funcione.
+  - `mod_headers` habilitado (`a2enmod headers` + restart — no estaba activo antes
+    de esto) para que los `Header` de `.htaccess` funcionen.
+
+  **`/ping` dejó de ser una ruta de Laravel — es `public/ping`, un archivo estático
+  vacío** (mismo día, segunda vuelta de optimización). El dueño comparó el medidor
+  contra un `ping` de consola (ICMP directo, ~60ms) y seguía viendo ~20ms de más
+  incluso ya pegándole al subdominio directo — la diferencia real que queda es que
+  un `fetch()` de navegador nunca puede mandar ICMP crudo (limitación del navegador,
+  no de este sitio), así que cada muestra sigue siendo un request HTTPS de verdad.
+  Lo único evitable era el bootstrap de Laravel (rutas, middleware, kernel HTTP) en
+  cada una de las 3 muestras — se sacó `Route::get('/ping', ...)` de
+  `routes/web.php` y se creó `public/ping` (archivo vacío, versionado en el repo)
+  en su lugar: el `RewriteCond %{REQUEST_FILENAME} !-f` que ya trae el
+  `.htaccess` de Laravel de fábrica hace que Apache lo sirva directo, sin tocar
+  `index.php`/PHP-FPM para nada. El header CORS + `Cache-Control: no-store` ahora
+  viven en `public/.htaccess` (`<Files "ping"><IfModule mod_headers.c>...`), no en
+  código PHP — esto sí viaja con el repo normal, a diferencia del resto de esta
+  sección.
 
   Si el VPS se reconstruye desde cero, hay que recrear el registro DNS, expandir/
-  reemitir el certificado, y volver a agregar el `ServerAlias` a mano — nada de
-  esto sobrevive a un `deploy.sh` ni está versionado.
+  reemitir el certificado, volver a agregar el `ServerAlias` a mano, y correr
+  `a2enmod headers` — nada de eso sobrevive a un `deploy.sh` ni está versionado
+  (`public/ping` y `public/.htaccess` sí, esos dos sobreviven solos).
 - **`MapCatalog::pickerOptions()`** (nuevo): un código por mapa real para selectores
   públicos — usa la variante `_fix`/`_bal` instalada si existe (`toujane_fix`,
   `dawnville_fix`, `burgundy_fix`, etc.), el código base si no. A diferencia del
