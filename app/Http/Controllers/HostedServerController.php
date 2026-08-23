@@ -38,6 +38,7 @@ class HostedServerController extends Controller
             'slotsMin' => (int) config('hosted_servers.slots_min'),
             'slotsMax' => (int) config('hosted_servers.slots_max'),
             'available' => $available,
+            'active' => $active,
             'turnstileSiteKey' => config('services.turnstile.site_key'),
             'heroMapImages' => $heroMapImages,
         ]);

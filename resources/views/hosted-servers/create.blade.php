@@ -26,6 +26,16 @@
                     <span>Miami, FL</span>
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                     <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available }} disponible{{ $available === 1 ? '' : 's' }}</span>
+                    @if ($active > 0)
+                        <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
+                        <span class="inline-flex items-center gap-1.5 text-slate-400">
+                            <span class="relative flex h-1.5 w-1.5" aria-hidden="true">
+                                <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                            </span>
+                            {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora
+                        </span>
+                    @endif
                 </div>
             </div>
         </section>
@@ -44,7 +54,7 @@
     @else
         <div>
             <h1 class="font-display text-2xl md:text-3xl font-bold text-white">Creá tu <span class="text-gsaccent">servidor</span></h1>
-            <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available }} disponible{{ $available === 1 ? '' : 's' }} · se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
+            <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available }} disponible{{ $available === 1 ? '' : 's' }}@if($active > 0) · {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora @endif · se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
         </div>
     @endif
 
