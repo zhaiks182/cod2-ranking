@@ -69,6 +69,14 @@ class DemoMatchResolver
      * (esta rama existe justamente para sesiones largas que el fallback no cubre) pero
      * de todos modos acotado -- 6 horas cubre una sesion nocturna entera sin permitir
      * que se cuelgue de una partida de dias atras.
+     *
+     * Ojo con el fallback si la busqueda por mapa no encuentra nada valido: NO hay que
+     * caer al bloque generico de abajo en ese caso. Se probo esa version (2026-08-23) y
+     * produjo algo peor -- un demo de Railyard sin partida cercana de Railyard cayo al
+     * fallback generico y quedo pegado a una partida de BURGUNDY, solo porque arrancó
+     * cerca en el tiempo. Con una pista de mapa confiable, mejor dejar el demo sin
+     * partida (match_id null, "huerfano" hasta que un humano lo revise) que adivinar
+     * mal el mapa.
      */
     public static function resolve(Carbon $at, ?string $demoName = null): ?GameMatch
     {
@@ -87,9 +95,7 @@ class DemoMatchResolver
                 ->orderByDesc('started_at')
                 ->first();
 
-            if ($match && $match->started_at->gte($at->clone()->subHours(6))) {
-                return $match;
-            }
+            return ($match && $match->started_at->gte($at->clone()->subHours(6))) ? $match : null;
         }
 
         $match = GameMatch::where('is_backfilled', false)
