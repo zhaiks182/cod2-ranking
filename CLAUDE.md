@@ -792,7 +792,9 @@ afectar a ningún jugador real).
 
 Cualquier visitante (sin login) puede crear su propio servidor de CoD2 temporal desde
 `/servidores/crear` — hostname, cantidad de jugadores, mapa, contraseña de acceso
-opcional, cracked sí/no. Corre en el MISMO VPS de producción, comparte el binario/mod
+(**obligatoria desde 2026-08-22**, a pedido del dueño — ya no se permite un server
+público/sin clave, ver `StoreHostedServerRequest::rules()`), cracked sí/no. Corre en
+el MISMO VPS de producción, comparte el binario/mod
 compartido con el server real de Pug Latam pero en su propio proceso systemd aislado.
 Se auto-apaga solo (por tiempo o por estar vacío) — **es la primera feature pública sin
 login que hace fork de un proceso de sistema real en producción**, así que el diseño

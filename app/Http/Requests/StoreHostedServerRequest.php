@@ -29,7 +29,9 @@ class StoreHostedServerRequest extends FormRequest
             'hostname' => ['required', 'string', 'max:'.HostedServer::NAME_MAX_LENGTH],
             'slots' => ['required', 'integer', 'between:'.config('hosted_servers.slots_min').','.config('hosted_servers.slots_max')],
             'map' => ['required', 'string', Rule::in($validMaps)],
-            'join_password' => ['nullable', 'string', 'max:32'],
+            // Requerida (2026-08-22, a pedido del dueño) -- ya no se permite crear un
+            // servidor temporal publico/sin clave.
+            'join_password' => ['required', 'string', 'max:32'],
             'cracked' => ['nullable', 'boolean'],
             // Honeypot: un campo que ningun visitante real llena porque ni lo ve
             // (oculto por CSS en la vista) -- si viene con algo, es un bot rellenando
@@ -44,6 +46,7 @@ class StoreHostedServerRequest extends FormRequest
         return [
             'slots.between' => 'La cantidad de jugadores debe estar entre :min y :max.',
             'map.in' => 'Ese mapa no está disponible.',
+            'join_password.required' => 'Ingresá una contraseña de acceso para el servidor.',
         ];
     }
 }

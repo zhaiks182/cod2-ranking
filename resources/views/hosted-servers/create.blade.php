@@ -108,9 +108,9 @@
                 </select>
             </div>
             <div>
-                <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Contraseña (opcional)</label>
-                <input type="text" name="join_password" id="join_password" value="{{ old('join_password') }}" maxlength="32"
-                    placeholder="Público si está vacío"
+                <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Contraseña de acceso</label>
+                <input type="text" name="join_password" id="join_password" value="{{ old('join_password') }}" maxlength="32" required
+                    placeholder="Ej: pug2024"
                     class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
             </div>
         </div>
