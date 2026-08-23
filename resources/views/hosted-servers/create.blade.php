@@ -18,7 +18,7 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
             <div class="relative px-4 sm:px-6 py-12 sm:py-20 md:py-32 text-center">
-                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight uppercase">Crea tu <span class="text-gsaccent">servidor</span></h1>
+                <h1 class="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight uppercase tracking-tight">Crea tu <span class="text-gsaccent drop-shadow-[0_0_18px_rgba(56,189,248,0.55)]">servidor</span></h1>
                 <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
 
                 <div class="mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">
@@ -53,7 +53,7 @@
         </script>
     @else
         <div>
-            <h1 class="font-display text-2xl md:text-3xl font-bold text-white uppercase">Crea tu <span class="text-gsaccent">servidor</span></h1>
+            <h1 class="font-display text-3xl md:text-4xl font-bold text-white uppercase tracking-tight">Crea tu <span class="text-gsaccent">servidor</span></h1>
             <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available }} disponible{{ $available === 1 ? '' : 's' }}@if($active > 0) · {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora @endif · se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
         </div>
     @endif
