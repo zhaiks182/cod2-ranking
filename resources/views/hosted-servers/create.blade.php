@@ -58,10 +58,6 @@
         </div>
     @endif
 
-    <div class="rounded-xl border border-amber-900 bg-amber-950/30 px-4 py-3 text-xs text-amber-300">
-        Arranca en modo Search &amp; Destroy, igual que Pug Latam — necesita que <strong>2 jugadores confirmen "listo"</strong> antes de que empiece la primera ronda. Si estás probándolo solo, no va a pasar nada hasta que se sume alguien más.
-    </div>
-
     @if (session('error'))
         <div class="rounded-xl border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">{{ session('error') }}</div>
     @endif
@@ -75,6 +71,8 @@
             </ul>
         </div>
     @endif
+
+    <h2 class="font-display text-lg font-bold text-white">Configurá tu servidor</h2>
 
     <form method="POST" action="{{ route('hosted-servers.store') }}" class="rounded-xl border border-slate-800 bg-panel p-5 sm:p-6 space-y-5">
         @csrf

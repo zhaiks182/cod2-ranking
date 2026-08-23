@@ -25,7 +25,8 @@ return [
     'port_range_end' => env('HOSTED_SERVERS_PORT_END', 28971),
 
     'slots_min' => env('HOSTED_SERVERS_SLOTS_MIN', 2),
-    'slots_max' => env('HOSTED_SERVERS_SLOTS_MAX', 12),
+    // 20, a pedido del dueño (2026-08-22, subido de 12).
+    'slots_max' => env('HOSTED_SERVERS_SLOTS_MAX', 20),
 
     // Directorio POR INSTANCIA (fs_homepath) -- la base de juego real (fs_basepath,
     // mapas/mod/binario) es la que ya usa produccion, /home/gameserver/1.3/puG, y

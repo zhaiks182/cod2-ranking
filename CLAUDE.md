@@ -970,8 +970,9 @@ historial de conversación si hace falta el detalle exacto de esa prueba.
 Las instancias temporales arrancan en Search & Destroy, igual que Pug Latam — decisión
 explícita del dueño (2026-08-22) sabiendo que zPAM usa "ready up" (ambos equipos deben
 confirmar listos antes de que arranque la ronda): una sola persona probando su server
-no va a ver acción hasta que se sume alguien más. Se avisa explícitamente en la UI
-(`hosted-servers/create.blade.php` y `show.blade.php`), no se oculta.
+no va a ver acción hasta que se sume alguien más. El aviso explícito de esto se sacó
+de `hosted-servers/create.blade.php` (a pedido del dueño, mismo día) — sigue estando
+en `show.blade.php` (la página del server ya creado, una vez que está corriendo).
 
 ### UI del formulario de creación (2026-08-22)
 
