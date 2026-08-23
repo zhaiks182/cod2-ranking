@@ -17,8 +17,8 @@
                 @endforeach
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
-            <div class="relative px-4 sm:px-6 py-10 sm:py-14 text-center">
-                <h1 class="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight">Crea tu <span class="text-gsaccent">servidor</span></h1>
+            <div class="relative px-4 sm:px-6 py-10 sm:py-16 md:py-24 text-center">
+                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">Crea tu <span class="text-gsaccent">servidor</span></h1>
                 <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Listo en segundos · Se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
 
                 <div class="mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">

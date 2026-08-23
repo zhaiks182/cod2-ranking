@@ -37,6 +37,13 @@ todo se calcula a partir del propio `games_mp.log`.
 - 🌐 **Multi-servidor** — cada servidor CoD2 configurado tiene su propio log,
   credenciales RCON e IP pública; los jugadores son globales (identificados por
   hardware ID, no por nombre) pero las estadísticas se llevan por servidor.
+- 🎮 **Servidores temporales self-service** (`/servidores/crear`) — cualquier
+  visitante, sin login, puede levantar su propio servidor CoD2 temporal (hostname,
+  mapa, cantidad de jugadores, contraseña opcional), que se apaga solo por tiempo o
+  inactividad. Corre en el mismo VPS, aislado del servidor real vía systemd.
+- 🎬 **Demos automáticas** (`/demos`) — el cliente CoD2x sube la grabación de cada
+  partida de Search & Destroy al terminar, identificada por hardware ID — sin que el
+  jugador tenga que hacer nada.
 
 ## Cómo funciona (a grandes rasgos)
 

@@ -641,6 +641,13 @@ públicos (hay que pasar por el controller/ruta de descarga, no están bajo `pub
 
 ## Deploy
 
+**Política del dueño (2026-08-22): todo cambio de código se documenta en CLAUDE.md
+y/o README.md (lo que corresponda) y se despliega al VPS como parte del mismo
+trabajo, sin tener que pedir confirmación cada vez.** Esto no cubre acciones
+destructivas/irreversibles fuera de lo normal (borrar datos de producción, tocar
+`.env`/credenciales, downgrades de dependencias, etc.) — esas siguen requiriendo
+confirmación explícita como cualquier otra acción de alto riesgo.
+
 `deploy.sh` — mismo patrón que `desarrollo.4livepro.com`: `git archive HEAD | ssh
 iptvwatch "tar -x -C /var/www/cod2.4livepro.com"`, seguido de `composer install`
 (opcional, `--composer`), `migrate` (opcional, `--migrate`), y `php artisan optimize`.
@@ -991,22 +998,103 @@ imagen descargada de otro lado.
   grilla de botones con imagen, mismo patrón que ya usa el selector de mapas del
   admin (`admin/console.blade.php`, `MapImage::url($code)`) — mapas sin imagen
   subida muestran un ícono genérico en vez de romper el layout.
+- **`MapCatalog::pickerOptions()`** (nuevo): un código por mapa real para selectores
+  públicos — usa la variante `_fix`/`_bal` instalada si existe (`toujane_fix`,
+  `dawnville_fix`, `burgundy_fix`, etc.), el código base si no. A diferencia del
+  picker del admin (que muestra base + todas las variantes a propósito), esto evita
+  duplicados confusos para un visitante público. Mapas no-stock que nunca se
+  recorren desde `MAPS` (`mp_chelm_fix`, `mp_crossroads`, `mp_vallente_fix`,
+  `wawa_3daim`) quedan afuera solos. Orden con Toujane/Dawnville/Burgundy/Stalingrad
+  primero, a pedido explícito del dueño. `HostedServerController` y
+  `StoreHostedServerRequest` usan este método en vez de construir la lista a mano.
+
+### Iteración rápida post-lanzamiento (2026-08-22)
+
+Varios ajustes chicos el mismo día del lanzamiento, mientras el dueño probaba el
+flujo en vivo — vale la pena tenerlos en cuenta si se vuelve a tocar esta parte:
+
+- **Ancho del contenedor subió tres veces seguidas** (`max-w-xl` → `max-w-2xl` →
+  `max-w-3xl` → `max-w-4xl`) a medida que se agregaban más columnas de mapas y se
+  emparejaban Jugadores+Contraseña — cada salto se sintió apretado apenas se probó
+  con contenido real. **Hoy (commit `6a6f809`) ambas páginas sacaron el `max-w-4xl`
+  propio directamente**, para heredar el `max-w-6xl` del `<main>` del layout — mismo
+  ancho que la home, en vez de seguir subiendo el número a mano.
+- **Grilla de mapas sin scroll interno**: tenía `max-h-80 overflow-y-auto` para que
+  no empujara el resto del form — a pedido del dueño se sacó para mostrar todos los
+  mapas de una, aceptando que el form sea más largo.
+- **Campo de contraseña duplicado (bug real, ya corregido)**: al emparejar
+  Jugadores+Contraseña arriba en el rediseño del hero, quedó sin sacar el campo
+  viejo de más abajo — dos `<input name="join_password">` en el mismo form, el
+  navegador solo mandaba el segundo e ignoraba lo que el usuario tipeaba en el que
+  realmente se veía. Si se ve que la contraseña ingresada no coincide con la que
+  terminó pidiendo el server, revisar que no haya vuelto a aparecer un input
+  duplicado.
+- **Sufijo `" @ Pug Latam"` llegaba sin el `@` al juego (bug real, ya corregido)**:
+  `HostedServerSanitizer::cfgValue()` (el allowlist de caracteres para todo lo que se
+  escribe en `server.cfg`) no incluía `@` — se comía el sufijo fijo antes de
+  escribirlo, así que el scoreboard in-game mostraba `"Nombre  Pug Latam"` sin el
+  arroba. Confirmado con una captura real del scoreboard. Cualquier otro carácter
+  nuevo que se necesite agregar a un valor que termine en `server.cfg` tiene que
+  pasar por este mismo allowlist, no asumir que "es solo un símbolo" es inofensivo
+  para el parser de cfg — ver también la nota de inyección de config más arriba.
+- **`idle_minutes` bajado de 15 a 5** (`config/hosted_servers.php`), a pedido del
+  dueño — igual mecanismo de siempre (`hosted-servers:expire`, cron cada minuto), no
+  se tocó la lógica, solo el número.
+- **Comando RCON separado del texto de ayuda**: antes el `rcon login <password>` iba
+  mezclado dentro de un párrafo de instrucciones; ahora tiene su propio bloque
+  `<code>` + botón "Copiar" (`cod2CopyConnect()`, mismo helper que ya usa el connect
+  string), igual patrón visual en `create.blade.php` y `show.blade.php`.
+- **Hero con imagen del mapa también en la página del server** (`show.blade.php`),
+  no solo en la de crear — usa la imagen real del mapa elegido (`MapImage::url`) en
+  vez del carrusel genérico de `create.blade.php` (ahí no rota, es un solo mapa fijo,
+  más relevante que un carrusel).
+- **Contador de "N creados ahora"** en el badge de ubicación del hero de
+  `create.blade.php` (junto a "N disponibles") — nuevo campo `active` que
+  `HostedServerController::create()` ya calculaba mentalmente pero no pasaba a la
+  vista.
 
 ### Mitigación de abuso
 
-`throttle:3,60` por IP en la ruta de creación + tope global de concurrencia (ver
-arriba) + un campo honeypot (`website`, oculto con `sr-only`, regla `prohibited`) en
-el form, más **Cloudflare Turnstile** (agregado 2026-08-22, a pedido del dueño — el
-sitio ya está detrás de Cloudflare, así que no suma un proveedor nuevo).
-`HostedServerController::passesTurnstile()` verifica el token contra
-`https://challenges.cloudflare.com/turnstile/v0/siteverify` antes de tomar el lock de
-concurrencia (no tiene sentido tener a otros requests esperando el lock mientras se
-espera esa respuesta externa). **Las keys (`TURNSTILE_SITE_KEY`/
+Tope global de concurrencia (ver arriba) + un campo honeypot (`website`, oculto con
+`sr-only`, regla `prohibited`) en el form, más **Cloudflare Turnstile** (agregado
+2026-08-22, a pedido del dueño — el sitio ya está detrás de Cloudflare, así que no
+suma un proveedor nuevo). `HostedServerController::passesTurnstile()` verifica el
+token contra `https://challenges.cloudflare.com/turnstile/v0/siteverify` antes de
+tomar el lock de concurrencia (no tiene sentido tener a otros requests esperando el
+lock mientras se espera esa respuesta externa). **Las keys (`TURNSTILE_SITE_KEY`/
 `TURNSTILE_SECRET_KEY` en `.env`, ver `config/services.php`) todavía no están
 cargadas en el VPS** — hay que generarlas a mano desde el dashboard de Cloudflare
 (Turnstile → Add site), no se pueden generar desde este repo. Mientras no estén
 configuradas, el widget no se renderiza y la verificación se salta sola (no rompe el
-form) — el honeypot/throttle/lock siguen siendo la base de todos modos.
+form) — el honeypot/lock siguen siendo la base de todos modos.
+
+**`throttle:3,60` en la ruta de creación está sacado temporalmente (2026-08-22,
+commit `4ebfd16`) — hoy NO está activo.** Se sacó para que el dueño pudiera probar el
+flujo repetidas veces sin pegarle al 429 mientras se iteraba sobre el rediseño del
+form (ver más abajo). El honeypot, Turnstile (una vez que tenga keys) y el tope
+global de concurrencia siguen limitando el abuso de todos modos, pero **reconsiderar
+reactivarlo (o subirlo bastante, ej. `throttle:20,60`) antes de promocionar la
+feature ampliamente** en vez de dejarla solo para pruebas — ver también "Pendientes"
+más abajo.
+
+### Cómo volver a tu servidor sin login (2026-08-22)
+
+No hay cuentas — la URL `/servidores/{id}/{token}` es la única credencial real (ver
+"Modelo y ciclo de vida" arriba), así que si el visitante navega a otra página del
+sitio la pierde. `HostedServerController::store()` ahora deja una cookie
+`HostedServer::COOKIE_NAME` (`hosted_server`, valor `"{id}|{token}"`, Laravel la
+encripta como cualquier cookie normal) con la misma duración que el servidor; `stop()`
+la borra (`Cookie::forget()`).
+
+Un `View::composer('layouts.app', ...)` en `AppServiceProvider::boot()` resuelve y
+valida esa cookie en **cada página pública** (no solo las de `hosted-servers`), sin
+tener que tocar cada controller — comparte `$activeHostedServer` con el layout. La
+validación reusa el mismo criterio que `authorizeToken()`: `hash_equals()` contra el
+`management_token` real (la cookie es solo conveniencia para no perder el link, nunca
+reemplaza al token como credencial) y `isActive()` (si el server ya se detuvo/expiró,
+no se muestra nada — no vale la pena mandar a nadie a una página muerta). Cuando hay
+un server activo, aparece un ícono con un punto verde animado al lado del logo
+(`layouts/app.blade.php`) que linkea directo a `hosted-servers.show`.
 
 ## Variantes de mapa combinadas (2026-08-19)
 
@@ -1053,6 +1141,11 @@ se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
   server real o del sitio con instancias temporales activas, lo primero es bajar
   `max_concurrent` a 1 (`config/hosted_servers.php` / `.env`), no asumir que es otra
   cosa.
+- **`throttle:3,60` de `/servidores/crear` sigue sacado (commit `4ebfd16`,
+  2026-08-22).** Se sacó temporalmente para que el dueño pudiera probar el flujo sin
+  pegarle al 429 — reactivarlo (o subirlo bastante) antes de promocionar la feature
+  más ampliamente. Turnstile/honeypot/tope de concurrencia siguen activos mientras
+  tanto. Ver "Mitigación de abuso" más arriba.
 - **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
   DB-IP en vez de MaxMind — ver sección "GeoIP y banderas de país" más arriba para
   el detalle completo y cómo volver a MaxMind si algún día se resuelve.
@@ -1076,32 +1169,15 @@ se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
   de dejarlo así en vez de intentar imitar la fórmula de zPAM sin confirmarla del
   todo — ver conversación del 2026-08-09/10.
 
-- **Feature de subida de demos por HWID (2026-08-19) todavía no está comiteada a
-  git.** Se hizo trabajando directo sobre el VPS por SSH, en otra sesión/máquina que
-  el flujo normal de `deploy.sh`. Ver el manifiesto completo de archivos nuevos y
-  modificados en la sección "Subida automática de demos por HWID" más arriba —
-  hay que traerlos al repo de desarrollo y comitearlos antes del próximo deploy,
-  porque `deploy.sh` sobreescribe con lo que haya en git (ver sección "Deploy",
-  `tar -x` es aditivo pero SÍ pisa archivos que ya existen). El código del mod
-  zPAM (`_record.gsc`, `server.cfg`) ni siquiera es parte de este repo — vive
-  aparte en `/root/zpam_test/` en el VPS, sin git en absoluto.
-- **Y a las variantes de mapa combinadas (2026-08-19)**: `app/Support/MapCatalog.php`
-  (`mergeVariants()`), `app/Http/Controllers/PlayerController.php`,
-  `app/Http/Controllers/LeaderboardController.php`,
-  `app/Http/Controllers/KillDetailController.php`,
-  `app/Http/Controllers/TeamkillController.php`,
-  `resources/views/players/show.blade.php` y `resources/views/leaderboard.blade.php`.
-  Ver seccion "Variantes de mapa combinadas" mas arriba.
-- **Y a los bans persistentes (2026-08-19)**: `database/migrations/*_create_bans_table.php`,
-  `app/Models/Ban.php`, `app/Http/Controllers/Admin/BanController.php`, el metodo
-  `ban()` nuevo en `ConsoleController.php`, `resources/views/admin/bans/index.blade.php`,
-  y los cambios en `console.blade.php` (boton Ban) y el nav admin. Ver seccion
-  "Bans persistentes" mas arriba.
-- **Lo mismo aplica a la auditoría de admin + reinicio de servicio (2026-08-19)**
-  y al fix de paginado de "Mejores mapas" en `resources/views/players/show.blade.php`
-  (mismo patron que ya tenia "Alias usados": top 5 + modal "ver todos") — ver
-  seccion "Auditoria de admin y reinicio de servicio" mas arriba para el
-  manifiesto completo. Ademas, `/etc/sudoers.d/cod2-panel` (la regla que le da a
-  www-data permiso para reiniciar el servicio) es un archivo de sistema, no de
-  este repo — no hay forma de "comitearlo", si el VPS se reconstruye hay que
-  recrearlo a mano con el comando exacto que esta en esa seccion.
+- ~~Feature de subida de demos por HWID todavía no está comiteada a git~~ —
+  **ya resuelto, no vale la pena releer esto.** Se hizo originalmente por SSH directo
+  sobre el VPS (2026-08-19), pero el mismo día se trajo todo a este repo en el commit
+  `43d50d1` ("Sincronizar cambios del VPS: demos por HWID, bans, auditoria, mapas
+  combinados") junto con bans persistentes, auditoría de admin, y las variantes de
+  mapa combinadas — las cuatro cosas están comiteadas y se despliegan normal vía
+  `deploy.sh` desde entonces. Lo único que sigue sin versionar es lo que es
+  inherentemente de sistema, no de código: el mod zPAM (`_record.gsc`, `server.cfg`,
+  vive en `/root/zpam_test/` del VPS sin git) y `/etc/sudoers.d/cod2-panel` (la regla
+  que le da a `www-data` permiso para reiniciar el servicio) — si el VPS se
+  reconstruye desde cero, ambos hay que recrearlos a mano (ver sus secciones
+  correspondientes más arriba para el contenido exacto).
