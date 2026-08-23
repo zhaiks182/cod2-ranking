@@ -1150,6 +1150,29 @@ se corrigió pasando \`\$mapCodes\` unidos por coma en vez de \`\$map\`.
 \`KillDetailController\`/\`TeamkillController\` ya aceptan \`map=codigo1,codigo2\`
 (\`explode(',', \$map)\` + \`whereIn\`) desde el fix de "Mejores mapas".
 
+## Cara a cara en el popover de bajas (2026-08-23)
+
+El popover que se abre al clickear el número de kills (\`data-kills-trigger\`,
+compartido con el de fuego amigo — ver \`openDetailsPopover()\` en
+\`layouts/app.blade.php\`) lista las víctimas con cuántas veces cada una cayó. Cada
+fila con una víctima real (no bot) ahora es clickeable y revela, sin pedir nada más
+al server, cuántas veces esa misma víctima mató de vuelta al jugador — mismo
+alcance de filtros (server/mapa/partida/fecha) que el resto del popover.
+
+\`KillDetailController::index()\` ya traía la dirección "jugador mató a X" con una
+sola query agrupada; se agregó una segunda query agrupada (misma función
+\`\$applyScope\` reusada, atacante/víctima invertidos) para la dirección contraria,
+acotada con \`whereIn('attacker_player_id', \$victimIds)\` a solo los jugadores que
+ya aparecen en la lista — ambas direcciones viajan en la misma respuesta JSON
+(\`{victim, count, reverse}\`), el frontend solo esconde/muestra la fila
+\`[data-reverse-row]\` al hacer click, no hay una request nueva por fila. Los bots
+(\`victim_player_id\` nulo, agrupados por nombre) traen \`reverse: null\` y sus filas
+no son clickeables — no tiene sentido "cara a cara" contra un bot indistinguible.
+
+Verificado contra datos reales de producción antes de desplegar (2026-08-22/23):
+DESTINATION#ZHAIKS mató a hardoso 19 veces, hardoso mató a ZHAIKS 7 — coincide con
+lo reportado por el dueño.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
