@@ -964,13 +964,49 @@ confirmar listos antes de que arranque la ronda): una sola persona probando su s
 no va a ver acción hasta que se sume alguien más. Se avisa explícitamente en la UI
 (`hosted-servers/create.blade.php` y `show.blade.php`), no se oculta.
 
-### Mitigación de abuso (v1, sin captcha de terceros)
+### UI del formulario de creación (2026-08-22)
+
+Referencia de diseño: `fshost.me/free/cod2` (hosting gratuito de terceros, capturas
+mostradas por el dueño) — de ahí se tomó la idea del banner ancho con el logo del
+juego y la fila de "ubicación" con bandera + disponibilidad, pero **no se copió la
+imagen de fondo de ese sitio** (arte compuesto/box art de Activision, de un
+competidor) — el banner de `hosted-servers/create.blade.php` usa
+`public/logo_cod2.webp` (ya estaba en el repo) sobre un degradado CSS propio, no una
+imagen descargada de otro lado.
+
+- **Ubicación**: la fila "Miami, FL, Estados Unidos" no es decorativa al azar —
+  confirmado por geoip (`ipinfo.io/167.148.33.82`) que el VPS real está en Miami. Sin
+  selector (a diferencia de la referencia, que tiene varios datacenters) porque acá
+  hay un solo VPS — mostrar un dropdown que no lleva a ningún lado sería un falso
+  affordance. El badge de disponibilidad (`$available`, calculado en
+  `HostedServerController::create()` como `max_concurrent - activos`) es real, no
+  hardcodeado.
+- **Nombre del servidor con sufijo fijo**: el usuario tipea hasta
+  `HostedServer::NAME_MAX_LENGTH` (20) caracteres, y `HostedServer::NAME_SUFFIX`
+  (`" @ Pug Latam"`) se pega SIEMPRE al final en `HostedServerController::store()`
+  antes de guardar — no es editable, todo servidor temporal queda identificado como
+  parte de la comunidad. El campo del form muestra el sufijo como texto fijo al lado
+  del input (no editable) para que quede claro antes de enviar.
+- **Selector de mapa con miniatura**: se reemplazó el `<select>` de texto por una
+  grilla de botones con imagen, mismo patrón que ya usa el selector de mapas del
+  admin (`admin/console.blade.php`, `MapImage::url($code)`) — mapas sin imagen
+  subida muestran un ícono genérico en vez de romper el layout.
+
+### Mitigación de abuso
 
 `throttle:3,60` por IP en la ruta de creación + tope global de concurrencia (ver
 arriba) + un campo honeypot (`website`, oculto con `sr-only`, regla `prohibited`) en
-el form. Si esto no alcanza en la práctica, evaluar Cloudflare Turnstile más adelante
-(el sitio ya está detrás de Cloudflare) — no se sumó de entrada para no meter una
-dependencia de API key de terceros en la v1.
+el form, más **Cloudflare Turnstile** (agregado 2026-08-22, a pedido del dueño — el
+sitio ya está detrás de Cloudflare, así que no suma un proveedor nuevo).
+`HostedServerController::passesTurnstile()` verifica el token contra
+`https://challenges.cloudflare.com/turnstile/v0/siteverify` antes de tomar el lock de
+concurrencia (no tiene sentido tener a otros requests esperando el lock mientras se
+espera esa respuesta externa). **Las keys (`TURNSTILE_SITE_KEY`/
+`TURNSTILE_SECRET_KEY` en `.env`, ver `config/services.php`) todavía no están
+cargadas en el VPS** — hay que generarlas a mano desde el dashboard de Cloudflare
+(Turnstile → Add site), no se pueden generar desde este repo. Mientras no estén
+configuradas, el widget no se renderiza y la verificación se salta sola (no rompe el
+form) — el honeypot/throttle/lock siguen siendo la base de todos modos.
 
 ## Variantes de mapa combinadas (2026-08-19)
 

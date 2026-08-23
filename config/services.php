@@ -32,6 +32,18 @@ return [
         'invite_url' => env('DISCORD_INVITE_URL'),
     ],
 
+    'turnstile' => [
+        // Proteccion anti-bot en el form publico de "Crear servidor" (ver
+        // HostedServerController::store()). El sitio ya esta detras de Cloudflare,
+        // asi que Turnstile es gratis y no suma un proveedor nuevo. Las keys se sacan
+        // del dashboard de Cloudflare (Turnstile > Add site) -- no se pueden generar
+        // desde este repo. Si no estan configuradas, el widget simplemente no se
+        // renderiza y la verificacion se salta (no rompe el form en dev sin keys),
+        // el honeypot + throttle + lock de concurrencia siguen siendo la base.
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

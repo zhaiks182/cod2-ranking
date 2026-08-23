@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\HostedServer;
 use App\Support\MapCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,7 +25,9 @@ class StoreHostedServerRequest extends FormRequest
         $validMaps = array_merge(array_keys(MapCatalog::all()), MapCatalog::variantCodes());
 
         return [
-            'hostname' => ['required', 'string', 'max:32'],
+            // max:20 (NAME_MAX_LENGTH), no 32 -- deja lugar para el " @ Pug Latam" que
+            // el controller pega siempre al final (ver HostedServer::NAME_SUFFIX).
+            'hostname' => ['required', 'string', 'max:'.HostedServer::NAME_MAX_LENGTH],
             'slots' => ['required', 'integer', 'between:'.config('hosted_servers.slots_min').','.config('hosted_servers.slots_max')],
             'map' => ['required', 'string', Rule::in($validMaps)],
             'join_password' => ['nullable', 'string', 'max:32'],
