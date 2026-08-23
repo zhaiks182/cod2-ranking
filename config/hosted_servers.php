@@ -14,7 +14,10 @@ return [
 
     'expiry_hours' => env('HOSTED_SERVERS_EXPIRY_HOURS', 3),
 
-    'idle_minutes' => env('HOSTED_SERVERS_IDLE_MINUTES', 15),
+    // 5, a pedido del dueño (2026-08-22). Ver PollHostedServers/ExpireHostedServers
+    // para el mecanismo real de deteccion (ninguno de los dos re-lee este valor con
+    // frecuencia distinta, ambos corren cada minuto vía el cron ya existente).
+    'idle_minutes' => env('HOSTED_SERVERS_IDLE_MINUTES', 5),
 
     // Debe tener exactamente max_concurrent puertos (o mas) -- ver CLAUDE.md, no
     // vale la pena tener dos numeros por sincronizar a mano cuando se sube el tope.
