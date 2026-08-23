@@ -122,7 +122,7 @@
                 @foreach ($maps as $code => $label)
                     @php $mapImageUrl = \App\Support\MapImage::url($code); @endphp
                     <button type="button" data-map-option data-code="{{ $code }}"
-                        class="flex flex-col items-start gap-1.5 rounded-lg border overflow-hidden text-left transition-colors {{ old('map') === $code ? 'border-cyan-500' : 'border-slate-700 hover:border-slate-500' }}">
+                        class="flex flex-col items-start gap-1.5 rounded-lg border-2 overflow-hidden text-left transition-colors {{ old('map') === $code ? 'border-cyan-400 ring-2 ring-cyan-500/40' : 'border-slate-700 hover:border-cyan-400' }}">
                         <span class="w-full aspect-video bg-panel2 flex items-center justify-center">
                             @if ($mapImageUrl)
                                 <img src="{{ $mapImageUrl }}" alt="" class="w-full h-full object-cover">
@@ -168,11 +168,11 @@
         buttons.forEach(function (btn) {
             btn.addEventListener('click', function () {
                 buttons.forEach(function (b) {
-                    b.classList.remove('border-cyan-500');
+                    b.classList.remove('border-cyan-400', 'ring-2', 'ring-cyan-500/40');
                     b.classList.add('border-slate-700');
                 });
                 btn.classList.remove('border-slate-700');
-                btn.classList.add('border-cyan-500');
+                btn.classList.add('border-cyan-400', 'ring-2', 'ring-cyan-500/40');
                 hidden.value = btn.dataset.code;
             });
         });
