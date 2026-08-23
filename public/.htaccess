@@ -1,3 +1,16 @@
+# Endpoint de latencia (ver hosted-servers/create.blade.php) -- archivo estatico
+# vacio, RewriteCond !-f de abajo lo deja pasar sin tocar index.php/Laravel para
+# que la medicion sea lo mas rapida posible (sin bootstrap de PHP-FPM). El header
+# CORS es porque el JS le pega desde direct.cod2.4livepro.com (subdominio DNS-only
+# sin proxy de Cloudflare, ver CLAUDE.md) hacia el dominio principal -- distinto
+# origen para el navegador.
+<IfModule mod_headers.c>
+    <Files "ping">
+        Header set Access-Control-Allow-Origin "https://cod2.4livepro.com"
+        Header set Cache-Control "no-store"
+    </Files>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
