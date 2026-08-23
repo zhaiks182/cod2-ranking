@@ -48,10 +48,14 @@
                         <span class="relative inline-flex h-2 w-2 rounded-full {{ $status ? 'bg-emerald-400' : 'bg-slate-500' }}"></span>
                     </span>
                     {{ $heroOnline }} jugador{{ $heroOnline === 1 ? '' : 'es' }} conectado{{ $heroOnline === 1 ? '' : 's' }}
+                    <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
+                    <span id="dashboard-ping" class="text-slate-500">midiendo…</span>
                 </div>
             </div>
         </section>
         <script>
+            cod2MeasurePing('dashboard-ping');
+
             (function () {
                 var slides = document.querySelectorAll('#hero-bg-carousel .hero-bg');
                 if (slides.length < 2) return;

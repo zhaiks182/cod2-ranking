@@ -235,6 +235,44 @@
             }
         };
 
+        // Latencia real hacia el VPS -- /ping (public/ping, archivo estatico, ver
+        // CLAUDE.md) en direct.cod2.4livepro.com, subdominio DNS-only sin el proxy
+        // de Cloudflare de por medio (sumaba ~35ms de peaje). 3 muestras, se
+        // descarta la primera (warmup de la conexion TLS) y se promedian las
+        // ultimas 2. Compartida entre dashboard.blade.php y
+        // hosted-servers/create.blade.php -- antes vivia duplicada en cada vista.
+        window.cod2MeasurePing = async function (elId) {
+            var el = document.getElementById(elId);
+            if (!el) return;
+
+            async function ping() {
+                var start = performance.now();
+                try {
+                    await fetch('https://direct.cod2.4livepro.com/ping', { cache: 'no-store', mode: 'cors' });
+                    return performance.now() - start;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            var samples = [];
+            for (var i = 0; i < 3; i++) {
+                var ms = await ping();
+                if (ms !== null) samples.push(ms);
+            }
+
+            if (samples.length < 2) {
+                el.textContent = 'sin datos de latencia';
+                return;
+            }
+
+            samples.shift();
+            var avg = Math.round(samples.reduce(function (a, b) { return a + b; }, 0) / samples.length);
+            var color = avg < 80 ? 'text-emerald-400' : (avg < 150 ? 'text-amber-400' : 'text-red-400');
+            el.className = color + ' font-medium';
+            el.textContent = '~' + avg + 'ms';
+        };
+
         function escapeHtml(s) {
             const d = document.createElement('div');
             d.textContent = s;

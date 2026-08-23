@@ -53,45 +53,9 @@
                 }, 6000);
             })();
 
-            // Latencia real hacia el VPS (Miami) -- /ping es un 204 vacio, sin DB ni
-            // vista, para que lo unico que se mida sea la ida y vuelta de red. Pega
-            // directo a direct.cod2.4livepro.com (2026-08-23, DNS-only en Cloudflare,
-            // sin proxy -- mismo certificado que el dominio principal, expandido con
-            // certbot --expand) en vez de la ruta relativa: el dominio publico esta
-            // detras de Cloudflare, que sumaba ~35ms de peaje (TLS+salto extra) y
-            // hacia que esto midiera "ping a Cloudflare", no al VPS real. CORS
-            // habilitado solo para esta ruta en bootstrap/app.php.
-            (async function () {
-                var el = document.getElementById('hosted-server-ping');
-                if (!el) return;
-
-                async function ping() {
-                    var start = performance.now();
-                    try {
-                        await fetch('https://direct.cod2.4livepro.com/ping', { cache: 'no-store', mode: 'cors' });
-                        return performance.now() - start;
-                    } catch (e) {
-                        return null;
-                    }
-                }
-
-                var samples = [];
-                for (var i = 0; i < 3; i++) {
-                    var ms = await ping();
-                    if (ms !== null) samples.push(ms);
-                }
-
-                if (samples.length < 2) {
-                    el.textContent = 'sin datos de latencia';
-                    return;
-                }
-
-                samples.shift(); // descarta la primera (warmup)
-                var avg = Math.round(samples.reduce(function (a, b) { return a + b; }, 0) / samples.length);
-                var color = avg < 80 ? 'text-emerald-400' : (avg < 150 ? 'text-amber-400' : 'text-red-400');
-                el.className = color + ' font-medium';
-                el.textContent = '~' + avg + 'ms';
-            })();
+            // window.cod2MeasurePing definida en layouts/app.blade.php -- compartida
+            // con la home (dashboard.blade.php).
+            cod2MeasurePing('hosted-server-ping');
         </script>
     @else
         <div>

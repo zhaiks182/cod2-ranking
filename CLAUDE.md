@@ -1034,13 +1034,15 @@ imagen descargada de otro lado.
   admin (`admin/console.blade.php`, `MapImage::url($code)`) — mapas sin imagen
   subida muestran un ícono genérico en vez de romper el layout.
 - **Medidor de latencia real** (2026-08-23), al final del badge de ubicación en el
-  hero (después de "N disponibles"/"N creados ahora") — `GET /ping`
-  (`routes/web.php`) es una ruta nueva sin DB ni vista, solo `response()->noContent()`
-  (204), para que la única variable que se mida desde el navegador sea la ida y
-  vuelta de red real, no tiempo de render. El JS del hero hace 3 fetch con
-  `cache: 'no-store'`, descarta la primera muestra (siempre sale más alta por el
-  warmup de la conexión TLS) y promedia las últimas 2 — verde `<80ms`, amarillo
-  `<150ms`, rojo el resto.
+  hero (después de "N disponibles"/"N creados ahora"). **También en la home**
+  (`dashboard.blade.php`, al final del badge "N jugadores conectados") — misma
+  función compartida, `window.cod2MeasurePing(elId)` en `layouts/app.blade.php`
+  (antes vivía duplicada inline en `create.blade.php`, se subió al layout el mismo
+  día que se agregó a la home, mismo patrón que `cod2CopyConnect`/
+  `openDetailsPopover`). Cada página solo pone el `<span id="...">` y llama
+  `cod2MeasurePing('ese-id')`. 3 fetch con `cache: 'no-store'`, descarta la primera
+  muestra (siempre sale más alta por el warmup de la conexión TLS) y promedia las
+  últimas 2 — verde `<80ms`, amarillo `<150ms`, rojo el resto.
 
   **No le pega al dominio público — pega directo a `direct.cod2.4livepro.com`.**
   Primer intento (medía contra `cod2.4livepro.com`, el dominio de siempre) dio
