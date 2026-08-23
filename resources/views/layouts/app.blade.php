@@ -293,14 +293,37 @@
                     : `Bajas (${data.reduce((s, k) => s + (k.count || 1), 0)})`;
                 const titleColor = kind === 'teamkill' ? 'text-red-400' : 'text-cyan-400';
 
-                const rows = data.map(k => `
-                    <li class="flex items-center justify-between gap-3 py-1 border-b border-slate-800/60 last:border-0">
-                        <span class="text-slate-300 truncate">${escapeHtml(k.victim)}</span>
-                        <span class="text-slate-500 shrink-0 text-right">${
-                            kind === 'teamkill' ? escapeHtml(k.weapon) : `<span class="text-cyan-400">+${k.count}</span>`
-                        }</span>
-                    </li>
-                `).join('');
+                // En "kills" (no en teamkill), cada fila con victima real (k.reverse !=
+                // null -- los bots no tienen player_id, asi que no hay "cara a cara"
+                // posible con ellos) se puede clickear para revelar cuantas veces esa
+                // misma victima mato de vuelta al jugador, sin pedir nada al server de
+                // nuevo -- ya vino en la misma respuesta (ver KillDetailController).
+                const rows = data.map(k => {
+                    if (kind === 'teamkill') {
+                        return `
+                        <li class="flex items-center justify-between gap-3 py-1 border-b border-slate-800/60 last:border-0">
+                            <span class="text-slate-300 truncate">${escapeHtml(k.victim)}</span>
+                            <span class="text-slate-500 shrink-0 text-right">${escapeHtml(k.weapon)}</span>
+                        </li>`;
+                    }
+
+                    const clickable = k.reverse !== null;
+
+                    return `
+                    <li class="border-b border-slate-800/60 last:border-0 ${clickable ? 'cursor-pointer hover:bg-slate-800/40' : ''}"${
+                        clickable ? ` onclick="this.querySelector('[data-reverse-row]').classList.toggle('hidden')"` : ''
+                    }>
+                        <div class="flex items-center justify-between gap-3 py-1">
+                            <span class="text-slate-300 truncate">${escapeHtml(k.victim)}</span>
+                            <span class="text-cyan-400 shrink-0 text-right">+${k.count}</span>
+                        </div>
+                        ${clickable ? `
+                        <div data-reverse-row class="hidden flex items-center justify-between gap-3 pb-1.5 -mt-0.5">
+                            <span class="text-slate-500 text-[11px]">Te mató a vos</span>
+                            <span class="text-red-400 shrink-0 text-[11px] font-medium">${k.reverse}</span>
+                        </div>` : ''}
+                    </li>`;
+                }).join('');
 
                 popover.innerHTML = `
                     <div class="${titleColor} font-semibold mb-1.5 uppercase tracking-wide text-[10px]">${title}</div>
