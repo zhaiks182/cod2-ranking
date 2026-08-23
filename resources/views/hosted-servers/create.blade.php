@@ -3,7 +3,7 @@
 @section('title', 'Crear servidor')
 
 @section('content')
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="space-y-6">
     {{-- Mismo hero que la home (fondo con mapas rotando, titulo grande) en vez de un
     banner propio -- consistencia visual entre paginas, y evita reproducir el arte
     de otro sitio de hosting (ver referencia fshost.me mencionada por el dueño). La

@@ -19,7 +19,7 @@
     // subida para ese mapa, cae al encabezado simple de siempre (sin dejar un hueco).
     $heroImage = \App\Support\MapImage::url($server->map);
 @endphp
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="space-y-6">
     @if ($heroImage)
         <section class="relative rounded-2xl overflow-hidden border border-slate-800">
             <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('{{ $heroImage }}')"></div>
