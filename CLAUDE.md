@@ -1033,13 +1033,43 @@ imagen descargada de otro lado.
   grilla de botones con imagen, mismo patrón que ya usa el selector de mapas del
   admin (`admin/console.blade.php`, `MapImage::url($code)`) — mapas sin imagen
   subida muestran un ícono genérico en vez de romper el layout.
-- **Medidor de latencia real** (2026-08-23), a la derecha del badge "N disponibles"
-  en el hero — `GET /ping` (`routes/web.php`) es una ruta nueva sin DB ni vista,
-  solo `response()->noContent()` (204), para que la única variable que se mida
-  desde el navegador sea la ida y vuelta de red real hasta el VPS (Miami), no
-  tiempo de render. El JS del hero hace 3 fetch con `cache: 'no-store'`, descarta
-  la primera muestra (siempre sale más alta por el warmup de la conexión TLS) y
-  promedia las últimas 2 — verde `<80ms`, amarillo `<150ms`, rojo el resto.
+- **Medidor de latencia real** (2026-08-23), al final del badge de ubicación en el
+  hero (después de "N disponibles"/"N creados ahora") — `GET /ping`
+  (`routes/web.php`) es una ruta nueva sin DB ni vista, solo `response()->noContent()`
+  (204), para que la única variable que se mida desde el navegador sea la ida y
+  vuelta de red real, no tiempo de render. El JS del hero hace 3 fetch con
+  `cache: 'no-store'`, descarta la primera muestra (siempre sale más alta por el
+  warmup de la conexión TLS) y promedia las últimas 2 — verde `<80ms`, amarillo
+  `<150ms`, rojo el resto.
+
+  **No le pega al dominio público — pega directo a `direct.cod2.4livepro.com`.**
+  Primer intento (medía contra `cod2.4livepro.com`, el dominio de siempre) dio
+  ~100ms en el navegador del dueño mientras el ping real in-game daba ~65ms — el
+  sitio está detrás de Cloudflare (proxy naranja), así que esa medición incluía el
+  salto extra por el borde de Cloudflare + handshake TLS, no la ruta real al VPS.
+  Fix (mismo día): se creó `direct.cod2.4livepro.com` como registro DNS **DNS-only**
+  en Cloudflare (nube gris, sin proxy — el dueño lo creó él mismo) apuntando directo
+  a la IP del VPS. Del lado del VPS (todo manual, **nada de esto es parte del repo**):
+  - Certificado expandido con `certbot certonly --apache --cert-name
+    cod2.4livepro.com -d cod2.4livepro.com -d direct.cod2.4livepro.com --expand`
+    (un solo cert cubre los dos hostnames, se renueva junto).
+  - `ServerAlias direct.cod2.4livepro.com` agregado a los dos vhosts existentes de
+    `cod2.4livepro.com` (`:443` y `:80`, en `/etc/apache2/sites-available/
+    cod2.4livepro.com*.conf` — mismo `DocumentRoot`, mismo Laravel, no hace falta un
+    vhost separado). Backups de los `.conf` originales con sufijo
+    `.bak-20260823` en el mismo directorio.
+  - El `RewriteCond %{SERVER_NAME} =cod2.4livepro.com` del vhost `:80` (redirect a
+    HTTPS) se amplió con `[OR]` + una segunda condición para el alias — sin esto,
+    una visita a `http://direct...` (sin `s`) no hubiera redirigido.
+  - `Access-Control-Allow-Origin: https://cod2.4livepro.com` agregado a mano en la
+    respuesta de la ruta `/ping` (no hay `config/cors.php` en este proyecto, no
+    valía la pena agregar el paquete completo por una sola ruta) — sin esto el
+    fetch cross-origin desde `cod2.4livepro.com` hacia `direct.cod2.4livepro.com`
+    lo bloquea el navegador aunque el request en sí funcione.
+
+  Si el VPS se reconstruye desde cero, hay que recrear el registro DNS, expandir/
+  reemitir el certificado, y volver a agregar el `ServerAlias` a mano — nada de
+  esto sobrevive a un `deploy.sh` ni está versionado.
 - **`MapCatalog::pickerOptions()`** (nuevo): un código por mapa real para selectores
   públicos — usa la variante `_fix`/`_bal` instalada si existe (`toujane_fix`,
   `dawnville_fix`, `burgundy_fix`, etc.), el código base si no. A diferencia del

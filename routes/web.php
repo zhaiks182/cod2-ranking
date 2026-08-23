@@ -70,8 +70,12 @@ Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads'
 
 // Endpoint liviano para medir latencia al VPS desde el navegador (ver el badge de
 // "ms" en hosted-servers/create.blade.php) -- sin DB, sin vista, 204 vacio para que
-// la unica variable que se mida sea la ida y vuelta de red.
-Route::get('/ping', fn () => response()->noContent())->name('ping');
+// la unica variable que se mida sea la ida y vuelta de red. El JS del hero le pega a
+// esto en direct.cod2.4livepro.com (subdominio DNS-only en Cloudflare, sin proxy,
+// 2026-08-23) desde una pagina servida en cod2.4livepro.com -- distinto origen para
+// el navegador, asi que hace falta el header CORS a mano (no hay config/cors.php en
+// este proyecto, no vale la pena agregar el paquete completo por una sola ruta).
+Route::get('/ping', fn () => response()->noContent()->header('Access-Control-Allow-Origin', 'https://cod2.4livepro.com'))->name('ping');
 
 // Servidores temporales self-service (publico, sin login) -- ver CLAUDE.md, seccion
 // "Servidores temporales". management_token en la URL es la unica "credencial" del

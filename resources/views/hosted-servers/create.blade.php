@@ -26,8 +26,6 @@
                     <span>Miami, FL</span>
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                     <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available }} disponible{{ $available === 1 ? '' : 's' }}</span>
-                    <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
-                    <span id="hosted-server-ping" class="text-slate-500">midiendo…</span>
                     @if ($active > 0)
                         <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                         <span class="inline-flex items-center gap-1.5 text-slate-400">
@@ -38,6 +36,8 @@
                             {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora
                         </span>
                     @endif
+                    <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
+                    <span id="hosted-server-ping" class="text-slate-500">midiendo…</span>
                 </div>
             </div>
         </section>
@@ -54,9 +54,13 @@
             })();
 
             // Latencia real hacia el VPS (Miami) -- /ping es un 204 vacio, sin DB ni
-            // vista, para que lo unico que se mida sea la ida y vuelta de red. 3
-            // muestras (la primera suele salir mas alta por el warmup de la conexion
-            // TLS) y se promedian las ultimas 2.
+            // vista, para que lo unico que se mida sea la ida y vuelta de red. Pega
+            // directo a direct.cod2.4livepro.com (2026-08-23, DNS-only en Cloudflare,
+            // sin proxy -- mismo certificado que el dominio principal, expandido con
+            // certbot --expand) en vez de la ruta relativa: el dominio publico esta
+            // detras de Cloudflare, que sumaba ~35ms de peaje (TLS+salto extra) y
+            // hacia que esto midiera "ping a Cloudflare", no al VPS real. CORS
+            // habilitado solo para esta ruta en bootstrap/app.php.
             (async function () {
                 var el = document.getElementById('hosted-server-ping');
                 if (!el) return;
@@ -64,7 +68,7 @@
                 async function ping() {
                     var start = performance.now();
                     try {
-                        await fetch('{{ route('ping') }}', { cache: 'no-store' });
+                        await fetch('https://direct.cod2.4livepro.com/ping', { cache: 'no-store', mode: 'cors' });
                         return performance.now() - start;
                     } catch (e) {
                         return null;
