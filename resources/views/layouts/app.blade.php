@@ -241,6 +241,19 @@
             return d.innerHTML;
         }
 
+        // Solo una fila de "cara a cara" abierta a la vez dentro del mismo popover --
+        // clickear otra victima cierra la anterior en vez de acumular varias abiertas.
+        function toggleReverseRow(li) {
+            const row = li.querySelector('[data-reverse-row]');
+            const wasHidden = row.classList.contains('hidden');
+
+            li.closest('ul').querySelectorAll('[data-reverse-row]').forEach(r => r.classList.add('hidden'));
+
+            if (wasHidden) {
+                row.classList.remove('hidden');
+            }
+        }
+
         async function openDetailsPopover(btn, kind) {
             const popover = document.getElementById('teamkill-popover');
             const guid = btn.dataset.player;
@@ -311,7 +324,7 @@
 
                     return `
                     <li class="border-b border-slate-800/60 last:border-0 ${clickable ? 'cursor-pointer hover:bg-slate-800/40' : ''}"${
-                        clickable ? ` onclick="this.querySelector('[data-reverse-row]').classList.toggle('hidden')"` : ''
+                        clickable ? ` onclick="toggleReverseRow(this)"` : ''
                     }>
                         <div class="flex items-center justify-between gap-3 py-1">
                             <span class="text-slate-300 truncate">${escapeHtml(k.victim)}</span>
