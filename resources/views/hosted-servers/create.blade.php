@@ -93,7 +93,6 @@
                     class="min-w-0 flex-1 px-3 py-2 bg-transparent text-slate-200 text-sm focus:outline-none">
                 <span class="shrink-0 flex items-center pr-3 text-sm text-slate-500 whitespace-nowrap">{{ \App\Models\HostedServer::NAME_SUFFIX }}</span>
             </div>
-            <p class="text-[11px] text-slate-500 mt-1">Todo servidor temporal se identifica como parte de Pug Latam — esa parte no se puede cambiar.</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
