@@ -458,6 +458,41 @@ tiempo de debug una vez.
     borre a mano desde `/adm_cod2/partidas`, mismo precedente que la
     entrada 10.
 
+12. **Partidas reales pero abandonadas también se colaban en el listado
+    (2026-08-24), ya con la entrada 11 desplegada.** Con "Round 0" filtrado,
+    el dueño reportó (jugando en vivo, match id=90) que una partida que sí
+    arrancó de verdad — pasó el ready-up, tuvo rondas y kills reales — pero
+    se abandonó antes de llegar a un resultado real (13 rondas o el evento
+    `MatchEnd;` del log) seguía apareciendo en `/partidas` y
+    `/adm_cod2/partidas` como si fuera una partida terminada cualquiera.
+    Confirmado con el dueño: solo debe listarse una partida cuando "llega a
+    un resultado real (13 rondas o evento MatchEnd)". Fix en
+    `app/Models/GameMatch.php`:
+    - `scopeReachedConclusion()`: 13+ rondas jugadas o un `MatchEvent` con
+      `event_type='match_end'` — el mismo evento que
+      `TeamSideAnalyzer::clusterRoundWinners()` ya usa para el score final
+      (reutilizado, no reinventado).
+    - `scopeVisibleInListing()`: lo anterior, pero sin excluir partidas
+      todavía en curso (`ended_at` null) — solo oculta partidas que ya
+      terminaron (por el timeout de 30 min de `ParseCod2Log`) sin haber
+      llegado a un resultado real. Una partida en vivo con pocas rondas
+      sigue visible con el badge "en curso" ya existente.
+
+    Aplicado directo en `MatchController@index` (público, `/partidas`). En
+    `Admin\MatchController@index` (`/adm_cod2/partidas`) se ocultan por
+    defecto también, pero con un toggle "Mostrar incompletas" (query param
+    `?incompletas=1`) + badge "incompleta" por fila, para no perder la
+    forma de encontrarlas y borrarlas a mano — mismo precedente que las
+    entradas 10 y 11, pero ahora con una vía en el propio panel en vez de
+    tener que pedirle al dueño que confíe en que la partida sigue en la
+    BD. Test `tests/Feature/GameMatchReachedConclusionTest.php` (5 casos,
+    TDD) verificado GREEN junto al resto de la suite en un entorno aislado
+    antes de desplegar. Verificado en producción con `tinker`: `id=89`
+    (entrada 11) e `id=90` (esta partida) quedan `visible=no`; partidas
+    reales de 19-25 rondas siguen `visible=yes`. Ninguna de las dos se
+    borró de la BD — quedan disponibles para el dueño vía el toggle si
+    quiere limpiarlas, pero ya no aparecen en ningún listado.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
