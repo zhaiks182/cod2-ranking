@@ -51,13 +51,13 @@
                 </a>
             </div>
             <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
-                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
                 @if ($activeHostedServer ?? null)
                     {{-- Sin esto, alguien que crea un server temporal y navega a otra
                     pagina del sitio no tiene forma de volver -- no hay login, la URL
                     con el token es lo unico que administra ese server (ver
-                    AppServiceProvider::boot()). Al lado de "Inicio" a pedido del dueño
-                    (2026-08-24) -- antes vivia al lado del logo. --}}
+                    AppServiceProvider::boot()). A la izquierda de "Inicio" a pedido
+                    del dueño (2026-08-24) -- antes vivia al lado del logo, despues a
+                    la derecha de "Inicio" (dos ajustes de posicion el mismo dia). --}}
                     <a href="{{ route('hosted-servers.show', [$activeHostedServer, $activeHostedServer->management_token]) }}"
                         class="relative p-1.5 rounded-lg text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
                         title="Tu servidor temporal está activo">
@@ -69,6 +69,7 @@
                         </span>
                     </a>
                 @endif
+                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
                 <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Crear servidor</a>
                 <div class="relative">
                     <button type="button" data-ranking-toggle onclick="document.getElementById('ranking-dropdown').classList.toggle('hidden')"
