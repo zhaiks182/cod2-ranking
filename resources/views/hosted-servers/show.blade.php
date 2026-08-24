@@ -58,7 +58,7 @@
             <div>
                 <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Administrar por RCON</span>
                 <p class="mt-1 text-xs text-slate-500">Solo vos la ves — pegalo en la consola del juego (~) para administrar tu server.</p>
-                @php $rconLogin = 'rcon login '.$server->rcon_password; @endphp
+                @php $rconLogin = '/rcon login '.$server->rcon_password; @endphp
                 <div class="mt-1 flex items-center gap-2">
                     <code class="flex-1 px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-cyan-300 text-xs overflow-x-auto whitespace-nowrap">{{ $rconLogin }}</code>
                     <button type="button" onclick="cod2CopyConnect(this, {{ json_encode($rconLogin) }})"
