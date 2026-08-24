@@ -7,10 +7,10 @@ use App\Models\HostedServer;
 use App\Models\Setting;
 use App\Support\HostedServerProvisioner;
 use App\Support\MapCatalog;
+use App\Support\TurnstileVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class HostedServerController extends Controller
@@ -51,7 +51,7 @@ class HostedServerController extends Controller
         // Verificacion de Turnstile ANTES de tomar el lock de concurrencia -- es una
         // llamada HTTP a Cloudflare, no tiene sentido tener el lock (que otros
         // requests estan esperando) agarrado mientras se espera esa respuesta externa.
-        if (! $this->passesTurnstile($request)) {
+        if (! TurnstileVerifier::passes($request)) {
             return back()->withInput()->with('error', 'No se pudo verificar que sos una persona. Probá de nuevo.');
         }
 
@@ -140,33 +140,6 @@ class HostedServerController extends Controller
         Cookie::queue(Cookie::forget(HostedServer::COOKIE_NAME));
 
         return redirect()->route('hosted-servers.show', [$hostedServer, $token])->with('status', 'Servidor detenido.');
-    }
-
-    /**
-     * Si Turnstile no esta configurado (sin TURNSTILE_SITE_KEY/SECRET_KEY en .env,
-     * ej. en dev) se salta la verificacion en vez de romper el form -- el honeypot +
-     * throttle + lock de concurrencia siguen aplicando igual. Una vez que el dueño
-     * cargue las keys reales de Cloudflare (Turnstile > Add site en su dashboard, no
-     * se pueden generar desde aca), esto se activa solo.
-     */
-    private function passesTurnstile(Request $request): bool
-    {
-        if (! config('services.turnstile.secret_key')) {
-            return true;
-        }
-
-        $token = $request->input('cf-turnstile-response');
-        if (! $token) {
-            return false;
-        }
-
-        $response = Http::asForm()->timeout(5)->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
-            'secret' => config('services.turnstile.secret_key'),
-            'response' => $token,
-            'remoteip' => $request->ip(),
-        ]);
-
-        return $response->successful() && ($response->json('success') === true);
     }
 
     private function authorizeToken(HostedServer $hostedServer, string $token): void

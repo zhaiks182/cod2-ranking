@@ -25,7 +25,17 @@
             <input type="password" name="password" required
                 class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200">
         </div>
+        @if ($turnstileSiteKey)
+            <div class="flex justify-center">
+                <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="light"></div>
+            </div>
+        @endif
+
         <button type="submit" class="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">Entrar</button>
     </form>
+
+    @if ($turnstileSiteKey)
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @endif
 </div>
 @endsection
