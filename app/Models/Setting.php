@@ -12,6 +12,7 @@ class Setting extends Model
         'discord_invite_url',
         'discord_description',
         'discord_benefits',
+        'hosted_servers_max_concurrent',
     ];
 
     /** @return array<int, string> Un item de beneficio por linea, vacios descartados. */
@@ -31,5 +32,21 @@ class Setting extends Model
     public static function current(): self
     {
         return static::firstOrCreate(['id' => 1]);
+    }
+
+    /**
+     * Limite de servidores temporales concurrentes -- pisa el default de
+     * config/hosted_servers.php (env HOSTED_SERVERS_MAX_CONCURRENT) en cuanto el
+     * admin lo edita desde adm_cod2/servers. Sin tope contra la cantidad real de
+     * puertos abiertos en el firewall a proposito (2026-08-24, pedido explicito
+     * del dueño) -- si se sube por encima de los puertos realmente disponibles,
+     * la creacion de un servidor temporal falla con un error generico
+     * ("No se pudo crear el servidor ahora mismo") en vez de romper, pero no
+     * hay ninguna advertencia proactiva en la UI.
+     */
+    public static function maxConcurrent(): int
+    {
+        return static::current()->hosted_servers_max_concurrent
+            ?? (int) config('hosted_servers.max_concurrent');
     }
 }

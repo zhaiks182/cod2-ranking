@@ -116,6 +116,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
         Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
+        Route::put('/configuracion/servidores-temporales', [SettingController::class, 'updateHostedServers'])->name('settings.hosted-servers.update');
 
         Route::get('/discord', [DiscordSettingController::class, 'edit'])->name('discord.edit');
         Route::put('/discord', [DiscordSettingController::class, 'update'])->name('discord.update');

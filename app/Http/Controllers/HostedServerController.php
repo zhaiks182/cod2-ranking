@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreHostedServerRequest;
 use App\Models\HostedServer;
+use App\Models\Setting;
 use App\Support\HostedServerProvisioner;
 use App\Support\MapCatalog;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class HostedServerController extends Controller
         $maps = MapCatalog::pickerOptions();
 
         $active = HostedServer::whereIn('status', ['starting', 'running'])->count();
-        $available = max(0, (int) config('hosted_servers.max_concurrent') - $active);
+        $available = max(0, Setting::maxConcurrent() - $active);
 
         // Mismo fondo rotativo de mapas que ya usa el hero de la home
         // (DashboardController::index()) -- reusa las imagenes que ya se suben desde
@@ -71,7 +72,7 @@ class HostedServerController extends Controller
         try {
             $active = HostedServer::whereIn('status', ['starting', 'running'])->count();
 
-            if ($active >= (int) config('hosted_servers.max_concurrent')) {
+            if ($active >= Setting::maxConcurrent()) {
                 return back()->withInput()->with('error', 'No hay servidores disponibles ahora mismo — ya se alcanzó el máximo de servidores activos. Probá de nuevo más tarde.');
             }
 
