@@ -7,9 +7,13 @@ use Tests\TestCase;
 class HostedServerThrottleTest extends TestCase
 {
     /**
-     * El formulario de creacion de servidores temporales no tiene login ni
-     * CSRF-exempt especial -- Laravel ya inyecta el token via el helper
-     * $this->post() de las feature tests, asi que no hace falta armarlo a mano.
+     * El formulario de creacion de servidores temporales no tiene login.
+     * Sobre CSRF: ValidateCsrfToken middleware (o validateCsrfTokens en
+     * bootstrap/app.php) detecta que corren bajo PHPUnit ($this->app->runningUnitTests())
+     * y simplemente salta la validacion de CSRF -- no se inyecta token, CSRF
+     * se desactiva por completo en test. Esto es correcto para testing local,
+     * pero un curl real contra la ruta (fuera de PHPUnit, en producción) SÍ
+     * requiere un token CSRF válido + cookie de sesión.
      *
      * Se manda el POST vacio a proposito: la validacion de
      * StoreHostedServerRequest (hostname requerido) lo va a rechazar con un
@@ -19,7 +23,7 @@ class HostedServerThrottleTest extends TestCase
      * throttle corta en el intento 21, sin que la request tenga que ser
      * valida ni disparar systemctl/RCON de verdad.
      */
-    public function test_throttles_after_20_attempts_in_60_seconds(): void
+    public function test_throttles_after_20_attempts_per_minute(): void
     {
         for ($i = 1; $i <= 20; $i++) {
             $response = $this->post('/servidores/crear', []);
@@ -35,6 +39,14 @@ class HostedServerThrottleTest extends TestCase
         for ($i = 1; $i <= 5; $i++) {
             $response = $this->post('/servidores/crear', []);
             $response->assertStatus(302);
+        }
+    }
+
+    public function test_create_form_page_is_not_throttled(): void
+    {
+        for ($i = 1; $i <= 25; $i++) {
+            $response = $this->get('/servidores/crear');
+            $response->assertStatus(200);
         }
     }
 }

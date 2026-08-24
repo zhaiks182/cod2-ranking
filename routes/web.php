@@ -80,15 +80,19 @@ Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads'
 // creador (no hay cuentas), por eso show/stop llevan {token} ademas del id.
 Route::prefix('servidores')->name('hosted-servers.')->group(function () {
     Route::get('/crear', [HostedServerController::class, 'create'])->name('create');
-    // throttle:20,60 reactivado (2026-08-24) -- estuvo sacado desde el
+    // throttle:20,1 reactivado (2026-08-24) -- estuvo sacado desde el
     // 2026-08-22 (commit 4ebfd16) para que el dueño pudiera probar el flujo
     // sin pegarle al 429 durante el rediseño del form. Turnstile (ver
     // HostedServerController::passesTurnstile()) y el Cache::lock de
     // concurrencia global siguen siendo las otras dos capas -- esta es la
     // tercera, especifica contra rafagas rapidas desde una sola IP/sesion.
-    // 20/60 (no el 3/60 original) para no bloquear a un usuario real que
-    // reintenta el form varias veces por un error de validacion propio.
-    Route::post('/crear', [HostedServerController::class, 'store'])->name('store')->middleware('throttle:20,60');
+    // 20 por minuto (no el 3/60 original, que también cayó en la misma trampa:
+    // el segundo argumento de throttle en Laravel es decayMinutes, no segundos,
+    // así que throttle:20,60 hubiera sido 20/hora = 60x mas estricto de lo que
+    // el comentario, plan y nombre del test decían). El tercer parámetro
+    // (hosted-create) es un prefijo de clave para no compartir bucket con
+    // futuras rutas que agreguen throttle en este dominio.
+    Route::post('/crear', [HostedServerController::class, 'store'])->name('store')->middleware('throttle:20,1,hosted-create');
     Route::get('/{hostedServer}/{token}', [HostedServerController::class, 'show'])->name('show');
     Route::post('/{hostedServer}/{token}/detener', [HostedServerController::class, 'stop'])->name('stop');
 });

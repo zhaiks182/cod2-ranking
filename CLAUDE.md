@@ -1263,14 +1263,15 @@ cargadas en el VPS** — hay que generarlas a mano desde el dashboard de Cloudfl
 configuradas, el widget no se renderiza y la verificación se salta sola (no rompe el
 form) — el honeypot/lock siguen siendo la base de todos modos.
 
-**`throttle:3,60` en la ruta de creación está sacado temporalmente (2026-08-22,
-commit `4ebfd16`) — hoy NO está activo.** Se sacó para que el dueño pudiera probar el
-flujo repetidas veces sin pegarle al 429 mientras se iteraba sobre el rediseño del
-form (ver más abajo). El honeypot, Turnstile (una vez que tenga keys) y el tope
-global de concurrencia siguen limitando el abuso de todos modos, pero **reconsiderar
-reactivarlo (o subirlo bastante, ej. `throttle:20,60`) antes de promocionar la
-feature ampliamente** en vez de dejarla solo para pruebas — ver también "Pendientes"
-más abajo.
+**El throttle en la ruta de creación fue reactivado el 2026-08-24 como `throttle:20,1,hosted-create`**
+(20 requests por minuto, con prefijo de clave para no compartir bucket con futuras rutas).
+El original `throttle:3,60` — y el primer intento de reactivación como `throttle:20,60` — cayeron
+en la misma trampa: el segundo argumento del middleware `throttle` en Laravel es **decayMinutes**
+(minutos), no segundos. Así que `throttle:20,60` significaba 20 intentos por HORA, no por minuto,
+60 veces más estricto de lo que el comentario del código, el plan y el nombre del test realmente
+decían. Eso es exactamente por qué el `throttle:3,60` original bloqueaba las pruebas del dueño
+casi al instante. El honeypot, Turnstile (una vez que tenga keys) y el tope global de
+concurrencia siguen siendo las otras capas de protección.
 
 ### Cómo volver a tu servidor sin login (2026-08-22)
 
@@ -1416,11 +1417,6 @@ completo (`df -h`, `du -sh` por directorio) antes de actuar.
   server real o del sitio con instancias temporales activas, lo primero es bajar
   `max_concurrent` a 1 (`config/hosted_servers.php` / `.env`), no asumir que es otra
   cosa.
-- **`throttle:3,60` de `/servidores/crear` sigue sacado (commit `4ebfd16`,
-  2026-08-22).** Se sacó temporalmente para que el dueño pudiera probar el flujo sin
-  pegarle al 429 — reactivarlo (o subirlo bastante) antes de promocionar la feature
-  más ampliamente. Turnstile/honeypot/tope de concurrencia siguen activos mientras
-  tanto. Ver "Mitigación de abuso" más arriba.
 - **Cuenta MaxMind bloqueada (4 license keys fallidas).** GeoIP está activo con
   DB-IP en vez de MaxMind — ver sección "GeoIP y banderas de país" más arriba para
   el detalle completo y cómo volver a MaxMind si algún día se resuelve.
