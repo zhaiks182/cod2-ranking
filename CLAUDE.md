@@ -524,6 +524,30 @@ tiempo de debug una vez.
       igual que antes. Verificado GREEN junto al resto de la suite en un
       entorno aislado antes de desplegar.
 
+14. **Borrar una partida dejaba sus demos huérfanos (2026-08-24).** El
+    dueño preguntó qué pasaba con los demos de una partida al borrarla
+    desde `/adm_cod2/partidas`. La respuesta: nada — `demos.match_id` usa
+    `nullOnDelete()` (no `cascadeOnDelete()` como sí tienen `rounds` y
+    `kills`, ver migración `2026_08_19_130000_add_match_id_to_demos_table`),
+    así que el registro y el archivo del demo sobrevivían a la partida,
+    solo con `match_id` puesto en `NULL`. El problema real: `/adm_cod2/demos`
+    arma su listado agrupando por partida
+    (`GameMatch::whereHas('demos')`), así que un demo huérfano quedaba
+    invisible ahí — sin ninguna forma de encontrarlo ni borrarlo desde el
+    panel, pero siguiendo ocupando espacio en disco indefinidamente.
+    Confirmado con el dueño: ajustarlo para que borrar la partida borre
+    sus demos también. Fix en `Admin\MatchController::destroy()`
+    (`app/Http/Controllers/Admin/MatchController.php`): antes de borrar la
+    partida, borra cada demo asociado (archivo vía `Storage::disk('local')`
+    + registro), el mismo patrón que ya usaba
+    `DemoController::destroyByMatch()` por separado — reutilizado, no
+    reinventado. TDD:
+    `tests/Feature/Admin/MatchDestroyDeletesDemosTest.php` (nuevo, usa
+    `Storage::fake('local')`) — verifica que al borrar la partida
+    desaparecen tanto el registro del demo como su archivo. Verificado
+    GREEN junto al resto de la suite en un entorno aislado antes de
+    desplegar.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su

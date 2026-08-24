@@ -55,6 +55,14 @@ lectura, no relee todo el archivo) y las guarda en la base de datos. Ese mismo
 comando también consulta `status` por RCON para mantener sincronizados los
 nombres y el país (por IP) de los jugadores conectados.
 
+Una partida solo cuenta como terminada (y sus kills se mantienen en el
+ranking) si llega a 13 rondas ganadas o dispara el evento `MatchEnd;` del
+log — si se abandona antes, desaparece del historial de partidas y sus kills
+se descuentan del ranking. Como el resultado de una partida no se conoce al
+momento de cada kill, `php artisan cod2:recalculate-stats` corre también cada
+minuto para reconciliar retroactivamente `kills_total`/`player_map_stats`/
+`player_server_stats` contra ese criterio.
+
 ## Stack
 
 - **Backend:** Servidor LAMP (Laravel 13, PHP 8.3+)
