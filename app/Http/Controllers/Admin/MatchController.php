@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\AdminAction;
 use App\Support\StatsRecalculator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class MatchController extends Controller
 {
@@ -34,12 +35,24 @@ class MatchController extends Controller
     {
         $label = \App\Support\MapCatalog::mapLabel($match->map).' — '.($match->started_at?->format('d/m/Y H:i') ?? 'sin fecha');
 
+        // demos.match_id usa nullOnDelete() (no cascadeOnDelete() como rounds/kills) --
+        // sin esto, el registro y el archivo del demo sobreviven a la partida como
+        // huerfanos, invisibles desde /adm_cod2/demos (esa pantalla agrupa por
+        // partida via GameMatch::whereHas('demos')) y sin forma de encontrarlos para
+        // borrarlos despues. Borrar la partida borra sus demos de una.
+        $demoCount = $match->demos->count();
+        foreach ($match->demos as $demo) {
+            Storage::disk('local')->delete($demo->file_path);
+            $demo->delete();
+        }
+
         $match->delete();
 
-        AdminAction::record('matches.destroy', "Elimino la partida ({$label})");
+        $demoNote = $demoCount > 0 ? " y {$demoCount} demo(s)" : '';
+        AdminAction::record('matches.destroy', "Elimino la partida ({$label}){$demoNote}");
 
         StatsRecalculator::recalculateAll();
 
-        return back()->with('status', "Partida eliminada ({$label}) y estadísticas recalculadas.");
+        return back()->with('status', "Partida eliminada ({$label}){$demoNote} y estadísticas recalculadas.");
     }
 }
