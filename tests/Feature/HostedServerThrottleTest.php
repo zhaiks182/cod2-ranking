@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class HostedServerThrottleTest extends TestCase
 {
+    use RefreshDatabase;
     /**
      * El formulario de creacion de servidores temporales no tiene login.
      * Sobre CSRF: ValidateCsrfToken middleware (o validateCsrfTokens en
