@@ -173,12 +173,19 @@ echo "== Configurando sudoers para los botones de control del servicio del panel
 # para poder reiniciar/detener/iniciar el gameserver desde la web. Sin esta
 # regla, esos botones fallan con "sudo: a password is required" (visto en un
 # install limpio el 2026-08-20) — quedaba documentado solo en CLAUDE.md, nunca
-# se automatizó acá. Acotado a EXACTAMENTE esas 3 combinaciones, nada de
-# wildcards ni otros servicios/acciones.
+# se automatizó acá. También incluye el template cod2-temp@*.service (start/stop),
+# que usa HostedServerProvisioner para los servidores temporales self-service
+# (/servidores/crear) — mismo gap, se agregaba a mano en cada instalación nueva
+# (confirmado en la migración del 2026-08-24). Acotado a EXACTAMENTE estas 5
+# combinaciones, nada de wildcards sobre otros servicios/acciones.
 SYSTEMCTL_BIN="$(command -v systemctl || echo /usr/bin/systemctl)"
 GAMESERVER_SERVICE="cod2server.service"
 if systemctl list-unit-files "$GAMESERVER_SERVICE" &>/dev/null; then
-    SUDOERS_RULE="$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE, $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE, $SYSTEMCTL_BIN start $GAMESERVER_SERVICE"
+    SUDOERS_RULE="$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE
+$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE
+$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN start $GAMESERVER_SERVICE
+$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN start cod2-temp@*.service
+$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN stop cod2-temp@*.service"
     echo "$SUDOERS_RULE" > /tmp/cod2-panel-sudoers
     if visudo -cf /tmp/cod2-panel-sudoers &>/dev/null; then
         install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel
@@ -190,9 +197,37 @@ if systemctl list-unit-files "$GAMESERVER_SERVICE" &>/dev/null; then
 else
     echo "  $GAMESERVER_SERVICE no existe todavía en este host (¿instalaste cod2-server en otra"
     echo "  máquina?) — se omite. Cuando exista el servicio, corre esto para habilitar los"
-    echo "  botones de Reiniciar/Detener/Iniciar del panel:"
-    echo "    echo '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE, $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE, $SYSTEMCTL_BIN start $GAMESERVER_SERVICE' > /tmp/cod2-panel-sudoers"
+    echo "  botones de Reiniciar/Detener/Iniciar del panel y los servidores temporales:"
+    echo "    printf '%s\n' \\"
+    echo "      '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN restart $GAMESERVER_SERVICE' \\"
+    echo "      '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN stop $GAMESERVER_SERVICE' \\"
+    echo "      '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN start $GAMESERVER_SERVICE' \\"
+    echo "      '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN start cod2-temp@*.service' \\"
+    echo "      '$WEB_USER ALL=(root) NOPASSWD: $SYSTEMCTL_BIN stop cod2-temp@*.service' \\"
+    echo "      > /tmp/cod2-panel-sudoers"
     echo "    visudo -cf /tmp/cod2-panel-sudoers && install -m 0440 -o root -g root /tmp/cod2-panel-sudoers /etc/sudoers.d/cod2-panel"
+fi
+
+echo "== Preparando directorio de servidores temporales (self-service) =="
+# HostedServerConfigWriter necesita crear un subdirectorio por instancia bajo
+# HOSTED_SERVERS_BASE_DIR (config/hosted_servers.php, default
+# /home/gameserver/1.3/temp) corriendo como $WEB_USER -- ese directorio nace de
+# root:root si se crea a mano (mismo dueño que fs_basepath), así que sin este
+# chown el botón "Crear servidor" del panel falla con "Permission denied" al
+# primer intento real desde la web (confirmado dos veces: instalación original
+# 2026-08-22 y la migración a VPS nuevo 2026-08-24 — quedaba documentado solo
+# en CLAUDE.md, nunca se automatizó acá). Ojo: SOLO este directorio, nunca
+# HOSTED_SERVERS_GAME_BASE_DIR (fs_basepath real, sigue siendo de solo lectura
+# para $WEB_USER a propósito).
+HOSTED_SERVERS_BASE_DIR_DEFAULT="/home/gameserver/1.3/temp"
+if [[ -d "$HOSTED_SERVERS_BASE_DIR_DEFAULT" ]]; then
+    mkdir -p "$HOSTED_SERVERS_BASE_DIR_DEFAULT"
+    chown "$WEB_USER":"$WEB_USER" "$HOSTED_SERVERS_BASE_DIR_DEFAULT"
+    echo "  Listo: $HOSTED_SERVERS_BASE_DIR_DEFAULT es de $WEB_USER"
+else
+    echo "  $HOSTED_SERVERS_BASE_DIR_DEFAULT no existe todavía — creálo y corré esto para que"
+    echo "  el módulo de servidores temporales funcione:"
+    echo "    mkdir -p $HOSTED_SERVERS_BASE_DIR_DEFAULT && chown $WEB_USER:$WEB_USER $HOSTED_SERVERS_BASE_DIR_DEFAULT"
 fi
 
 echo "== Configurando cron (schedule:run cada minuto) =="
