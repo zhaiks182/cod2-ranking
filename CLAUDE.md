@@ -493,6 +493,37 @@ tiempo de debug una vez.
     borró de la BD — quedan disponibles para el dueño vía el toggle si
     quiere limpiarlas, pero ya no aparecen en ningún listado.
 
+13. **Los kills de una partida incompleta también sumaban al ranking
+    (2026-08-24), seguimiento directo de la entrada 12.** El dueño preguntó
+    si esas partidas incompletas afectaban el ranking — sí lo hacían:
+    `ParseCod2Log::recordKill()` incrementa `kills_total`/
+    `player_map_stats`/`player_server_stats` en vivo, kill por kill,
+    apenas se procesa cada línea `Kill;` del log, sin mirar si la partida
+    a la que pertenece va a terminar bien o se va a abandonar — ese
+    resultado recién se conoce cuando la partida termina, no en el momento
+    de cada kill individual. Confirmado con el dueño: tampoco deben sumar.
+    Fix:
+    - `GameMatch::scopeAbandonedWithoutConclusion()` (nuevo): el inverso
+      de `scopeVisibleInListing()` — partidas con `ended_at` puesto que
+      nunca llegaron a 13 rondas ni a `MatchEnd;`.
+    - `StatsRecalculator::recalculateAll()` (existente, antes solo se
+      llamaba tras borrar una partida a mano desde el admin) ahora excluye
+      esos `match_id` de las 6 queries que alimentan `kills_total`/
+      `player_map_stats`/`player_server_stats`.
+    - Nuevo comando `cod2:recalculate-stats`, agregado al scheduler cada
+      minuto junto a `cod2:parse-log` (`routes/console.php`) — como el
+      resultado de una partida no se sabe al momento del kill, la única
+      forma de "descontar" retroactivamente los kills de una partida que
+      recién se confirma abandonada es recorrer el scheduler; misma
+      cadencia de "hasta 1 minuto de retraso" que ya tiene todo el resto
+      del pipeline (ver entrada del cron de `cod2:parse-log` en la
+      bitácora de infraestructura, `CLAUDE.md` del directorio de trabajo).
+    - TDD: `tests/Feature/StatsRecalculatorExcludesAbandonedMatchesTest.php`
+      (4 casos) — kills de partida abandonada quedan en 0/null; kills de
+      partida en curso, con 13+ rondas, o con `MatchEnd;`, siguen sumando
+      igual que antes. Verificado GREEN junto al resto de la suite en un
+      entorno aislado antes de desplegar.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
