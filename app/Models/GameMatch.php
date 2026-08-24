@@ -77,6 +77,22 @@ class GameMatch extends Model
     }
 
     /**
+     * The inverse of scopeVisibleInListing() — matches whose kills/rounds
+     * should NOT count toward player_server_stats/player_map_stats/kills_total
+     * either (confirmed with the owner: an abandoned match's kills shouldn't
+     * feed the ranking, only real gameplay that actually concluded). Kept as
+     * its own scope, rather than inverting visibleInListing() at each call
+     * site, so StatsRecalculator gets a plain list of match ids to exclude.
+     */
+    public function scopeAbandonedWithoutConclusion($query)
+    {
+        return $query->whereNotNull('ended_at')->where(function ($q) {
+            $q->has('rounds', '<', 13)
+                ->whereDoesntHave('events', fn ($eq) => $eq->where('event_type', 'match_end'));
+        });
+    }
+
+    /**
      * Human-readable elapsed time — counts up to now() while the match has no
      * ended_at yet, so an in-progress match shows a live-growing duration instead of
      * nothing.

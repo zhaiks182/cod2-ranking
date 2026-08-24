@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\GameMatch;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class StatsRecalculator
@@ -20,6 +22,15 @@ class StatsRecalculator
      * nothing to recompute them FROM, so wiping the row destroys that data
      * permanently. Confirmed this happened for real: a match deletion zeroed damage/
      * bomb stats server-wide when this used delete()+rebuild.
+     *
+     * Also runs on a schedule (see routes/console.php, RecalculateStats command) — not
+     * just after admin actions. ParseCod2Log::recordKill() bumps these same columns
+     * live, kill-by-kill, before a match's outcome is known (a match only resolves as
+     * "abandoned without a real conclusion" once it ends without reaching 13 rounds or
+     * MatchEnd; — see GameMatch::scopeAbandonedWithoutConclusion()), so the periodic
+     * rebuild is what retroactively removes an abandoned match's kills from the
+     * ranking once that becomes known, the same way it already retroactively repairs
+     * things after a manual match deletion.
      */
     public static function recalculateAll(): void
     {
@@ -35,16 +46,19 @@ class StatsRecalculator
                 'kills' => 0, 'deaths' => 0, 'headshots' => 0, 'grenade_kills' => 0, 'teamkills' => 0, 'suicides' => 0,
             ]);
 
-            self::applyPlayerTotals();
-            self::applyMapStats();
-            self::applyServerStats();
+            $excludedMatchIds = GameMatch::abandonedWithoutConclusion()->pluck('id');
+
+            self::applyPlayerTotals($excludedMatchIds);
+            self::applyMapStats($excludedMatchIds);
+            self::applyServerStats($excludedMatchIds);
         });
     }
 
-    private static function applyPlayerTotals(): void
+    private static function applyPlayerTotals(Collection $excludedMatchIds): void
     {
         $kills = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.attacker_player_id')->where('kills.is_suicide', false)->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.attacker_player_id as player_id, count(*) as kills, sum(kills.is_headshot) as headshots, sum(kills.is_grenade) as grenade_kills')
             ->groupBy('kills.attacker_player_id')->get();
 
@@ -58,6 +72,7 @@ class StatsRecalculator
 
         $deaths = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.victim_player_id')->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.victim_player_id as player_id, count(*) as deaths, sum(kills.is_suicide) as suicides')
             ->groupBy('kills.victim_player_id')->get();
 
@@ -69,10 +84,11 @@ class StatsRecalculator
         }
     }
 
-    private static function applyMapStats(): void
+    private static function applyMapStats(Collection $excludedMatchIds): void
     {
         $kills = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.attacker_player_id')->where('kills.is_suicide', false)->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.attacker_player_id as player_id, rounds.server_id, rounds.map, count(*) as kills, sum(kills.is_headshot) as headshots, sum(kills.is_grenade) as grenade_kills, sum(kills.is_teamkill) as teamkills')
             ->groupBy('kills.attacker_player_id', 'rounds.server_id', 'rounds.map')->get();
 
@@ -85,6 +101,7 @@ class StatsRecalculator
 
         $deaths = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.victim_player_id')->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.victim_player_id as player_id, rounds.server_id, rounds.map, count(*) as deaths')
             ->groupBy('kills.victim_player_id', 'rounds.server_id', 'rounds.map')->get();
 
@@ -99,10 +116,11 @@ class StatsRecalculator
         }
     }
 
-    private static function applyServerStats(): void
+    private static function applyServerStats(Collection $excludedMatchIds): void
     {
         $kills = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.attacker_player_id')->where('kills.is_suicide', false)->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.attacker_player_id as player_id, rounds.server_id, count(*) as kills, sum(kills.is_headshot) as headshots, sum(kills.is_grenade) as grenade_kills, sum(kills.is_teamkill) as teamkills')
             ->groupBy('kills.attacker_player_id', 'rounds.server_id')->get();
 
@@ -115,6 +133,7 @@ class StatsRecalculator
 
         $deaths = DB::table('kills')->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->whereNotNull('kills.victim_player_id')->where('rounds.gametype', 'sd')
+            ->whereNotIn('rounds.match_id', $excludedMatchIds)
             ->selectRaw('kills.victim_player_id as player_id, rounds.server_id, count(*) as deaths, sum(kills.is_suicide) as suicides')
             ->groupBy('kills.victim_player_id', 'rounds.server_id')->get();
 
