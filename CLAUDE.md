@@ -436,6 +436,28 @@ tiempo de debug una vez.
     admin — verificado después que `StatsRecalculator` (fix de la entrada 9)
     preservó bien el resto de los datos ante ese borrado.
 
+11. **"Round 0" (la fase de ready-up del mod) también creaba partidas falsas,
+    sin importar el gametype (2026-08-24).** Mismo problema de fondo que la
+    entrada 10, pero más general: el `_match_info` del `InitGame:` trae
+    "Round 0 | MR12 Ready-up" durante el lobby de ready-up (antes de que todos
+    confirmen listos) y "Round 1 | MR12" recién en la ronda real — pero el
+    fix de `strat` solo excluía ESE gametype puntual, nunca miraba esta
+    etiqueta. Confirmado en vivo (match id 89, Toujane SD): un `RoundStart;`
+    disparó durante "Round 0" con ambos equipos vacíos (nadie conectado
+    todavía), y quedó registrado como una partida real de 1 ronda / 0 kills /
+    0 min. Fix: nuevo campo `pending_match_info` en `log_parser_state`
+    (persistido igual que `pending_map`/`pending_gametype`, capturado del
+    `_match_info` del `InitGame:` más reciente); el handler de `RoundStart;`
+    ahora se salta por completo si ese valor empieza con "Round 0",
+    independiente del `g_gametype`. Reproducido primero con un test
+    automatizado (`tests/Feature/ParseCod2LogReadyUpTest.php`, RED
+    confirmado antes del fix) — es el primer test de PHPUnit real que tiene
+    el parser, antes todo se verificaba a mano contra el log real (ver el
+    resto de esta bitácora). La partida fantasma `id=89` ya existente en
+    producción no se borró desde el fix — queda pendiente que el dueño la
+    borre a mano desde `/adm_cod2/partidas`, mismo precedente que la
+    entrada 10.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
