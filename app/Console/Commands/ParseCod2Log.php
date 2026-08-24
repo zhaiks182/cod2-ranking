@@ -74,9 +74,10 @@ class ParseCod2Log extends Command
         $currentMatch = $state->current_match_id ? GameMatch::find($state->current_match_id) : null;
         $pendingMap = $state->pending_map;
         $pendingGametype = $state->pending_gametype;
+        $pendingMatchInfo = $state->pending_match_info;
         $linesProcessed = 0;
 
-        DB::transaction(function () use ($handle, $server, &$currentRound, &$currentMatch, &$pendingMap, &$pendingGametype, &$linesProcessed) {
+        DB::transaction(function () use ($handle, $server, &$currentRound, &$currentMatch, &$pendingMap, &$pendingGametype, &$pendingMatchInfo, &$linesProcessed) {
             while (($line = fgets($handle)) !== false) {
                 // A concurrent writer may leave a partial final line; stop and pick it
                 // up on the next run instead of parsing a truncated record.
@@ -84,7 +85,7 @@ class ParseCod2Log extends Command
                     break;
                 }
 
-                $this->processLine(rtrim($line, "\r\n"), $server, $currentRound, $currentMatch, $pendingMap, $pendingGametype);
+                $this->processLine(rtrim($line, "\r\n"), $server, $currentRound, $currentMatch, $pendingMap, $pendingGametype, $pendingMatchInfo);
                 $linesProcessed++;
             }
         });
@@ -98,12 +99,13 @@ class ParseCod2Log extends Command
             'current_match_id' => $currentMatch?->id,
             'pending_map' => $pendingMap,
             'pending_gametype' => $pendingGametype,
+            'pending_match_info' => $pendingMatchInfo,
         ]);
 
         $this->info("[{$server->name}] Processed {$linesProcessed} new line(s).");
     }
 
-    private function processLine(string $line, Server $server, ?Round &$currentRound, ?GameMatch &$currentMatch, ?string &$pendingMap, ?string &$pendingGametype): void
+    private function processLine(string $line, Server $server, ?Round &$currentRound, ?GameMatch &$currentMatch, ?string &$pendingMap, ?string &$pendingGametype, ?string &$pendingMatchInfo): void
     {
         // CoD2 right-pads the elapsed-time field to a fixed width with leading spaces
         // for anything under 100 minutes (e.g. "  2:37" vs "247:56") — the anchor must
@@ -118,6 +120,7 @@ class ParseCod2Log extends Command
             $info = $this->parseInfoString(trim(substr($rest, strlen('InitGame:'))));
             $pendingMap = $info['mapname'] ?? 'unknown';
             $pendingGametype = $info['g_gametype'] ?? null;
+            $pendingMatchInfo = $info['_match_info'] ?? null;
 
             // Whatever was previously running is over even if it never got a proper
             // RoundEnd (e.g. a round that stayed in the ready-up lobby and never started).
@@ -133,6 +136,20 @@ class ParseCod2Log extends Command
             // during the strat phase don't get misattributed to whatever real round was
             // open before it.
             if ($pendingGametype === 'strat') {
+                $currentRound = null;
+
+                return;
+            }
+
+            // "Round 0" in the InitGame:'s _match_info is zPAM's ready-up lobby, not
+            // gameplay -- confirmed live (2026-08-24, match id 89): a RoundStart; fired
+            // for "Round 0 | MR12 Ready-up" with BOTH teams empty (nobody connected yet),
+            // and got recorded as a real 1-round, 0-kill match. Unlike the "strat" check
+            // above, this isn't gametype-specific -- Round 0 precedes every gametype's
+            // real Round 1, so RoundStart; during it must never open a match/round no
+            // matter what g_gametype says. A real round's _match_info reads "Round 1 | ..."
+            // (no "Round 0" prefix), so this only excludes the ready-up phase itself.
+            if ($pendingMatchInfo !== null && str_starts_with($pendingMatchInfo, 'Round 0')) {
                 $currentRound = null;
 
                 return;
