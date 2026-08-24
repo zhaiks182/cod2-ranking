@@ -131,8 +131,8 @@
                         {{ count($players) }} conectados
                     </span>
                 </div>
-                <div class="max-h-60 overflow-y-auto px-4">
-                    <table class="w-full text-sm">
+                <div class="max-h-60 overflow-y-auto overflow-x-auto px-4">
+                    <table class="w-full text-sm min-w-[480px]">
                         <thead>
                             <tr class="text-left text-[10px] uppercase tracking-[0.15em] text-slate-600 sticky top-0 bg-panel">
                                 <th class="py-2 font-medium">Nombre</th>
