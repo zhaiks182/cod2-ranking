@@ -2,8 +2,12 @@
 
 Dashboard de estadísticas para uno o más servidores de Call of Duty 2 (mod CoD2x +
 zPAM): rankings de jugadores, historial de partidas por mapa/fecha, estado del
-servidor en vivo, y un panel de administración con consola RCON. Corre en el mismo
-VPS y LAMP que otros proyectos de 4LivePro (`167.148.33.82`, alias SSH `iptvwatch`).
+servidor en vivo, y un panel de administración con consola RCON.
+
+**VPS exclusivo desde el 2026-08-24** (`151.245.32.43`) — antes compartía VPS/LAMP
+con otros proyectos de 4LivePro (`167.148.33.82`, alias SSH `iptvwatch`), ver sección
+"Migración a VPS dedicado" más abajo para el detalle completo y por qué. El VPS viejo
+sigue activo como respaldo, sin fecha de apagado decidida.
 
 **Sitio público:** https://cod2.4livepro.com
 **Panel admin:** https://cod2.4livepro.com/adm_cod2 (login por usuario, no email — no
@@ -682,6 +686,95 @@ hay ningún marcador de "qué commit está desplegado" en el VPS (`git archive` 
 manda `.git/`), así que la única forma de detectar esto es esa comparación manual
 de filesystem. Si el sitio se ve distinto a lo que dice el git log local, empezar
 por ahí antes de asumir que no pasó nada.
+
+## Migración a VPS dedicado (2026-08-24)
+
+Panel + gameserver migrados de `167.148.33.82` (compartido con IPTV/billing de
+4LivePro, alias SSH `iptvwatch`/`iptv-vps`) a `151.245.32.43` (exclusivo para COD2).
+Mismas specs de RAM (913MB, 1 solo core), pero sin compartir con otros proyectos y
+con el stack LAMP corregido — el VPS viejo tenía `mod_php` + `mpm_prefork` (cada
+proceso Apache carga el intérprete PHP completo, ~50MB c/u en reposo), reemplazado
+acá por `mpm_event` + PHP-FPM. El VPS viejo queda de respaldo indefinido, sin apagarse.
+
+**Todo lo de infraestructura (Apache/PHP-FPM/MariaDB, systemd, sudoers, `ufw`,
+timezone del SO) vive solo en el VPS, no en este repo** — mismo precedente que
+`/etc/sudoers.d/cod2-panel` y el mod zPAM (ver sus secciones más abajo). Si el VPS se
+reconstruye de nuevo, hay que recrear todo esto a mano; los puntos más importantes
+(no obvios) quedan documentados acá.
+
+### `mod_php` → PHP-FPM: el gotcha de `mod_proxy_fcgi` con bodies chunked
+
+**El más importante de esta migración, si se repite el patrón de servir esta app
+detrás de Apache+FPM en otro lado.** La subida automática de demos (ver más abajo)
+dejó de funcionar tras el cambio de stack — no por tamaño de archivo ni por el
+código de `DemoUploadController` (sin cambios), sino porque **el cliente CoD2x sube
+el `.dm_1` con `Transfer-Encoding: chunked`, sin `Content-Length` fijo de antemano**.
+`mod_proxy_fcgi` no bufferiza un body chunked del cliente antes de reenviarlo al
+backend FastCGI (PHP-FPM) — sin esto, PHP nunca ve el contenido, `$request->getContent()`
+devuelve vacío, y el endpoint responde `422 "Empty body"` (con algo de ruido de un
+warning de PHP mezclado, si se compara tamaño de respuesta esperado vs. real). `mod_php`
+nunca lo sufría porque no hay salto proxy→FastCGI de por medio.
+
+Reproducible con: `curl -H 'Content-Type:' -H 'Transfer-Encoding: chunked' --data-binary @- URL`
+(cualquier endpoint que reciba un body crudo grande sin `Content-Type`/`Content-Length`
+fijo va a mostrar el mismo síntoma detrás de FPM sin este fix).
+
+**Fix:** agregar `SetEnv proxy-sendcl 1` dentro de `<IfModule proxy_fcgi_module>` en
+`/etc/apache2/conf-available/php8.3-fpm.conf` (el conf que genera el paquete
+`php8.3-fpm` de Ubuntu al correr `a2enconf php8.3-fpm`) — fuerza a Apache a
+bufferizar el body completo y mandar un `Content-Length` real al backend en vez de
+reenviar chunked. Sin esto, cualquier subida de archivo grande sin `Content-Length`
+declarado de antemano (no solo demos — cualquier feature futura con el mismo patrón
+de upload) va a fallar igual.
+
+### Otros ajustes de PHP/Apache que hay que replicar si se reinstala desde cero
+
+- `post_max_size`/`upload_max_filesize` en `25M` (default de PHP es `8M` — muy chico
+  para demos reales de 10-12MB). El viejo ya lo tenía así en su `php.ini` de
+  `mod_php`; se perdió al pasar a FPM porque son archivos `php.ini` distintos
+  (`/etc/php/8.3/apache2/php.ini` vs `/etc/php/8.3/fpm/php.ini`) y no hay ninguna
+  automatización que los mantenga sincronizados.
+- `pm.max_children` del pool de FPM: arrancó en `6` (conservador, calcado del viejo)
+  pero ya disparó `WARNING: server reached pm.max_children setting` bajo carga
+  liviana de pruebas — subido a `10` (con `~40MB` promedio medido por worker, dentro
+  del margen de RAM del VPS). Si vuelve a aparecer ese warning en `php8.3-fpm.log`,
+  es la primera señal de que hay que revisar esto de nuevo (no asumir que es otra cosa).
+- `memory_limit=256M` (el viejo tenía `-1`, ilimitado — un script colgado podía
+  tumbar todo el panel; nunca bajarlo a `-1` de nuevo).
+- Timezone del **sistema operativo** en `America/Guayaquil` (`timedatectl
+  set-timezone America/Guayaquil` + reiniciar `mariadb`) — Laravel ya fuerza esta
+  timezone a nivel de app (`config/app.php`, ver más abajo), pero MariaDB usa
+  `time_zone=SYSTEM`, así que cualquier `NOW()`/`CURRENT_TIMESTAMP` nativo de SQL
+  queda en la hora del SO si no se ajusta esto — un VPS nuevo sin este paso muestra
+  horas desalineadas 100% consistentes con el offset real del datacenter (confirmado
+  en vivo: `Europe/London` por default del proveedor, 6 horas de diferencia con
+  Guayaquil).
+
+### Prioridad del gameserver vs. la carga del panel — verificado con carga real, no solo config
+
+El VPS (viejo y nuevo) tiene **1 solo core** — todo compite por el mismo núcleo, así
+que la prioridad de `cod2server.service` (`Nice=-20`, `CPUWeight=9500`,
+`IOSchedulingClass=realtime`, ver el `.service` en el repo `cod2-server`) no es
+cosmética. Se probó en vivo (2026-08-24, server real vacío, sin jugadores): `ab -n
+3000 -c 25` contra el panel durante ~41s (MariaDB llegó a ~7.3% CPU, cada worker de
+PHP-FPM ~4-5%, saturando el único core disponible), midiendo en paralelo con
+`pidstat` el proceso del gameserver y revisando su propio log (`journalctl -u
+cod2server.service`, que reporta `Hitch warning` cuando el frame time se degrada de
+verdad — señal directa del motor, no una métrica indirecta). Resultado: CPU del
+gameserver sin cambio real (1.12% durante la carga vs 1.20% en reposo), **cero**
+hitch warnings durante toda la ventana. La config protege al proceso de verdad, no
+solo en el papel.
+
+### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
+
+`SSH_HOST="iptvwatch"` en `deploy.sh` sigue apuntando al VPS compartido viejo. Correr
+`./deploy.sh` hoy despliega al respaldo, no al VPS nuevo en producción
+(`151.245.32.43`). No se cambió en esta sesión porque el alias que use `deploy.sh`
+depende de qué máquina de desarrollo lo corra (cada una tiene su propio
+`~/.ssh/config`) — decidir con el dueño si conviene un alias nuevo estandarizado
+(ej. `cod2-vps`) que cada dev configure igual, o hardcodear `root@151.245.32.43`
+directo en el script. Mientras tanto, cualquier deploy real hay que hacerlo a mano
+apuntando al VPS nuevo.
 
 ## Auditoría de admin y reinicio de servicio (2026-08-19)
 
