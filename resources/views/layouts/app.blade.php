@@ -49,13 +49,17 @@
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5">
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
+            </div>
+            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
+                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
                 @if ($activeHostedServer ?? null)
                     {{-- Sin esto, alguien que crea un server temporal y navega a otra
                     pagina del sitio no tiene forma de volver -- no hay login, la URL
                     con el token es lo unico que administra ese server (ver
-                    AppServiceProvider::boot()). --}}
+                    AppServiceProvider::boot()). Al lado de "Inicio" a pedido del dueño
+                    (2026-08-24) -- antes vivia al lado del logo. --}}
                     <a href="{{ route('hosted-servers.show', [$activeHostedServer, $activeHostedServer->management_token]) }}"
-                        class="relative p-1.5 rounded-lg text-slate-300 hover:text-gsaccent transition-colors"
+                        class="relative p-1.5 rounded-lg text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
                         title="Tu servidor temporal está activo">
                         <span class="sr-only">Tu servidor temporal está activo — ver</span>
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
@@ -65,9 +69,6 @@
                         </span>
                     </a>
                 @endif
-            </div>
-            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
-                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
                 <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Crear servidor</a>
                 <div class="relative">
                     <button type="button" data-ranking-toggle onclick="document.getElementById('ranking-dropdown').classList.toggle('hidden')"
