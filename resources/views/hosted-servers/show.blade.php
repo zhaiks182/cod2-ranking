@@ -92,8 +92,6 @@
             <a href="{{ route('hosted-servers.create') }}" class="text-gsaccent hover:underline">Crear uno nuevo</a>.
         </div>
     @endif
-
-    <p class="text-[11px] text-slate-500">Guardá esta página — es la única forma de administrar o detener este servidor, no hay ningún login asociado.</p>
 </div>
 
 <script>
