@@ -548,6 +548,53 @@ tiempo de debug una vez.
     GREEN junto al resto de la suite en un entorno aislado antes de
     desplegar.
 
+15. **Bug real y urgente: `cod2:recalculate-stats` (entrada 13) borraba en
+    vivo los kills de una partida que TODAVÍA se estaba jugando
+    (2026-08-24), detectado por el usuario jugando en tiempo real
+    ("tengo ya 25 kill por que no se cuentan").** Causa raíz: `ended_at`
+    **no es una señal estable** de "esta partida ya terminó" —
+    `openRound()` la marca después de CADA ronda, en el instante exacto en
+    que dispara `RoundEnd;`/`ShutdownGame:`, y la vuelve a poner en
+    `null` apenas arranca la ronda siguiente de la misma partida (ver el
+    branch "continuing" de `openRound()`, más arriba en este archivo). La
+    entrada 13 asumía que `ended_at IS NOT NULL` significaba "la partida
+    terminó", tratándolo como una foto fija — pero es un valor que el
+    propio parser revierte constantemente mientras la partida sigue en
+    curso. Con el server del usuario corriendo con bots (rondas
+    completándose cada ~1 minuto por el timeout de ronda, sin intervención
+    humana necesaria para que una ronda "termine"), `cod2:recalculate-stats`
+    corrió justo en ese hueco de segundos entre una ronda y la siguiente,
+    vio `ended_at` puesto, y clasificó la partida completa como
+    abandonada — borrando sus 20 kills en vivo (`kills_total` de 20 a 0,
+    confirmado con el usuario jugando en el momento exacto).
+    - Fix en `app/Models/GameMatch.php`: nuevo `scopeStillCurrent()`, que
+      usa `log_parser_state.current_match_id` — el puntero que el propio
+      parser mantiene sobre cuál es "la partida que sigo rastreando para
+      este server" (actualizado en cada corrida de `cod2:parse-log`,
+      línea `$state->update(['current_match_id' => $currentMatch?->id, ...])`).
+      Mientras una partida siga siendo `current_match_id`, no puede
+      considerarse abandonada sin importar lo que diga `ended_at` en ese
+      instante — solo cuando el parser pasa a una partida DISTINTA (cambio
+      de mapa real, o el heurístico de 30 min de gap) queda "superada" y
+      recién ahí es justo evaluarla. `scopeAbandonedWithoutConclusion()` y
+      `scopeVisibleInListing()` (entrada 12) ahora usan este scope.
+    - Desplegado de urgencia directo a producción, sin esperar el ciclo
+      completo de verificación aislada, porque el usuario estaba perdiendo
+      su conteo en tiempo real — restaurado a `kills_total=20` corriendo
+      `cod2:recalculate-stats` manualmente apenas se aplicó el fix.
+      Después, TDD retroactivo: `tests/Feature/GameMatchStillCurrentTest.php`
+      (2 casos) — RED confirmado contra el código anterior en un entorno
+      aislado (reproduce el bug exacto: kills de una partida "todavía
+      current" se contaban como abandonados), GREEN con el fix, y toda la
+      suite (17/18, mismo `ExampleTest.php` preexistente sin relación)
+      verificada antes de commitear.
+    - **Lección general:** un campo que el propio parser "despausa"
+      (`ended_at` → `null` al continuar) nunca sirve como señal final para
+      un job periódico externo que corre por separado — hace falta un
+      puntero explícito al estado "actual" del parser
+      (`current_match_id`), no inferir el estado final desde una columna
+      que el mismo parser puede revertir en su próxima corrida.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
