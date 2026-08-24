@@ -595,6 +595,67 @@ tiempo de debug una vez.
       (`current_match_id`), no inferir el estado final desde una columna
       que el mismo parser puede revertir en su próxima corrida.
 
+16. **`cod2:parse-log` sin protección real contra corridas concurrentes,
+    causando pérdida silenciosa de kills reales (2026-08-24) — bug en
+    parte auto-infligido durante el debugging de la entrada 15.**
+    Investigando el reclamo del dueño ("el contador no está en 20, está en
+    25, validá el log"), se encontró que la partida real tenía 85 kills
+    reales del jugador en el rango de líneas del log correspondiente, pero
+    la BD solo tenía 29. `Schedule::withoutOverlapping()`
+    (`routes/console.php`) solo protege la invocación del propio
+    scheduler — no hace nada contra `php artisan cod2:parse-log` corrido a
+    mano por fuera de él. Durante el debugging de la entrada 15 se corrió
+    el comando manualmente muchas veces vía SSH mientras el cron real
+    seguía corriendo cada minuto en paralelo — una condición de carrera
+    real, no hipotética. El proceso "perdedor" de la carrera arrancaba con
+    `current_round_id`/`current_match_id` desactualizados (pisados por el
+    otro proceso antes de que este leyera el estado), así que cualquier
+    kill que ese proceso parseaba caía en el descarte de entre-rondas de
+    `recordKill()` (línea ~301: `$currentRound->ended_at && $pendingGametype !== 'dm'`)
+    y se perdía en silencio, sin error ni warning. Las líneas del log
+    nunca se perdieron (confirmado leyendo el archivo crudo directamente
+    con PHP puro, evitando el escapado de shell que complicaba `grep` vía
+    SSH) — solo la derivación a la base de datos. Fix:
+    `Cache::lock("cod2:parse-log:server:{id}", 120)` (driver `database`, ya
+    configurado en `.env`) envolviendo toda la corrida por server en
+    `parseServer()`/`parseServerLocked()` — una segunda corrida
+    concurrente (sin importar el origen) ahora se salta con un warning en
+    vez de competir por el estado. TDD:
+    `tests/Feature/ParseCod2LogConcurrencyTest.php` (2 casos) verificado
+    GREEN en un entorno aislado. **Pendiente, no resuelto todavía:** los
+    ~56 kills reales perdidos de esa partida ya jugada no se recuperaron
+    — técnicamente posible con un backfill puntual ya que las líneas
+    siguen intactas en el log, pero no se hizo por el riesgo de duplicar
+    datos si no se hace con cuidado; ofrecido al dueño, pendiente su
+    decisión.
+
+17. **El marcador final y el ganador no aparecían en la página de una
+    partida jugada 1 humano vs bots (2026-08-24), mismo día que la
+    entrada 16.** Causa raíz en `TeamSideAnalyzer::clusterRoundWinners()`
+    (`app/Support/TeamSideAnalyzer.php`): los bots siempre reportan
+    `guid=0` (indistinguibles entre sí, ver comentario ya existente en
+    `ParseCod2Log::upsertPlayer()`) — con bots llenando ambos lados de una
+    partida 1v(bots), el `guid 0` aparece en TODAS las rondas del
+    `winner_guids`, sin importar qué roster ganó esa ronda. El algoritmo
+    de clustering por overlap de guids (diseñado para partidas humano vs
+    humano, donde cada roster tiene guids reales y únicos) nunca pudo
+    separar los dos rosters porque los ceros compartidos hacían que
+    CUALQUIER ronda "solapara" con la referencia del cluster A — el
+    cluster B nunca recibía una sola ronda, y la función devolvía `null`
+    entero (marcador y ganador desaparecían de la página de la partida,
+    aunque los datos de rondas/kills eran reales y correctos). Fix: los
+    guids reales (excluyendo 0) son ahora la única señal de clustering;
+    una ronda ganada enteramente por bots (sin ningún guid real en el
+    `winner_guids`, ej. el roster rival ganó esa ronda) se asigna al
+    roster opuesto al de la última ronda clasificada, ya que solo hay un
+    ganador posible por ronda. TDD:
+    `tests/Feature/TeamSideAnalyzerBotClusteringTest.php` (2 casos,
+    incluye guardia de regresión explícita para partidas humano-vs-humano
+    con patrón de rondas intercalado, no en bloque, para no disparar el
+    corte de "13 rondas" antes de tiempo) verificado GREEN junto al resto
+    de la suite. Verificado en producción real: `final_score` de la
+    partida pasó de vacío (`null`) a `13-1`.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
