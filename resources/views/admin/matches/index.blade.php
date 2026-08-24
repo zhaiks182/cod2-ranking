@@ -6,6 +6,9 @@
 <div class="space-y-4">
     <div class="flex items-center justify-between">
         <h1 class="text-lg font-semibold">Partidas</h1>
+        <a href="{{ route('admin.matches.index', $toggleQuery) }}" class="text-xs text-slate-400 hover:text-cyan-400 underline">
+            {{ $showIncomplete ? 'Ocultar incompletas' : 'Mostrar incompletas' }}
+        </a>
     </div>
 
     @if($servers->count() > 1)
@@ -45,6 +48,9 @@
                                 @unless($match->ended_at)
                                     <span class="ml-1 text-[10px] uppercase tracking-wide text-emerald-400">en curso</span>
                                 @endunless
+                                @if($match->ended_at && $match->rounds_count < 13 && $match->events->isEmpty())
+                                    <span class="ml-1 text-[10px] uppercase tracking-wide text-amber-400">incompleta</span>
+                                @endif
                             @endif
                         </td>
                         <td class="px-4 py-2 text-slate-400">{{ $match->is_backfilled ? '—' : $match->duration_label }}</td>

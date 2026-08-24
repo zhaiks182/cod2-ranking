@@ -39,6 +39,43 @@ class GameMatch extends Model
         return $this->hasMany(Demo::class, 'match_id');
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(MatchEvent::class, 'match_id');
+    }
+
+    /**
+     * A match only reaches a real result once it hits 13 rounds or the mod's own
+     * MatchEnd; log line fires (a 12-12 tie goes to overtime and keeps playing
+     * past round 13 without a satisfied win condition until MatchEnd; decides
+     * it — see TeamSideAnalyzer::clusterRoundWinners()). Matches abandoned
+     * before either point are real gameplay (unlike the Round 0 ready-up noise
+     * ParseCod2Log already filters out), just never concluded — confirmed with
+     * the owner: these shouldn't appear in listings as if they were finished.
+     */
+    public function scopeReachedConclusion($query)
+    {
+        return $query->where(function ($q) {
+            $q->has('rounds', '>=', 13)
+                ->orWhereHas('events', fn ($eq) => $eq->where('event_type', 'match_end'));
+        });
+    }
+
+    /**
+     * What listings should show: matches still being played right now (no
+     * ended_at yet — could still go on to reach a real result) plus matches
+     * that already reached one. Excludes only matches that are over (ended_at
+     * set, e.g. via the 30-minute gap timeout in ParseCod2Log) without ever
+     * reaching 13 rounds or MatchEnd; — abandoned/aborted starts, not a live
+     * match that simply hasn't finished yet.
+     */
+    public function scopeVisibleInListing($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('ended_at')->orWhere(fn ($q2) => $q2->reachedConclusion());
+        });
+    }
+
     /**
      * Human-readable elapsed time — counts up to now() while the match has no
      * ended_at yet, so an in-progress match shows a live-growing duration instead of

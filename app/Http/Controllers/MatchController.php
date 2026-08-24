@@ -32,6 +32,7 @@ class MatchController extends Controller
                 ->orderByDesc('id')->withCount('kills')->get();
 
         $matches = GameMatch::where('server_id', $server?->id)->where('is_backfilled', false)
+            ->visibleInListing()
             ->when($from, fn ($q) => $q->where('started_at', '>=', Carbon::parse($from)->startOfDay()))
             ->when($to, fn ($q) => $q->where('started_at', '<=', Carbon::parse($to)->endOfDay()))
             ->orderByDesc('started_at')
