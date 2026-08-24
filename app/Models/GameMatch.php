@@ -62,17 +62,42 @@ class GameMatch extends Model
     }
 
     /**
+     * ended_at is NOT a stable "this match is truly over" signal — openRound()
+     * sets it after every single round (right when RoundEnd;/ShutdownGame:
+     * fires) and then clears it back to null the moment the NEXT round of the
+     * same match starts (see openRound()'s "continuing" branch). Confirmed
+     * live (2026-08-24): with bots keeping rounds cycling every ~1 minute,
+     * ended_at was caught set during that brief between-rounds gap by
+     * cod2:recalculate-stats, which zeroed out a player's kills for a match
+     * that was still actively being played. log_parser_state.current_match_id
+     * is the parser's own live pointer to "the match I'm still tracking for
+     * this server" — as long as a match is still current, it hasn't been
+     * superseded by anything (a new match on a different map, or the 30-min
+     * gap heuristic creating a fresh one), so it can't be judged abandoned yet
+     * no matter what ended_at says at this exact instant.
+     */
+    public function scopeStillCurrent($query)
+    {
+        $currentMatchIds = LogParserState::whereNotNull('current_match_id')->pluck('current_match_id');
+
+        return $query->whereIn('id', $currentMatchIds);
+    }
+
+    /**
      * What listings should show: matches still being played right now (no
-     * ended_at yet — could still go on to reach a real result) plus matches
-     * that already reached one. Excludes only matches that are over (ended_at
-     * set, e.g. via the 30-minute gap timeout in ParseCod2Log) without ever
-     * reaching 13 rounds or MatchEnd; — abandoned/aborted starts, not a live
-     * match that simply hasn't finished yet.
+     * ended_at yet, or still the parser's current match for its server —
+     * could still go on to reach a real result) plus matches that already
+     * reached one. Excludes only matches that are over (ended_at set AND no
+     * longer current, e.g. via the 30-minute gap timeout in ParseCod2Log)
+     * without ever reaching 13 rounds or MatchEnd; — abandoned/aborted
+     * starts, not a live match that simply hasn't finished yet.
      */
     public function scopeVisibleInListing($query)
     {
         return $query->where(function ($q) {
-            $q->whereNull('ended_at')->orWhere(fn ($q2) => $q2->reachedConclusion());
+            $q->whereNull('ended_at')
+                ->orWhere(fn ($q2) => $q2->stillCurrent())
+                ->orWhere(fn ($q2) => $q2->reachedConclusion());
         });
     }
 
@@ -86,10 +111,14 @@ class GameMatch extends Model
      */
     public function scopeAbandonedWithoutConclusion($query)
     {
-        return $query->whereNotNull('ended_at')->where(function ($q) {
-            $q->has('rounds', '<', 13)
-                ->whereDoesntHave('events', fn ($eq) => $eq->where('event_type', 'match_end'));
-        });
+        $currentMatchIds = LogParserState::whereNotNull('current_match_id')->pluck('current_match_id');
+
+        return $query->whereNotNull('ended_at')
+            ->whereNotIn('id', $currentMatchIds)
+            ->where(function ($q) {
+                $q->has('rounds', '<', 13)
+                    ->whereDoesntHave('events', fn ($eq) => $eq->where('event_type', 'match_end'));
+            });
     }
 
     /**
