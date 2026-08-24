@@ -17,6 +17,7 @@ use App\Models\Server;
 use App\Services\Cod2RconClient;
 use App\Support\Cod2Colors;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -54,6 +55,33 @@ class ParseCod2Log extends Command
             return;
         }
 
+        // Schedule::withoutOverlapping() only guards the scheduler's own invocation --
+        // it does nothing against a manually-run `php artisan cod2:parse-log` racing the
+        // live cron. Confirmed happening for real (2026-08-24): repeated manual runs
+        // during a live debugging session raced the per-minute cron, and the loser of
+        // the race started from a stale current_round_id/current_match_id (overwritten
+        // by the winner's earlier state) -- every kill it "parsed" then hit the
+        // between-round discard in recordKill() (that round already had ended_at set),
+        // silently dropping ~66% of a player's real kills for that match even though
+        // the raw log lines were never lost. This lock makes a second concurrent run
+        // (any source) skip instead of racing, whatever the trigger.
+        $lock = Cache::lock("cod2:parse-log:server:{$server->id}", 120);
+
+        if (! $lock->get()) {
+            $this->warn("[{$server->name}] Another cod2:parse-log run is already in progress for this server, skipping.");
+
+            return;
+        }
+
+        try {
+            $this->parseServerLocked($server);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function parseServerLocked(Server $server): void
+    {
         $state = LogParserState::firstOrCreate(
             ['server_id' => $server->id],
             ['log_path' => $server->log_path, 'byte_offset' => 0]

@@ -57,27 +57,51 @@ class TeamSideAnalyzer
             'B' => ['score' => 0, 'guids' => collect()],
         ];
         $reference = [];
+        $lastKey = null;
 
         foreach ($withWinners as $guids) {
             $guids = collect($guids);
 
+            // Bots all report guid 0 (see ParseCod2Log::upsertPlayer()) and are
+            // indistinguishable from each other. With bots filling empty slots on
+            // both rosters, guid 0 shows up in EVERY round's winner list no matter
+            // which roster actually won — confirmed live (2026-08-24) on a real
+            // 1-human-vs-bots match, where this made every round's winner_guids
+            // "overlap" the same reference roster through the shared zeros, so
+            // cluster B never got a single round and the whole function returned
+            // null (final score and winner silently disappeared from the match
+            // page for that entire match). Real guids are the only reliable
+            // clustering signal; bots contribute nothing to it.
+            $realGuids = $guids->reject(fn ($g) => $g === 0);
+
             if (! isset($reference['A'])) {
                 $key = 'A';
+            } elseif ($realGuids->isEmpty()) {
+                // No real player in this round's winning roster at all (an
+                // all-bot roster beat the other) — no guid signal to compare
+                // against, but a round only ever has one winner, so it's simply
+                // the other roster from whichever won the round before.
+                $key = $lastKey === 'A' ? 'B' : 'A';
             } elseif (! isset($reference['B'])) {
                 // B has no sighting yet — same overlap-vs-outside test the original
                 // algorithm used, just against A's latest roster instead of round 1's.
-                $overlapA = $guids->intersect($reference['A'])->count();
-                $overlapOutsideA = $guids->diff($reference['A'])->count();
+                $overlapA = $realGuids->intersect($reference['A'])->count();
+                $overlapOutsideA = $realGuids->diff($reference['A'])->count();
                 $key = $overlapA >= $overlapOutsideA ? 'A' : 'B';
             } else {
-                $overlapA = $guids->intersect($reference['A'])->count();
-                $overlapB = $guids->intersect($reference['B'])->count();
+                $overlapA = $realGuids->intersect($reference['A'])->count();
+                $overlapB = $realGuids->intersect($reference['B'])->count();
                 $key = $overlapA >= $overlapB ? 'A' : 'B';
             }
 
             $clusters[$key]['score']++;
             $clusters[$key]['guids'] = $clusters[$key]['guids']->merge($guids);
-            $reference[$key] = $guids;
+            if ($realGuids->isNotEmpty()) {
+                $reference[$key] = $realGuids;
+            } elseif (! isset($reference[$key])) {
+                $reference[$key] = collect();
+            }
+            $lastKey = $key;
 
             // Fallback only: matches with a captured match_end already got trimmed to
             // their true last round above, so this never fires for them (needed — a
