@@ -12,7 +12,7 @@ class Setting extends Model
         'discord_invite_url',
         'discord_description',
         'discord_benefits',
-        'hosted_servers_max_concurrent',
+        'hosted_servers_ports',
     ];
 
     /** @return array<int, string> Un item de beneficio por linea, vacios descartados. */
@@ -35,18 +35,39 @@ class Setting extends Model
     }
 
     /**
-     * Limite de servidores temporales concurrentes -- pisa el default de
-     * config/hosted_servers.php (env HOSTED_SERVERS_MAX_CONCURRENT) en cuanto el
-     * admin lo edita desde adm_cod2/servers. Sin tope contra la cantidad real de
-     * puertos abiertos en el firewall a proposito (2026-08-24, pedido explicito
-     * del dueño) -- si se sube por encima de los puertos realmente disponibles,
-     * la creacion de un servidor temporal falla con un error generico
-     * ("No se pudo crear el servidor ahora mismo") en vez de romper, pero no
-     * hay ninguna advertencia proactiva en la UI.
+     * Lista de puertos disponibles para servidores temporales, en el orden en
+     * que se editaron desde adm_cod2/servers (HostedServerPortAllocator los
+     * prueba en este orden). Si nunca se edito desde el panel, cae al rango
+     * consecutivo viejo de config/hosted_servers.php -- mismo fallback que
+     * tenia maxConcurrent() antes de este cambio.
+     *
+     * @return array<int, int>
+     */
+    public function hostedServerPorts(): array
+    {
+        if (filled($this->hosted_servers_ports)) {
+            return collect(explode(',', $this->hosted_servers_ports))
+                ->map(fn ($port) => (int) trim($port))
+                ->values()
+                ->all();
+        }
+
+        $start = (int) config('hosted_servers.port_range_start');
+        $count = (int) config('hosted_servers.max_concurrent');
+
+        return range($start, $start + max(1, $count) - 1);
+    }
+
+    /**
+     * Limite de servidores temporales concurrentes -- ahora es simplemente la
+     * cantidad de puertos configurados (hostedServerPorts()), no un numero
+     * editado aparte. Antes eran dos valores independientes que podian
+     * desincronizarse (subir el limite por encima de los puertos realmente
+     * disponibles hacia fallar la creacion con un error generico) -- ver la
+     * migracion 2026_08_25_161907 para el detalle completo.
      */
     public static function maxConcurrent(): int
     {
-        return static::current()->hosted_servers_max_concurrent
-            ?? (int) config('hosted_servers.max_concurrent');
+        return count(static::current()->hostedServerPorts());
     }
 }
