@@ -1305,6 +1305,49 @@ panel), pero si en la práctica da problemas, bajar `max_concurrent` de nuevo a 
 que subirlo más. Subir esto más allá de 2 solo después de ampliar RAM/disco del VPS,
 nunca por confianza en la teoría.
 
+**El límite editable del panel y el rango de puertos eran dos números independientes
+que nadie sincronizaba — arreglado 2026-08-25.** El módulo de admin que permite subir
+`max_concurrent` desde `/adm_cod2/servers` (`Setting::hosted_servers_max_concurrent`)
+se agregó el 2026-08-24 a propósito sin capar contra la cantidad real de puertos
+abiertos — documentado en su momento como una trampa conocida ("si se sube por
+encima de los puertos realmente disponibles, la creación de un servidor temporal
+falla con un error genérico"). El dueño lo notó en la práctica: subir el límite en el
+panel no alcanzaba porque el rango de puertos (`HOSTED_SERVERS_PORT_START`/`_END` en
+`.env`, fijo en 28970-28971) seguía teniendo solo 2 puertos.
+
+Fix: `settings.hosted_servers_max_concurrent` (un número) se reemplazó por
+`settings.hosted_servers_ports` (texto, lista de puertos separada por coma, ej.
+`"28970,28980,28990"`) — `Setting::maxConcurrent()` ahora es simplemente
+`count(Setting::hostedServerPorts())`, así que los dos números no pueden
+desincronizarse nunca más (es matemáticamente imposible, no una convención a
+respetar). `HostedServerPortAllocator` itera esa lista en vez de un rango
+`start`/`end`. El panel (`/adm_cod2/servers`) tiene un solo campo de texto editable
+con la lista completa, en vez del número + el texto informativo de antes.
+
+**Regla de negocio nueva, a pedido del dueño:** si se edita la lista sacando un
+puerto que tiene un servidor temporal activo (`starting`/`running`) ahora mismo, el
+guardado se rechaza entero (con el puerto en conflicto en el mensaje de error) — no
+se permite guardar y dejar ese servidor corriendo "fuera de lista". El resto de la
+validación es básica a propósito (número de puerto válido 1024-65535, sin duplicados,
+al menos uno) — no revisa contra otros servicios del VPS, confía en que el admin sabe
+qué puertos están libres (mismo criterio que ya se usó para no capar contra el
+firewall, ver arriba).
+
+De paso se encontró y corrigió un bug latente en `HostedServerPortAllocator`:
+`isDuplicateKey()` solo reconocía el código de error 1062 de MySQL para detectar un
+puerto ya tomado — bajo SQLite (lo que usan los tests) esa excepción nunca se
+atrapaba, algo que nunca se notó porque ningún test anterior ejercitaba ese camino y
+producción siempre corrió contra MySQL. Reemplazado por
+`Illuminate\Database\UniqueConstraintViolationException` (agnóstica de motor).
+
+**Importante — esto NO cambia el techo real de cuántos servidores temporales
+concurrentes el VPS aguanta.** El límite real sigue siendo la RAM (ver el párrafo de
+arriba: con 2 concurrentes el margen libre ya baja a ~60MB en el peor caso). Ahora es
+posible configurar más puertos sin que la creación falle con un error genérico, pero
+subir la lista más allá de 2 sigue siendo una decisión de recursos, no solo de
+puertos — misma advertencia que ya existía, ahora aplicada correctamente porque el
+número que se sube en el panel por fin es el que realmente importa.
+
 **Probado en vivo de punta a punta 2026-08-22** (crear vía `tinker`, confirmar
 proceso/RCON/`fs_basepath`+`fs_homepath` separados, `stop()`, limpieza completa,
 memoria recuperada, log de producción sin tocar, server real sin degradación) — ver
