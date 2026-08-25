@@ -120,10 +120,12 @@ class TeamSideAnalyzer
             }
         }
 
-        if ($clusters['A']['score'] === 0 || $clusters['B']['score'] === 0) {
-            return null;
-        }
-
+        // Cluster A always gets at least one round (the first one bootstraps it),
+        // but cluster B can legitimately stay at 0 -- a roster that hasn't lost a
+        // single round yet (a 3-0 sweep so far) leaves no real guid to identify the
+        // other roster by. That's still a valid score (e.g. "3-0"), not a reason to
+        // hide the whole result -- see sideScores() below for how it copes with an
+        // unidentified cluster B.
         return $clusters;
     }
 
@@ -226,7 +228,18 @@ class TeamSideAnalyzer
         };
 
         $sideA = $sideOfCluster($clusters['A']['guids']);
-        $sideB = $sideOfCluster($clusters['B']['guids']);
+
+        // Cluster B can be empty (roster undefeated so far, see clusterRoundWinners()
+        // above) -- no real guids to vote with, so sideOfCluster() can't tell axis
+        // from allies for it. There are only two sides, though, so once side A is
+        // known, side B has to be the other one; no vote needed.
+        $sideB = $clusters['B']['guids']->isNotEmpty()
+            ? $sideOfCluster($clusters['B']['guids'])
+            : match ($sideA) {
+                'axis' => 'allies',
+                'allies' => 'axis',
+                default => null,
+            };
 
         if (! $sideA || ! $sideB || $sideA === $sideB) {
             return $empty;
