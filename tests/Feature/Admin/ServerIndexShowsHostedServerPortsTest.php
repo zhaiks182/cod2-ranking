@@ -19,7 +19,12 @@ class ServerIndexShowsHostedServerPortsTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.servers.index'));
 
         $response->assertOk();
-        $response->assertSee('28970,28980,28990', false);
+        $response->assertSee('value="3"', false); // cantidad de servidores temporales
+        $response->assertSee('value="28970"', false);
+        $response->assertSee('value="28980"', false);
+        $response->assertSee('value="28990"', false);
+        $response->assertSee('Servidor temporal #1', false);
+        $response->assertSee('Servidor temporal #3', false);
         $response->assertSee('3 máximo', false);
     }
 }

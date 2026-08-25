@@ -16,7 +16,7 @@ class ServerController extends Controller
         $servers = Server::orderBy('name')->get();
 
         $hostedServersActive = HostedServer::whereIn('status', ['starting', 'running'])->count();
-        $hostedServersPorts = implode(',', Setting::current()->hostedServerPorts());
+        $hostedServersPorts = Setting::current()->hostedServerPorts();
         $hostedServersMaxConcurrent = Setting::maxConcurrent();
         $turnstileConfigured = filled(config('services.turnstile.site_key')) && filled(config('services.turnstile.secret_key'));
 
