@@ -13,6 +13,7 @@ use App\Models\PlayerMapStat;
 use App\Models\PlayerServerStat;
 use App\Models\PlayerWeaponPick;
 use App\Models\Round;
+use App\Models\Season;
 use App\Models\Server;
 use App\Services\Cod2RconClient;
 use App\Support\Cod2Colors;
@@ -265,6 +266,7 @@ class ParseCod2Log extends Command
 
             $currentMatch = GameMatch::create([
                 'server_id' => $server->id,
+                'season_id' => Season::current()->id,
                 'map' => $map,
                 'gametype' => $gametype,
                 'started_at' => now(),

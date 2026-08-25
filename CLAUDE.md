@@ -1677,6 +1677,102 @@ no se muestra nada — no vale la pena mandar a nadie a una página muerta). Cua
 un server activo, aparece un ícono con un punto verde animado al lado del logo
 (`layouts/app.blade.php`) que linkea directo a `hosted-servers.show`.
 
+## Temporadas — infraestructura base (2026-08-25)
+
+Primer sub-proyecto de un plan de 3 para agregar el concepto de "temporada" al
+panel. Spec completa:
+`docs/superpowers/specs/2026-08-25-temporadas-infraestructura-base-design.md`.
+**Este sub-proyecto SOLO agrega la infraestructura de datos + el panel de admin
+para cerrar/abrir temporadas — `/ranking` y `/especialidades` todavía NO son
+conscientes de temporada** (siguen mostrando el acumulado histórico completo, sin
+filtro), eso queda para los sub-proyectos 2 y 3, todavía no arrancados.
+
+### Modelo: `seasons` + `matches.season_id`
+
+Tabla `seasons` (`name`, `started_at`, `ended_at` nullable) y columna nueva
+`matches.season_id` (FK, nullable a nivel de esquema — ver más abajo por qué).
+`Season::current()` es `whereNull('ended_at')->firstOrFail()` — exactamente una
+fila con `ended_at` null en todo momento, garantizado por
+`Admin\SeasonController@store` (ver abajo), nunca por una constraint de base de
+datos. La migración
+(`database/migrations/2026_08_25_180000_create_seasons_table_and_backfill_matches.php`)
+crea "Temporada 1" (con `started_at` = la partida más vieja existente, o `now()`
+si la base está vacía) y backfillea `season_id` en TODAS las partidas existentes
+a esa temporada — no queda ninguna partida histórica sin temporada.
+
+**`season_id` se asigna una sola vez, al crear la partida — nunca se reasigna
+retroactivamente.** `ParseCod2Log::openRound()` (donde se crea cada `GameMatch`
+nueva) le pone `Season::current()->id` en el momento de la creación, punto. Esto
+es intencional, no una limitación: significa que una partida que está en curso
+justo cuando el dueño cierra una temporada desde el admin queda **entera** en la
+temporada vieja, sin ninguna lógica especial de "cortar" una partida a mitad de
+camino — mismo espíritu que ya usa `log_parser_state.current_match_id` para no
+tratar una partida en curso como si ya hubiera terminado (ver la bitácora de bugs
+más arriba, entrada 15).
+
+**Por qué `season_id` es nullable a nivel de esquema (no `NOT NULL`), decidido
+mientras se escribía el plan de implementación:** forzar esa constraint sobre una
+columna ya creada requiere `Blueprint::change()`, que a su vez necesita
+`doctrine/dbal` — no instalado en este proyecto, y agregarlo solo para esto no se
+justificaba. Además `SQLite` (el motor real que corren los tests, ver
+`phpunit.xml`) no soporta bien ese tipo de alteración sin reconstruir la tabla
+entera. La garantía real de "toda partida tiene `season_id`" la da el código de
+aplicación (el único lugar que crea un `GameMatch` es `openRound()`, que siempre
+lo setea) — no una constraint de la base de datos. Si en algún momento se agrega
+`doctrine/dbal` por otro motivo, valdría la pena revisar si conviene endurecer
+esto.
+
+**`rounds` y `kills` NO tienen su propia columna `season_id`, a propósito.**
+Ambas ya cuelgan de `matches` (`rounds.match_id`, `kills.match_id` indirecto vía
+`round_id`/`match_id`), así que la temporada de cualquier ronda o kill siempre se
+puede derivar con un join a `matches.season_id` sin duplicar el dato — agregar la
+columna en las dos tablas más grandes de la base (las que más filas acumulan) sin
+necesidad real hubiera sido puro costo de espacio/mantenimiento.
+
+### Panel de admin: cerrar/abrir temporadas — 100% manual, global
+
+`/adm_cod2/temporadas` (`Admin\SeasonController`, link nuevo "Temporadas" en el
+dropdown "Sistema" del nav admin). Lista todas las temporadas (nombre, desde,
+hasta, cantidad de partidas vía `withCount('matches')`) y un form para cerrar la
+activa y abrir una nueva con nombre elegido a mano.
+
+**Por qué 100% manual (sin fecha de corte automática, sin duración configurable):**
+no hay ninguna regla de negocio real detrás de "cuándo termina una temporada" más
+allá de la decisión del dueño de la comunidad — a diferencia de los servidores
+temporales (que sí tienen reglas claras de expiración por tiempo/inactividad), acá
+automatizar el corte sería inventar una regla que nadie pidió. `store()` valida
+solo `name` (`required|string|max:100`) y hace el swap dentro de una transacción
+(`DB::transaction`): cierra la vieja (`ended_at = now()`) y crea la nueva
+(`ended_at = null`) atómicamente, así que nunca hay una ventana sin ninguna
+temporada activa (lo que rompería `Season::current()->firstOrFail()` en medio de
+un `cod2:parse-log` corriendo en paralelo). Se registra en el log de auditoría
+existente (`AdminAction::record('seasons.close', ...)`, mismo patrón que
+`Admin\MatchController@destroy` y el resto de acciones admin — ver "Log de
+auditoría" más arriba).
+
+**Por qué global (una sola temporada activa para todo el sitio, no una por
+server):** con un solo server real (`servers.id=1`, Pug Latam) en producción hoy,
+una temporada por server hubiera sido complejidad sin caso de uso real —
+`Season::current()` no filtra por `server_id` en absoluto. Si en el futuro se
+agrega un segundo server real con su propio calendario de temporadas, esto habría
+que revisarlo (probablemente agregando `server_id` nullable a `seasons` en vez de
+rehacer el modelo).
+
+TDD en las 3 tasks: `tests/Feature/SeasonModelTest.php` (3 casos — la migración
+siembra "Temporada 1" activa, `current()` devuelve la de `ended_at` null, la
+relación `GameMatch::season()`), `tests/Feature/ParseCod2LogSeasonTest.php` (2
+casos — una partida nueva toma la temporada activa; tras cerrar una temporada y
+abrir otra, la siguiente partida toma la nueva), y
+`tests/Feature/Admin/SeasonControllerTest.php` (4 casos — index muestra la
+activa, store cierra+abre atómico, store exige `name`, store deja rastro en
+`AdminAction`).
+
+**Pendiente (fuera de alcance de este sub-proyecto):** `/ranking`,
+`/especialidades`, y cualquier otra pantalla de stats acumuladas siguen mostrando
+el histórico completo sin filtrar por temporada — filtrar esas vistas por
+temporada (con selector de temporada, probablemente) es el sub-proyecto 2/3 del
+plan, todavía no arrancado.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y

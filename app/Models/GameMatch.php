@@ -11,7 +11,7 @@ class GameMatch extends Model
 {
     protected $table = 'matches';
 
-    protected $fillable = ['server_id', 'map', 'gametype', 'started_at', 'ended_at'];
+    protected $fillable = ['server_id', 'season_id', 'map', 'gametype', 'started_at', 'ended_at'];
 
     protected $casts = [
         'started_at' => 'datetime',
@@ -22,6 +22,11 @@ class GameMatch extends Model
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function season(): BelongsTo
+    {
+        return $this->belongsTo(Season::class);
     }
 
     public function rounds(): HasMany
