@@ -1348,6 +1348,21 @@ subir la lista más allá de 2 sigue siendo una decisión de recursos, no solo d
 puertos — misma advertencia que ya existía, ahora aplicada correctamente porque el
 número que se sube en el panel por fin es el que realmente importa.
 
+**UI del panel rediseñada el mismo día (2026-08-25), a pedido del dueño: un campo de
+puerto por servidor en vez de una lista en texto.** El campo único con
+`"28970,28980,28990"` se reemplazó por: un número "¿Cuántos servidores temporales
+querés permitir?" que controla (JS vanilla, `cod2SyncPortSlots()`, sin frameworks —
+mismo patrón que ya usan los dropdowns del nav) cuántas filas de puerto se muestran,
+más una fila por servidor con su propio input ("Servidor temporal #1", "#2", ...). El
+número de cantidad es **solo control de UI, no se guarda aparte** — lo que se manda al
+guardar sigue siendo la lista de puertos (ahora como array, `hosted_servers_ports[]`,
+uno por fila), así que el límite de concurrencia se sigue derivando exclusivamente de
+cuántos puertos hay, sin reabrir el bug original de dos números desincronizados. Subir
+la cantidad agrega una fila nueva con un puerto sugerido (el último +10, editable);
+bajarla saca la última fila — la regla de negocio de no poder sacar un puerto con
+servidor activo (ver arriba) sigue aplicando igual, ahora contra el array completo en
+vez de un string partido por comas.
+
 **Probado en vivo de punta a punta 2026-08-22** (crear vía `tinker`, confirmar
 proceso/RCON/`fs_basepath`+`fs_homepath` separados, `stop()`, limpieza completa,
 memoria recuperada, log de producción sin tocar, server real sin degradación) — ver
