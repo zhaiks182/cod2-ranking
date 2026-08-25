@@ -1363,6 +1363,19 @@ bajarla saca la última fila — la regla de negocio de no poder sacar un puerto
 servidor activo (ver arriba) sigue aplicando igual, ahora contra el array completo en
 vez de un string partido por comas.
 
+**Bug real, se lo topó el dueño jugando con el panel nuevo (2026-08-25): un puerto de
+servidor temporal chocaba con Pug Latam.** Le asignó a "Servidor temporal #1" el
+puerto `28960` — exactamente el mismo que usa el server real (`servers.connect_port`).
+La validación nunca lo revisaba: durante el diseño original se preguntó explícitamente
+si validar contra esto, y se eligió a propósito la opción "básica" (sin chequear
+contra otros servicios del VPS) — la colisión real terminó confirmando que hacía
+falta igual. Fix en `SettingController::updateHostedServers()`: rechaza el guardado si
+algún puerto de la lista coincide con `connect_port`/`rcon_port` de un server real con
+`is_active=true` (uno desactivado ya no compite por el puerto). El dato ya guardado en
+producción (`28960,28971`) se corrigió a mano a `28970,28971` (los mismos puertos que
+tenía antes de este cambio) — verificado que no había ningún servidor temporal activo
+en el puerto 28960 antes de tocarlo, así que no hizo falta parar nada.
+
 **Probado en vivo de punta a punta 2026-08-22** (crear vía `tinker`, confirmar
 proceso/RCON/`fs_basepath`+`fs_homepath` separados, `stop()`, limpieza completa,
 memoria recuperada, log de producción sin tocar, server real sin degradación) — ver
