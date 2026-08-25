@@ -656,6 +656,41 @@ tiempo de debug una vez.
     de la suite. Verificado en producción real: `final_score` de la
     partida pasó de vacío (`null`) a `13-1`.
 
+18. **El marcador y el desglose axis/allies desaparecían de una partida en
+    curso mientras un roster la estaba barriendo sin perder ninguna ronda
+    todavía (2026-08-24), seguimiento directo de la entrada 17.** Reportado
+    en vivo por el dueño en una partida real de Burgundy (`match_id=99`):
+    la página mostraba "en curso · 3 ronda(s)" sin marcador, aunque las 3
+    rondas ya tenían `winner_guids` reales y válidos. Causa:
+    `TeamSideAnalyzer::clusterRoundWinners()` exige que los dos clusters
+    (A y B) tengan al menos una ronda para devolver algo — pero un roster
+    que todavía no perdió ninguna ronda (3-0 hasta el momento) no deja
+    ningún guid real del roster rival para identificarlo, así que el
+    cluster B se queda en 0 legítimamente (no es un bug de clustering, es
+    falta de señal) y la función devolvía `null` entero, mismo síntoma que
+    la entrada 17 pero con una causa distinta. Fix en
+    `app/Support/TeamSideAnalyzer.php`:
+    - `clusterRoundWinners()` ya no exige que ambos clusters tengan
+      score > 0 — cluster A siempre tiene al menos 1 ronda (la primera
+      ronda lo inicializa), así que un cluster B en 0 es información
+      válida ("3-0"), no una razón para esconder el resultado.
+    - `sideScores()`: cuando el cluster B no tiene ningún guid real
+      todavía, `sideOfCluster()` no tiene con qué votar — pero como solo
+      existen dos lados posibles, una vez que se conoce el lado del
+      cluster A (por sus kills reales), el lado B es directamente el
+      opuesto, sin necesitar ningún voto.
+    - `winningRosterGuids()` no necesitó cambios — ya manejaba bien un
+      cluster en 0 (`$clusters['A']['score'] === $clusters['B']['score']`
+      simplemente no es cierto cuando uno es 0 y el otro no).
+    TDD: `tests/Feature/TeamSideAnalyzerUndefeatedRosterTest.php` (3 casos:
+    clustering con roster invicto, `winningRosterGuids()` con el mismo
+    escenario, y `sideScores()` infiriendo el lado opuesto) — RED
+    confirmado contra el código anterior en un entorno aislado del VPS
+    (`/root/cod2-dev-test/`, `composer install` + SQLite in-memory de
+    `phpunit.xml`, nunca contra la base de datos de producción), GREEN
+    con el fix, y toda la suite (24/25, mismo `ExampleTest.php`
+    preexistente sin relación) verificada antes de desplegar.
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
