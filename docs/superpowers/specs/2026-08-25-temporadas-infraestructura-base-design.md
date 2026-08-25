@@ -59,8 +59,13 @@ una ventana donde no exista ninguna activa).
 
 ### `matches.season_id`
 
-Columna nueva, FK a `seasons.id`, **NOT NULL** (después del backfill). Se asigna **una
-sola vez, en el momento de creación de la partida** — `ParseCod2Log::openRound()`
+Columna nueva, FK a `seasons.id`. **Nullable a nivel de esquema** — forzarla a
+`NOT NULL` con `Blueprint::change()` requiere `doctrine/dbal` (no instalado en este
+proyecto) y no es directo en SQLite (el motor de los tests) sin reconstruir la
+tabla; la garantía real la da el código de aplicación, no la base de datos (detalle
+resuelto al escribir el plan de implementación, ver
+`docs/superpowers/plans/2026-08-25-temporadas-infraestructura-base.md`). Se asigna
+**una sola vez, en el momento de creación de la partida** — `ParseCod2Log::openRound()`
 (`app/Console/Commands/ParseCod2Log.php:266`, donde hoy se hace `GameMatch::create([...])`)
 agrega `'season_id' => Season::current()->id` al array de creación.
 
