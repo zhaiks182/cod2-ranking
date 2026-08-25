@@ -34,11 +34,12 @@ class SettingController extends Controller
     public function updateHostedServers(Request $request)
     {
         $request->validate([
-            'hosted_servers_ports' => ['required', 'string'],
+            'hosted_servers_ports' => ['present', 'array'],
+            'hosted_servers_ports.*' => ['nullable', 'string'],
         ]);
 
-        $ports = collect(explode(',', $request->input('hosted_servers_ports')))
-            ->map(fn ($port) => trim($port))
+        $ports = collect($request->input('hosted_servers_ports', []))
+            ->map(fn ($port) => trim((string) $port))
             ->filter(fn ($port) => $port !== '')
             ->values();
 

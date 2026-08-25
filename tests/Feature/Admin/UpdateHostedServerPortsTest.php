@@ -33,7 +33,7 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.settings.hosted-servers.update'), [
-                'hosted_servers_ports' => '28970, 28980, 28990',
+                'hosted_servers_ports' => ['28970', '28980', '28990'],
             ])
             ->assertRedirect();
 
@@ -48,7 +48,7 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.settings.hosted-servers.update'), [
-                'hosted_servers_ports' => '28970,28970',
+                'hosted_servers_ports' => ['28970', '28970'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
 
@@ -62,7 +62,7 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.settings.hosted-servers.update'), [
-                'hosted_servers_ports' => '80,28980',
+                'hosted_servers_ports' => ['80', '28980'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
 
@@ -76,7 +76,7 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.settings.hosted-servers.update'), [
-                'hosted_servers_ports' => '',
+                'hosted_servers_ports' => [],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
 
@@ -91,11 +91,28 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('admin.settings.hosted-servers.update'), [
-                'hosted_servers_ports' => '28970,28990',
+                'hosted_servers_ports' => ['28970', '28990'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
 
         $this->assertSame([28970, 28980, 28990], Setting::current()->hostedServerPorts());
         $this->assertDatabaseHas('hosted_servers', ['id' => $active->id, 'port' => 28980]);
+    }
+
+    /** Con menos filas de puerto que servidores activos igual se puede reducir, mientras ninguno de los puertos activos se saque de la lista nueva. */
+    public function test_allows_shrinking_the_list_when_no_active_port_is_removed(): void
+    {
+        $admin = User::factory()->create();
+        Setting::current()->update(['hosted_servers_ports' => '28970,28980,28990']);
+        $active = $this->activeHostedServer(28970);
+
+        $this->actingAs($admin)
+            ->put(route('admin.settings.hosted-servers.update'), [
+                'hosted_servers_ports' => ['28970'],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame([28970], Setting::current()->hostedServerPorts());
+        $this->assertDatabaseHas('hosted_servers', ['id' => $active->id, 'port' => 28970]);
     }
 }
