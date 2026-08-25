@@ -1604,6 +1604,25 @@ comparten IP pública y quedarían bloqueados entre sí aunque sean gente distin
 cuentas no hay una señal más fuerte disponible; decisión explícita del dueño de
 aceptar ese trade-off en vez de no tener límite alguno.
 
+### Reorden y rediseño de la sección de servidores temporales en `/adm_cod2/servers` (2026-08-25)
+
+A pedido del dueño ("no me gusta" el diseño anterior, sin más detalle al principio —
+se aclaró que era sobre esta sección del panel admin, no el dashboard público):
+
+- **Orden:** la tabla de servidores reales (Pug Latam) pasa a mostrarse primero; la
+  tarjeta "Servidores temporales (self-service)" queda debajo, no arriba.
+- **Rediseño:** el stepper numérico "¿Cuántos servidores temporales querés
+  permitir?" (que regeneraba filas de puerto por detrás, y solo podía sacar la
+  ÚLTIMA fila al bajar el número) se reemplazó por un botón **"+ Agregar servidor
+  temporal"** y un botón **"✕" por fila** para sacar esa fila puntual — patrón
+  estándar de lista editable, más predecible. El header de la tarjeta ahora tiene
+  una barra de progreso "N/M activos" (antes solo texto) y el estado de Turnstile
+  como badge chico ahí mismo (antes una franja de texto suelta al pie de la
+  tarjeta). JS vanilla (`cod2AddPortSlot()`/`cod2RemovePortSlot()`), sin
+  frameworks — mismo patrón que el resto del panel.
+- El envío sigue siendo el mismo array `hosted_servers_ports[]` de siempre — el
+  backend (`SettingController::updateHostedServers`) no cambió nada.
+
 ### Cómo volver a tu servidor sin login (2026-08-22)
 
 No hay cuentas — la URL `/servidores/{id}/{token}` es la única credencial real (ver
