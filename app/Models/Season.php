@@ -22,7 +22,7 @@ class Season extends Model
      */
     public static function current(): self
     {
-        return static::whereNull('ended_at')->firstOrFail();
+        return static::whereNull('ended_at')->orderBy('id')->firstOrFail();
     }
 
     public function matches(): HasMany

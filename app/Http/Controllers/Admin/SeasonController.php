@@ -22,9 +22,10 @@ class SeasonController extends Controller
             'name' => ['required', 'string', 'max:100'],
         ]);
 
-        $oldSeason = Season::current();
+        $oldSeason = null;
 
-        $newSeason = \Illuminate\Support\Facades\DB::transaction(function () use ($oldSeason, $validated) {
+        $newSeason = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, &$oldSeason) {
+            $oldSeason = Season::whereNull('ended_at')->lockForUpdate()->firstOrFail();
             $oldSeason->update(['ended_at' => now()]);
 
             return Season::create([
