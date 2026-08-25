@@ -1564,6 +1564,46 @@ decían. Eso es exactamente por qué el `throttle:3,60` original bloqueaba las p
 casi al instante. El honeypot, Turnstile (una vez que tenga keys) y el tope global de
 concurrencia siguen siendo las otras capas de protección.
 
+### Bug real: `$request->ip()` siempre devolvía un borde de Cloudflare, no el visitante real (2026-08-25)
+
+El dueño creó 2 servidores temporales él mismo y preguntó cómo se valida "un usuario"
+sin cuentas — investigando la respuesta (la única señal real disponible es
+`creator_ip`) se encontró que esa columna estaba mal desde el principio: los dos
+servidores quedaron con `creator_ip=172.68.125.137`, un rango de **Cloudflare**
+(`172.64.0.0/13`), no una IP residencial. Causa: el sitio está detrás de Cloudflare
+(proxy) pero `bootstrap/app.php` nunca tuvo `trustProxies()` configurado — sin eso,
+Laravel toma la IP de la conexión TCP directa (siempre un borde de Cloudflare) en vez
+de leer el header real (`X-Forwarded-For`). Esto también dejaba **sin efecto real**
+el throttle por IP que ya existía en la ruta de creación (`throttle:20,1,hosted-create`,
+párrafo de arriba) — visitantes distintos que pegan al mismo borde de Cloudflare
+comparten el mismo "IP" a ojos de Laravel.
+
+Fix: `$middleware->trustProxies(at: [...])` en `bootstrap/app.php`, con la lista
+oficial de rangos IPv4+IPv6 de Cloudflare (`cloudflare.com/ips`, cambia rara vez).
+Laravel/Symfony solo confían en `X-Forwarded-For` cuando la conexión TCP real vino de
+uno de esos rangos — alguien que le pegue directo al origen (`151.245.32.43` o
+`direct.cod2.4livepro.com`, que a propósito no pasa por Cloudflare, ver "Medidor de
+latencia real" más abajo) no puede spoofear su IP con un header falso, porque el
+framework ignora el header si el peer inmediato no está en la lista. Esto arregla
+`$request->ip()` **en todo el sitio**, no solo en este form.
+
+### 1 servidor temporal activo por IP (2026-08-25)
+
+Seguimiento directo del bug anterior — con la IP real ya resuelta, tiene sentido
+usarla para el límite que el dueño pidió: `HostedServerController::store()` ahora
+rechaza una segunda creación mientras la primera siga activa (`starting`/`running`)
+desde la misma IP, **redirigiendo directo al servidor existente** en vez de un error
+genérico. Es el primer chequeo de todo el método (antes de Turnstile) — es una query
+local barata, no tiene sentido gastar la llamada externa a Cloudflare si de todos
+modos vamos a redirigir. Reusa `creator_ip` (ya se capturaba), sin columna ni
+migración nueva.
+
+**Limitación conocida y aceptada a propósito:** es por IP, no por persona real — dos
+jugadores detrás del mismo router/NAT (casa, oficina, CGNAT de algunos móviles)
+comparten IP pública y quedarían bloqueados entre sí aunque sean gente distinta. Sin
+cuentas no hay una señal más fuerte disponible; decisión explícita del dueño de
+aceptar ese trade-off en vez de no tener límite alguno.
+
 ### Cómo volver a tu servidor sin login (2026-08-22)
 
 No hay cuentas — la URL `/servidores/{id}/{token}` es la única credencial real (ver
