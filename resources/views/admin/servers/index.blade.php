@@ -10,91 +10,6 @@
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-2">
-            <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Servidores temporales (self-service)</span>
-            <span class="text-sm tabular-nums text-slate-300">
-                <span class="font-semibold text-cyan-400">{{ $hostedServersActive }}</span>
-                <span class="text-slate-500">activos ahora / {{ $hostedServersMaxConcurrent }} máximo</span>
-            </span>
-        </div>
-        <form method="POST" action="{{ route('admin.settings.hosted-servers.update') }}" class="p-4 space-y-3">
-            @csrf
-            @method('PUT')
-            <div class="max-w-xs">
-                <label for="hosted_servers_count" class="block text-xs text-slate-500 mb-1">¿Cuántos servidores temporales querés permitir?</label>
-                {{-- Solo controla cuantas filas de puerto se muestran mas abajo -- no se
-                manda al server, cada fila manda su propio puerto por separado
-                (hosted_servers_ports[]). El limite real sigue siendo la cantidad de
-                filas/puertos, no este numero por si solo -- ver cod2SyncPortSlots(). --}}
-                <input type="number" min="1" id="hosted_servers_count"
-                    value="{{ count($hostedServersPorts) }}"
-                    class="w-24 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm"
-                    onchange="cod2SyncPortSlots(this.value)">
-            </div>
-
-            <div id="hosted-servers-port-slots" class="space-y-2">
-                @foreach($hostedServersPorts as $i => $port)
-                    <div class="flex items-center gap-2" data-port-slot>
-                        <label class="text-xs text-slate-500 w-40 shrink-0">Servidor temporal #{{ $i + 1 }}</label>
-                        <input type="number" name="hosted_servers_ports[]" min="1024" max="65535"
-                            value="{{ $port }}" aria-label="Puerto para servidor temporal #{{ $i + 1 }}"
-                            class="w-32 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm font-mono">
-                    </div>
-                @endforeach
-            </div>
-
-            @error('hosted_servers_ports')
-                <p class="text-[11px] text-red-400">{{ $message }}</p>
-            @enderror
-
-            <div>
-                <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Guardar</button>
-            </div>
-            <p class="text-xs text-slate-500">
-                El límite de servidores simultáneos es la cantidad de puertos de arriba — no hay un número aparte que pueda desincronizarse.
-                Sacar un puerto que tiene un servidor temporal activo ahora mismo no se permite hasta que ese servidor se libere.
-            </p>
-        </form>
-
-        <script>
-            function cod2SyncPortSlots(count) {
-                count = Math.max(1, parseInt(count, 10) || 1);
-
-                const container = document.getElementById('hosted-servers-port-slots');
-                const slots = Array.from(container.querySelectorAll('[data-port-slot]'));
-
-                while (slots.length < count) {
-                    const lastInput = slots.length ? slots[slots.length - 1].querySelector('input') : null;
-                    const suggested = lastInput && lastInput.value ? (parseInt(lastInput.value, 10) + 10) : 28970;
-                    const n = slots.length + 1;
-
-                    const row = document.createElement('div');
-                    row.className = 'flex items-center gap-2';
-                    row.setAttribute('data-port-slot', '');
-                    row.innerHTML = '<label class="text-xs text-slate-500 w-40 shrink-0">Servidor temporal #' + n + '</label>'
-                        + '<input type="number" name="hosted_servers_ports[]" min="1024" max="65535" value="' + suggested + '"'
-                        + ' aria-label="Puerto para servidor temporal #' + n + '"'
-                        + ' class="w-32 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm font-mono">';
-                    container.appendChild(row);
-                    slots.push(row);
-                }
-
-                while (slots.length > count) {
-                    slots.pop().remove();
-                }
-            }
-        </script>
-        <div class="px-4 pb-4 flex items-center gap-2 text-xs border-t border-slate-800 pt-3">
-            <span class="text-slate-500">Cloudflare Turnstile (verificación anti-bot del formulario público):</span>
-            @if($turnstileConfigured)
-                <span class="text-emerald-400 font-medium">Configurado</span>
-            @else
-                <span class="text-amber-400 font-medium">Sin configurar — el formulario público queda sin verificación anti-bot</span>
-            @endif
-        </div>
-    </div>
-
-    <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -138,6 +53,93 @@
             </tbody>
         </table>
         </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Servidores temporales (self-service)</span>
+                @if($turnstileConfigured)
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-950/60 text-emerald-400">Turnstile OK</span>
+                @else
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-950/60 text-amber-400" title="El formulario público de creación queda sin verificación anti-bot">Turnstile sin configurar</span>
+                @endif
+            </div>
+            <div class="flex items-center gap-2 w-44">
+                <div class="flex-1 h-1.5 rounded-full bg-panel2 overflow-hidden">
+                    <div class="h-full bg-cyan-500" style="width: {{ $hostedServersMaxConcurrent > 0 ? min(100, round($hostedServersActive / $hostedServersMaxConcurrent * 100)) : 0 }}%"></div>
+                </div>
+                <span class="text-xs tabular-nums text-slate-300 shrink-0">{{ $hostedServersActive }}/{{ $hostedServersMaxConcurrent }} activos</span>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('admin.settings.hosted-servers.update') }}" class="p-4 space-y-3">
+            @csrf
+            @method('PUT')
+
+            <div id="hosted-servers-port-slots" class="space-y-2">
+                @foreach($hostedServersPorts as $i => $port)
+                    <div class="flex items-center gap-2" data-port-slot>
+                        <label class="text-xs text-slate-500 w-40 shrink-0">Servidor temporal #{{ $i + 1 }}</label>
+                        <input type="number" name="hosted_servers_ports[]" min="1024" max="65535"
+                            value="{{ $port }}" aria-label="Puerto para servidor temporal #{{ $i + 1 }}"
+                            class="w-32 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm font-mono">
+                        <button type="button" onclick="cod2RemovePortSlot(this)" aria-label="Quitar este servidor temporal"
+                            class="w-8 h-8 shrink-0 rounded-lg border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-800 flex items-center justify-center">✕</button>
+                    </div>
+                @endforeach
+            </div>
+
+            @error('hosted_servers_ports')
+                <p class="text-[11px] text-red-400">{{ $message }}</p>
+            @enderror
+
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="cod2AddPortSlot()" class="px-3 py-2 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-700 hover:text-cyan-400 text-sm font-medium">+ Agregar servidor temporal</button>
+                <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Guardar</button>
+            </div>
+            <p class="text-xs text-slate-500">
+                El límite de servidores simultáneos es la cantidad de puertos de arriba — no hay un número aparte que pueda desincronizarse.
+                Sacar un puerto que tiene un servidor temporal activo ahora mismo no se permite hasta que ese servidor se libere.
+            </p>
+        </form>
+
+        <script>
+            function cod2PortSlotRows() {
+                return document.querySelectorAll('#hosted-servers-port-slots [data-port-slot]');
+            }
+
+            function cod2RenumberPortSlots() {
+                cod2PortSlotRows().forEach((row, i) => {
+                    row.querySelector('label').textContent = 'Servidor temporal #' + (i + 1);
+                    row.querySelector('input').setAttribute('aria-label', 'Puerto para servidor temporal #' + (i + 1));
+                });
+            }
+
+            function cod2AddPortSlot() {
+                const container = document.getElementById('hosted-servers-port-slots');
+                const rows = cod2PortSlotRows();
+                const lastInput = rows.length ? rows[rows.length - 1].querySelector('input') : null;
+                const suggested = lastInput && lastInput.value ? (parseInt(lastInput.value, 10) + 10) : 28970;
+                const n = rows.length + 1;
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+                row.setAttribute('data-port-slot', '');
+                row.innerHTML = '<label class="text-xs text-slate-500 w-40 shrink-0">Servidor temporal #' + n + '</label>'
+                    + '<input type="number" name="hosted_servers_ports[]" min="1024" max="65535" value="' + suggested + '"'
+                    + ' aria-label="Puerto para servidor temporal #' + n + '"'
+                    + ' class="w-32 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm font-mono">'
+                    + '<button type="button" onclick="cod2RemovePortSlot(this)" aria-label="Quitar este servidor temporal"'
+                    + ' class="w-8 h-8 shrink-0 rounded-lg border border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-800 flex items-center justify-center">✕</button>';
+                container.appendChild(row);
+            }
+
+            function cod2RemovePortSlot(button) {
+                if (cod2PortSlotRows().length <= 1) return; // siempre al menos 1 fila
+                button.closest('[data-port-slot]').remove();
+                cod2RenumberPortSlots();
+            }
+        </script>
     </div>
 </div>
 @endsection
