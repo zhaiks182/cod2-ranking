@@ -523,7 +523,11 @@ class ParseCod2Log extends Command
             return;
         }
 
-        $pick = PlayerWeaponPick::firstOrCreate(['player_id' => $player->id, 'weapon' => $weapon]);
+        $pick = PlayerWeaponPick::firstOrCreate([
+            'player_id' => $player->id,
+            'weapon' => $weapon,
+            'season_id' => Season::current()->id,
+        ]);
         $pick->increment('picks');
     }
 
