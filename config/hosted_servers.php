@@ -19,10 +19,11 @@ return [
     // frecuencia distinta, ambos corren cada minuto vía el cron ya existente).
     'idle_minutes' => env('HOSTED_SERVERS_IDLE_MINUTES', 5),
 
-    // Debe tener exactamente max_concurrent puertos (o mas) -- ver CLAUDE.md, no
-    // vale la pena tener dos numeros por sincronizar a mano cuando se sube el tope.
+    // Solo se usa como base del fallback cuando Setting::hosted_servers_ports
+    // nunca se edito desde adm_cod2/servers -- ver Setting::hostedServerPorts().
+    // Una vez editado desde el panel, la lista real vive en la base de datos,
+    // no aca.
     'port_range_start' => env('HOSTED_SERVERS_PORT_START', 28970),
-    'port_range_end' => env('HOSTED_SERVERS_PORT_END', 28971),
 
     'slots_min' => env('HOSTED_SERVERS_SLOTS_MIN', 2),
     // 20, a pedido del dueño (2026-08-22, subido de 12).
