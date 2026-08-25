@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\HostedServer;
+use App\Models\Server;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,20 @@ class UpdateHostedServerPortsTest extends TestCase
             'expires_at' => now()->addHours(3),
             'creator_ip' => '127.0.0.1',
         ]);
+    }
+
+    /**
+     * La migracion 2026_08_10_090005_seed_default_server_and_backfill.php ya
+     * siembra un server real ("Pug Latam") en cada migrate/RefreshDatabase --
+     * no hace falta crear uno nuevo (chocaria con el slug unico), alcanza con
+     * ajustar su puerto/estado para el escenario del test.
+     */
+    private function realServer(int $connectPort, bool $active = true): Server
+    {
+        $server = Server::first();
+        $server->update(['connect_port' => $connectPort, 'rcon_port' => $connectPort, 'is_active' => $active]);
+
+        return $server;
     }
 
     public function test_admin_can_save_a_valid_port_list(): void
@@ -114,5 +129,36 @@ class UpdateHostedServerPortsTest extends TestCase
 
         $this->assertSame([28970], Setting::current()->hostedServerPorts());
         $this->assertDatabaseHas('hosted_servers', ['id' => $active->id, 'port' => 28970]);
+    }
+
+    public function test_rejects_a_port_used_by_a_real_server(): void
+    {
+        $admin = User::factory()->create();
+        $this->realServer(28960);
+        Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
+
+        $this->actingAs($admin)
+            ->put(route('admin.settings.hosted-servers.update'), [
+                'hosted_servers_ports' => ['28960', '28980'],
+            ])
+            ->assertSessionHasErrors('hosted_servers_ports');
+
+        $this->assertSame([28970, 28980], Setting::current()->hostedServerPorts());
+    }
+
+    /** Un server real inactivo (is_active=false) ya no compite por el puerto -- no bloquea. */
+    public function test_allows_a_port_used_by_an_inactive_real_server(): void
+    {
+        $admin = User::factory()->create();
+        $this->realServer(28960, active: false);
+        Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
+
+        $this->actingAs($admin)
+            ->put(route('admin.settings.hosted-servers.update'), [
+                'hosted_servers_ports' => ['28960', '28980'],
+            ])
+            ->assertRedirect();
+
+        $this->assertSame([28960, 28980], Setting::current()->hostedServerPorts());
     }
 }
