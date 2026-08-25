@@ -20,20 +20,19 @@
         <form method="POST" action="{{ route('admin.settings.hosted-servers.update') }}" class="flex flex-wrap items-end gap-3 p-4">
             @csrf
             @method('PUT')
-            <div>
-                <label for="hosted_servers_max_concurrent" class="block text-xs text-slate-500 mb-1">Límite de servidores simultáneos</label>
-                <input type="number" name="hosted_servers_max_concurrent" id="hosted_servers_max_concurrent" min="1"
-                    value="{{ old('hosted_servers_max_concurrent', $hostedServersMaxConcurrent) }}"
-                    class="w-24 bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm">
-                @error('hosted_servers_max_concurrent')
+            <div class="grow min-w-[16rem]">
+                <label for="hosted_servers_ports" class="block text-xs text-slate-500 mb-1">Puertos de servidores temporales (separados por coma)</label>
+                <input type="text" name="hosted_servers_ports" id="hosted_servers_ports"
+                    value="{{ old('hosted_servers_ports', $hostedServersPorts) }}"
+                    class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm font-mono">
+                @error('hosted_servers_ports')
                     <p class="text-[11px] text-red-400 mt-1">{{ $message }}</p>
                 @enderror
             </div>
             <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Guardar</button>
             <p class="text-xs text-slate-500 basis-full">
-                Puertos configurados: <span class="font-mono text-slate-400">{{ $hostedServersPortRange['start'] }}-{{ $hostedServersPortRange['end'] }}</span>
-                ({{ $hostedServersPortRange['end'] - $hostedServersPortRange['start'] + 1 }} puertos en el firewall). Sin límite automático contra este número —
-                si el límite de arriba supera los puertos realmente abiertos, crear un servidor de más falla con un error genérico en vez de un aviso claro.
+                El límite de servidores simultáneos es la cantidad de puertos listados arriba — no hay un número aparte que pueda desincronizarse.
+                Sacar un puerto que tiene un servidor temporal activo ahora mismo no se permite hasta que ese servidor se libere.
             </p>
         </form>
         <div class="px-4 pb-4 flex items-center gap-2 text-xs border-t border-slate-800 pt-3">

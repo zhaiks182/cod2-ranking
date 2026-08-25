@@ -16,18 +16,15 @@ class ServerController extends Controller
         $servers = Server::orderBy('name')->get();
 
         $hostedServersActive = HostedServer::whereIn('status', ['starting', 'running'])->count();
+        $hostedServersPorts = implode(',', Setting::current()->hostedServerPorts());
         $hostedServersMaxConcurrent = Setting::maxConcurrent();
-        $hostedServersPortRange = [
-            'start' => (int) config('hosted_servers.port_range_start'),
-            'end' => (int) config('hosted_servers.port_range_end'),
-        ];
         $turnstileConfigured = filled(config('services.turnstile.site_key')) && filled(config('services.turnstile.secret_key'));
 
         return view('admin.servers.index', compact(
             'servers',
             'hostedServersActive',
+            'hostedServersPorts',
             'hostedServersMaxConcurrent',
-            'hostedServersPortRange',
             'turnstileConfigured',
         ));
     }
