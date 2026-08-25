@@ -48,6 +48,20 @@ class HostedServerController extends Controller
 
     public function store(StoreHostedServerRequest $request, HostedServerProvisioner $provisioner)
     {
+        // 1 servidor temporal activo por IP -- primer chequeo de todos (query local,
+        // barata) para no gastar la llamada externa a Turnstile si de todos modos
+        // vamos a redirigir. $request->ip() ya resuelve a la IP real del visitante
+        // (ver trustProxies() en bootstrap/app.php -- sin eso, todos comparten la
+        // IP de borde de Cloudflare y esto bloquearia a cualquiera). Si ya tiene uno
+        // activo, lo mandamos directo a EL en vez de un error generico.
+        $existing = HostedServer::whereIn('status', ['starting', 'running'])
+            ->where('creator_ip', $request->ip())
+            ->first();
+
+        if ($existing) {
+            return redirect()->route('hosted-servers.show', [$existing, $existing->management_token]);
+        }
+
         // Verificacion de Turnstile ANTES de tomar el lock de concurrencia -- es una
         // llamada HTTP a Cloudflare, no tiene sentido tener el lock (que otros
         // requests estan esperando) agarrado mientras se espera esa respuesta externa.
