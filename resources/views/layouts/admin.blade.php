@@ -76,6 +76,7 @@
                             <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
                         <div id="admin-system-dropdown" class="hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                            <a href="{{ route('admin.seasons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Temporadas</a>
                             <a href="{{ route('admin.backups.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Respaldos</a>
                             <a href="{{ route('admin.discord.edit') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Discord</a>
                             <a href="{{ route('admin.password.edit') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Contraseña</a>

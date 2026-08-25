@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PlayerController as AdminPlayerController;
+use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\DashboardController;
@@ -160,5 +161,8 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::get('/respaldos/{filename}/descargar', [BackupController::class, 'download'])->name('backups.download');
         Route::post('/respaldos/{filename}/restaurar', [BackupController::class, 'restore'])->name('backups.restore');
         Route::delete('/respaldos/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
+
+        Route::get('/temporadas', [SeasonController::class, 'index'])->name('seasons.index');
+        Route::post('/temporadas', [SeasonController::class, 'store'])->name('seasons.store');
     });
 });
