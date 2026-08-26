@@ -4,8 +4,14 @@
 
 @section('content')
 <div class="space-y-6">
-    <div>
+    <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'player-season-dropdown',
+            'seasonBaseRoute' => 'players.show',
+            'seasonBaseParams' => [$player->guid],
+        ])
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
