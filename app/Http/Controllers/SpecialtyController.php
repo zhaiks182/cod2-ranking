@@ -825,17 +825,20 @@ class SpecialtyController extends Controller
     public function chattiest(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalMessages = 0;
 
         if ($server) {
             $tally = ChatMessage::where('server_id', $server->id)
+                ->whereIn('match_id', $matchIds)
                 ->whereNotNull('player_id')
                 ->selectRaw('player_id, count(*) as c')
                 ->groupBy('player_id')->orderByDesc('c')->limit(50)->get();
 
-            $totalMessages = (int) ChatMessage::where('server_id', $server->id)->count();
+            $totalMessages = (int) ChatMessage::where('server_id', $server->id)
+                ->whereIn('match_id', $matchIds)->count();
 
             $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
 
@@ -847,7 +850,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.chattiest', 'icon' => '💬', 'title' => 'Jugador Más Hablador',
             'subtitle' => 'Más mensajes de chat público enviados',
             'valueLabel' => 'mensajes', 'valueColor' => 'text-lime-400',
@@ -889,11 +892,13 @@ class SpecialtyController extends Controller
     public function timeouts(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
 
         if ($server) {
             $rows = MatchEvent::where('server_id', $server->id)
+                ->whereIn('match_id', $matchIds)
                 ->where('event_type', 'timeout_call')->whereNotNull('name')
                 ->selectRaw('name, side, count(*) as c')
                 ->groupBy('name', 'side')->orderByDesc('c')->limit(50)
@@ -901,7 +906,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.timeouts', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.timeouts', 'icon' => '⏸️', 'title' => 'Timeouts',
             'subtitle' => 'Quién más pide tiempo fuera durante una partida',
             'valueLabel' => 'Timeouts pedidos', 'emptyText' => 'Todavía no hay timeouts registrados.',
