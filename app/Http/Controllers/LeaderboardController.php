@@ -38,40 +38,37 @@ class LeaderboardController extends Controller
         // la que casualmente quedo de ultima.
         $mapCodes = $map ? ($mapGroups[$map]->codes ?? [$map]) : [];
 
-        // A map played across more than one calendar day can't honestly show one
-        // combined "all sessions" total (see the class-level note on buildMapGroups).
-        // Default: most recent session within the selected season/scope. The owner
-        // can pick a different one explicitly via ?from=YYYY-MM-DD (date-pills below,
-        // in the view) — restored 2026-08-26 after Task 3 dropped it entirely, which
-        // turned out to be a real regression (the owner uses this to look at one
-        // specific day's board, not just "this whole season"). Only a date that's
-        // actually one of this map's real sessions in the CURRENT scope is honored —
-        // an old bookmark from a different season, or a stray query param, silently
-        // falls back to the same "latest session" default as before.
-        $from = $to = null;
-        $usingDateFilter = false;
-        if ($map && ($mapGroups[$map]->dates ?? collect())->count() > 1) {
-            $requestedFrom = $request->query('from');
-            $isValidRequestedDate = $requestedFrom
-                && $mapGroups[$map]->dates->contains(fn ($d) => $d->toDateString() === $requestedFrom);
+        // Filtro de fecha manual (Desde/Hasta), mismo mecanismo y misma UI que ya
+        // tiene /partidas — restaurado 2026-08-26 despues de que Task 3 lo sacara del
+        // todo asumiendo que el selector de temporada alcanzaba: en la practica el
+        // dueño lo sigue necesitando para acotar a un dia puntual (no solo "toda la
+        // temporada"), sobre CUALQUIER pestaña (General o un mapa), igual que en
+        // /partidas. Explicito en la URL siempre gana. Sin filtro explicito, un mapa
+        // jugado mas de una vez en el scope actual sigue sin poder mostrar un solo
+        // total honesto para "todas las sesiones combinadas" (ver la nota de clase en
+        // buildMapGroups) — por eso ese caso sigue cayendo a la sesion mas reciente
+        // por default, como ya hacia antes de este cambio.
+        $requestedFrom = $request->query('from');
+        $requestedTo = $request->query('to');
+        $usingDateFilter = (bool) ($requestedFrom || $requestedTo);
 
-            if ($isValidRequestedDate) {
-                $from = $to = $requestedFrom;
-                $usingDateFilter = true;
-            } else {
-                $from = $to = $mapGroups[$map]->dates->last()->toDateString();
-            }
+        if ($usingDateFilter) {
+            $from = $requestedFrom;
+            $to = $requestedTo;
+        } elseif ($map && ($mapGroups[$map]->dates ?? collect())->count() > 1) {
+            $from = $to = $mapGroups[$map]->dates->last()->toDateString();
+        } else {
+            $from = $to = null;
         }
 
-        // The ranking table has to agree with the Axis/Allies panel below it — both
-        // show the same single session once a multi-session map tab picks its latest
-        // date above, instead of the table silently summing every session of the
-        // season while the panel only shows one.
+        // La tabla del ranking tiene que coincidir con el panel de Axis/Allies de mas
+        // abajo (que ya aplica el mismo from/to) — sin esto, un filtro de fecha
+        // acotaba el panel pero la tabla seguia sumando toda la temporada.
         $tableMatchIds = $matchIds;
-        if ($from) {
+        if ($from || $to) {
             $tableMatchIds = GameMatch::whereIn('id', $matchIds)
-                ->where('started_at', '>=', Carbon::parse($from)->startOfDay())
-                ->where('started_at', '<=', Carbon::parse($to)->endOfDay())
+                ->when($from, fn ($q) => $q->where('started_at', '>=', Carbon::parse($from)->startOfDay()))
+                ->when($to, fn ($q) => $q->where('started_at', '<=', Carbon::parse($to)->endOfDay()))
                 ->pluck('id');
         }
 
@@ -87,11 +84,11 @@ class LeaderboardController extends Controller
         $sideScores = ['axis' => null, 'allies' => null, 'winning' => null];
 
         if ($server && $map) {
+            // $tableMatchIds (no $matchIds) a proposito -- mismo scope de fecha que ya
+            // se le aplico a la tabla de arriba, para que el panel nunca desacuerde con
+            // ella (ver el comentario de $tableMatchIds mas arriba).
             $rounds = Round::where('rounds.server_id', $server->id)->whereIn('rounds.map', $mapCodes)->where('rounds.gametype', 'sd')
-                ->whereIn('rounds.match_id', $matchIds)
-                ->when($from, fn ($q) => $q->join('matches', 'matches.id', '=', 'rounds.match_id')
-                    ->where('matches.started_at', '>=', Carbon::parse($from)->startOfDay())
-                    ->where('matches.started_at', '<=', Carbon::parse($to)->endOfDay()))
+                ->whereIn('rounds.match_id', $tableMatchIds)
                 ->orderBy('rounds.id')
                 ->select('rounds.*')
                 ->get();

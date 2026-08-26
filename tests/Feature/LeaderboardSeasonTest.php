@@ -354,24 +354,55 @@ class LeaderboardSeasonTest extends TestCase
         $this->assertSame(3, $row->kills); // la sesion vieja explicita, no la mas reciente (5) ni las 8 combinadas
     }
 
-    public function test_ranking_table_ignores_an_unrelated_from_param_and_falls_back_to_latest_session(): void
+    public function test_ranking_general_tab_honors_from_to_without_any_map_selected(): void
     {
+        // Mismo mecanismo y misma UI que /partidas: el filtro de fecha manual
+        // (Desde/Hasta) tiene que funcionar tambien en "General" (sin mapa
+        // seleccionado), no solo dentro de la pestaña de un mapa puntual.
         $season = Season::current();
         $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
         $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
 
-        $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix')
-            ->update(['started_at' => now()->subDays(3), 'ended_at' => now()->subDays(3)]);
+        $oldDate = now()->subDays(3);
+        $oldMatch = $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        $oldMatch->update(['started_at' => $oldDate, 'ended_at' => $oldDate]);
+        $oldMatch->rounds()->update(['started_at' => $oldDate, 'ended_at' => $oldDate]);
+
+        $this->realMatch($season->id, $attacker, $victim, 'mp_railyard');
+
+        $oldDateStr = $oldDate->toDateString();
+        $response = $this->get(route('leaderboard', [
+            'server' => $this->server->slug,
+            'from' => $oldDateStr,
+            'to' => $oldDateStr,
+        ]));
+
+        $response->assertOk();
+        $this->assertTrue($response->viewData('usingDateFilter'));
+        $row = collect($response->viewData('rows'))->firstWhere('player.id', $attacker->id);
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row->kills); // solo la partida del dia viejo, la de railyard (hoy) queda afuera
+    }
+
+    public function test_ranking_table_honors_an_arbitrary_date_with_no_matching_data(): void
+    {
+        // El filtro acepta cualquier fecha (igual que /partidas), sin validarla contra
+        // sesiones conocidas -- una fecha real pero sin datos simplemente muestra la
+        // tabla vacia, no cae de vuelta a la sesion mas reciente en silencio.
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
         $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
 
         $response = $this->get(route('leaderboard', [
             'server' => $this->server->slug,
             'map' => 'mp_toujane',
-            'from' => '2020-01-01', // fecha real, pero no una sesion real de este mapa/temporada
+            'from' => '2020-01-01',
             'to' => '2020-01-01',
         ]));
 
         $response->assertOk();
-        $this->assertFalse($response->viewData('usingDateFilter'));
+        $this->assertTrue($response->viewData('usingDateFilter'));
+        $this->assertTrue(collect($response->viewData('rows'))->isEmpty());
     }
 }
