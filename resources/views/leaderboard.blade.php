@@ -34,6 +34,44 @@
         @endforeach
     </div>
 
+    @if($map && ($mapGroups[$map]->dates ?? collect())->count() > 1)
+        @php
+            $monthGroups = $mapGroups[$map]->dates->groupBy(fn ($d) => $d->format('Y-m'));
+        @endphp
+        <div class="flex items-center gap-2 text-xs -mt-2 flex-wrap">
+            <span class="text-slate-500 uppercase tracking-wide">Atajo por sesión</span>
+            @foreach($monthGroups as $monthKey => $dates)
+                @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+                <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.remove('hidden')"
+                    class="px-2.5 py-1 rounded-lg border {{ $dates->contains(fn ($d) => $d->toDateString() === $from) ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                    {{ $monthLabel }}
+                </button>
+            @endforeach
+        </div>
+
+        @foreach($monthGroups as $monthKey => $dates)
+            @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+            <div id="dates-modal-{{ $monthKey }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+                onclick="if(event.target === this) this.classList.add('hidden')">
+                <div class="w-full max-w-sm max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+                    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <span class="text-sm font-semibold">{{ $monthLabel }}</span>
+                        <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+                    </div>
+                    <div class="overflow-y-auto p-3 flex flex-wrap gap-2">
+                        @foreach($dates as $date)
+                            @php $dateStr = $date->toDateString(); @endphp
+                            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId, 'from' => $dateStr, 'to' => $dateStr]) }}"
+                                class="px-2.5 py-1 rounded-lg border text-xs {{ $from === $dateStr ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                                {{ $date->translatedFormat('j \d\e F') }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    @endif
+
     <form method="get" class="flex flex-wrap items-end gap-3 text-sm bg-panel border border-slate-800 rounded-xl px-4 py-3">
         <input type="hidden" name="server" value="{{ $server?->slug }}">
         <input type="hidden" name="map" value="{{ $map }}">
