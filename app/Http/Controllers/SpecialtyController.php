@@ -13,6 +13,7 @@ use App\Models\Round;
 use App\Models\Season;
 use App\Models\Server;
 use App\Services\GeoIp;
+use App\Support\KillAggregator;
 use App\Support\TeamSideAnalyzer;
 use Illuminate\Http\Request;
 
@@ -21,6 +22,7 @@ class SpecialtyController extends Controller
     public function grenades(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalGrenadeKills = 0;
@@ -28,27 +30,21 @@ class SpecialtyController extends Controller
         $favoriteGrenade = null;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('grenade_kills', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('grenade_kills')
-                ->limit(50)
-                ->get()
+            $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
+
+            $rows = $all->filter(fn ($row) => $row->grenade_kills > 0)
                 ->map(function ($row) {
                     $row->value = $row->grenade_kills;
                     $row->share = $row->kills > 0 ? round($row->grenade_kills / $row->kills * 100, 1) : 0;
 
                     return $row;
-                });
+                })
+                ->sortByDesc('value')->take(50)->values();
 
-            $totals = PlayerServerStat::where('server_id', $server->id)
-                ->selectRaw('sum(grenade_kills) as g, sum(kills) as k')
-                ->first();
-            $totalGrenadeKills = (int) ($totals->g ?? 0);
-            $totalKills = (int) ($totals->k ?? 0);
+            $totalGrenadeKills = $all->sum('grenade_kills');
+            $totalKills = $all->sum('kills');
 
-            $favoriteGrenade = $this->sdKills($server->id)
+            $favoriteGrenade = $this->sdKills($server->id, $matchIds)
                 ->where('kills.is_grenade', true)
                 ->selectRaw('kills.weapon, count(*) as uses')
                 ->groupBy('kills.weapon')
@@ -57,7 +53,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.grenades', 'icon' => '💣', 'title' => 'Especialistas en Granadas',
             'subtitle' => 'Ranking de bajas con granada — Search and Destroy, '.($server?->name ?? 'servidor'),
             'valueLabel' => 'granadas', 'valueColor' => 'text-amber-400',
@@ -73,35 +69,30 @@ class SpecialtyController extends Controller
     public function headshots(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalHeadshots = 0;
         $totalKills = 0;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('headshots', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('headshots')
-                ->limit(50)
-                ->get()
+            $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
+
+            $rows = $all->filter(fn ($row) => $row->headshots > 0)
                 ->map(function ($row) {
                     $row->value = $row->headshots;
                     $row->share = $row->kills > 0 ? round($row->headshots / $row->kills * 100, 1) : 0;
 
                     return $row;
-                });
+                })
+                ->sortByDesc('value')->take(50)->values();
 
-            $totals = PlayerServerStat::where('server_id', $server->id)
-                ->selectRaw('sum(headshots) as h, sum(kills) as k')
-                ->first();
-            $totalHeadshots = (int) ($totals->h ?? 0);
-            $totalKills = (int) ($totals->k ?? 0);
+            $totalHeadshots = $all->sum('headshots');
+            $totalKills = $all->sum('kills');
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.headshots', 'icon' => '🎯', 'title' => 'Headshots',
             'subtitle' => 'Ranking de headshots — Search and Destroy, '.($server?->name ?? 'servidor'),
             'valueLabel' => 'headshots', 'valueColor' => 'text-rose-400',
@@ -116,30 +107,28 @@ class SpecialtyController extends Controller
     public function friendlyFire(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalTeamkills = 0;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('teamkills', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('teamkills')
-                ->limit(50)
-                ->get()
+            $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
+
+            $rows = $all->filter(fn ($row) => $row->teamkills > 0)
                 ->map(function ($row) {
                     $row->value = $row->teamkills;
                     $row->share = $row->kills > 0 ? round($row->teamkills / $row->kills * 100, 1) : 0;
 
                     return $row;
-                });
+                })
+                ->sortByDesc('value')->take(50)->values();
 
-            $totalTeamkills = (int) PlayerServerStat::where('server_id', $server->id)->sum('teamkills');
+            $totalTeamkills = $all->sum('teamkills');
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.friendly-fire', 'icon' => '💀', 'title' => 'Fuego amigo',
             'subtitle' => 'Los que más matan a sus propios compañeros — con cariño',
             'valueLabel' => 'compañeros', 'valueColor' => 'text-red-400',
@@ -242,18 +231,17 @@ class SpecialtyController extends Controller
     public function efficiency(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $minKills = 20;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('kills', '>=', $minKills)
-                ->whereHas('player')
-                ->get()
+            $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
+
+            $rows = $all->filter(fn ($row) => $row->kills >= $minKills)
                 ->map(function ($row) {
-                    $row->value = $row->kd_ratio;
+                    $row->value = $row->deaths > 0 ? round($row->kills / $row->deaths, 2) : $row->kills;
                     $row->share = null;
 
                     return $row;
@@ -264,7 +252,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.efficiency', 'icon' => '⚔️', 'title' => 'Los Más Eficientes',
             'subtitle' => "Mejor ratio kills/muertes (K/D) — mínimo {$minKills} bajas para entrar al ranking",
             'valueLabel' => 'K/D', 'valueColor' => 'text-emerald-400',
@@ -936,44 +924,28 @@ class SpecialtyController extends Controller
     public function bashCalls(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalBashes = 0;
 
         if ($server) {
-            $counts = $this->sdKills($server->id)
-                ->where('kills.mod', 'MOD_MELEE')
-                ->whereNotNull('kills.attacker_player_id')
-                ->selectRaw('kills.attacker_player_id as player_id, count(*) as c')
-                ->groupBy('kills.attacker_player_id')
-                ->orderByDesc('c')
-                ->limit(50)
-                ->get();
+            $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
 
-            $stats = PlayerServerStat::where('server_id', $server->id)
-                ->whereIn('player_id', $counts->pluck('player_id'))
-                ->get()->keyBy('player_id');
-            $players = Player::whereIn('id', $counts->pluck('player_id'))->get()->keyBy('id');
+            $rows = $all->filter(fn ($row) => $row->bash > 0)
+                ->map(function ($row) {
+                    $row->value = $row->bash;
+                    $row->share = null;
 
-            $rows = $counts->map(function ($row) use ($players, $stats) {
-                $player = $players[$row->player_id] ?? null;
-                if (! $player) {
-                    return null;
-                }
+                    return $row;
+                })
+                ->sortByDesc('value')->take(50)->values();
 
-                return (object) [
-                    'player' => $player,
-                    'value' => $row->c,
-                    'share' => null,
-                    'kills' => $stats[$row->player_id]->kills ?? null,
-                ];
-            })->filter()->values();
-
-            $totalBashes = (int) $counts->sum('c');
+            $totalBashes = $all->sum('bash');
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.bash', 'icon' => '🥊', 'title' => 'Bash',
             'subtitle' => 'Más bajas cuerpo a cuerpo (bash) — Search and Destroy',
             'valueLabel' => 'bash', 'valueColor' => 'text-orange-400',
