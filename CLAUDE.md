@@ -1773,6 +1773,63 @@ el histórico completo sin filtrar por temporada — filtrar esas vistas por
 temporada (con selector de temporada, probablemente) es el sub-proyecto 2/3 del
 plan, todavía no arrancado.
 
+## Ranking por temporada (2026-08-26)
+
+Segundo sub-proyecto de 3 (el primero fue la infraestructura base de arriba). Spec
+completa: `docs/superpowers/specs/2026-08-25-ranking-por-temporada-design.md`.
+`/ranking` y `/jugadores/{guid}` ahora respetan la temporada — **default en todo el
+sitio: la temporada activa**, con `?season={id}` para cualquier temporada cerrada o
+`?season=all` para el histórico completo. Cualquier link a un perfil de jugador sin
+`?season=` explícito hereda la temporada activa; solo `/ranking` arma el link con
+`?season=` explícito para que el perfil "herede" la que se estaba mirando.
+
+- **Cálculo al vuelo, no una tabla `player_season_stats` nueva.** Mismo patrón que
+  ya usaba `LeaderboardController::aggregateFromKills()` para el filtro de fecha
+  manual (ahora eliminado, reemplazado por el selector de temporada) — un join
+  `kills → rounds → matches` filtrado por `matches.season_id`, sin ningún
+  acumulador que sincronizar. Decisión deliberada: el patrón "acumulador +
+  corrección retroactiva" (`player_server_stats`/`player_map_stats`) ya causó
+  varios bugs reales documentados en la bitácora de bugs más arriba (entradas 13,
+  15, 16) — con ~50 partidas/~12k kills reales, calcular al vuelo es rápido y no
+  necesita ningún mecanismo de sincronización aparte. `GameMatch::scopeForSeason($seasonId)`
+  (nuevo) centraliza "qué partidas cuentan para esta temporada" — `$seasonId` es un
+  id real o el string literal `'all'` — y lo consumen tanto `LeaderboardController`
+  como `PlayerController`. Las tablas pre-calculadas `player_server_stats`/
+  `player_map_stats`/`players.kills_total` etc. **no se tocan ni se borran** — solo
+  dejan de leerse desde estas dos vistas.
+- **Bug heredado corregido de una:** `aggregateFromKills()` nunca excluía partidas
+  abandonadas sin resultado real (a diferencia de las tablas pre-calculadas, que sí
+  lo hacían desde un fix anterior de esta misma sesión) — `scopeForSeason()` ahora
+  excluye `GameMatch::abandonedWithoutConclusion()` siempre, sin importar la
+  temporada elegida, incluido `season=all`.
+- **`player_weapon_picks.season_id`** (columna nueva, mismo patrón que
+  `matches.season_id` — nullable a nivel de esquema, asignada una sola vez en
+  `ParseCod2Log`) hizo falta porque "arma más equipada" era un acumulador puro sin
+  ninguna referencia temporal. Con `season=all`, toma el pick con más `picks` de
+  cualquier temporada individual, no la suma entre temporadas — límite aceptado a
+  propósito, "todo el historial" ya es la vista de excepción.
+- **El filtro de fecha manual (`from`/`to`) se sacó de la UI de `/ranking`** — el
+  selector de temporada lo reemplaza. La navegación por sesión específica de un
+  mapa jugado varias veces (antes date-pills clickeables) también cambió: ahora
+  siempre muestra la sesión más reciente automáticamente dentro de la temporada
+  elegida (con un contador "N sesiones en esta temporada"), sin leer `from`/`to` de
+  la URL — decisión ya tomada en el spec de este sub-proyecto (no una regresión;
+  ver ese documento, sección "Axis/Allies panel").
+- **Alcance del perfil de jugador:** todas sus secciones respetan la temporada —
+  números principales, mejores mapas (`KillAggregator::aggregateByMap()`, nuevo),
+  arma favorita, arma más equipada, team-kills, últimas bajas/muertes — no solo un
+  subconjunto.
+- **`/especialidades` sigue sin temporada** (fuera de alcance, sub-proyecto 3 de 3,
+  todavía no arrancado) — sigue mostrando el histórico completo sin filtrar.
+- Implementado con `subagent-driven-development` (5 tasks de código + esta). TDD en
+  cada task: `tests/Feature/PlayerWeaponPickSeasonTest.php` (2 casos),
+  `tests/Feature/LeaderboardSeasonTest.php` (4 casos),
+  `tests/Feature/PlayerShowSeasonTest.php` (8 casos, incluye cobertura explícita de
+  exclusión cross-temporada para arma favorita/team-kills/últimas muertes/mejores
+  mapas, agregada en una ronda de fix tras la revisión). Verificado en un entorno
+  aislado en el VPS (`/root/sdd_baseline`, sin PHP local en la máquina de
+  desarrollo) antes de desplegar.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y
