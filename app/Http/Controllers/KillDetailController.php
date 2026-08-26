@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GameMatch;
 use App\Models\Kill;
 use App\Models\Player;
 use App\Models\Server;
@@ -34,6 +35,18 @@ class KillDetailController extends Controller
                 $query->where('kills.match_id', $matchId);
             } else {
                 $query->where('rounds.gametype', 'sd');
+
+                // Sin match explicito, el resultado tiene que respetar la misma temporada que el
+                // numero que el usuario cliqueo en pantalla (ranking o perfil de jugador) -- sin
+                // esto el popover mezcla todas las temporadas aunque el numero en pantalla este
+                // scopeado a una sola. Sin parametro 'season' en la URL (llamadores viejos que no
+                // lo mandan), se comporta como 'all' -- de paso corrige un bug latente que ya
+                // tenia esta clase antes de las temporadas: nunca excluia partidas abandonadas sin
+                // resultado real (GameMatch::abandonedWithoutConclusion(), ya usado en
+                // GameMatch::scopeForSeason()) de este popover.
+                $seasonParam = $request->query('season');
+                $seasonScope = $seasonParam === 'all' ? 'all' : ($seasonParam ? (int) $seasonParam : 'all');
+                $query->whereIn('kills.match_id', GameMatch::forSeason($seasonScope)->pluck('id'));
             }
 
             if ($slug = $request->query('server')) {

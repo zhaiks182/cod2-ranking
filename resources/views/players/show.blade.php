@@ -18,9 +18,9 @@
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Kills</div>
             <div class="mt-1 text-lg font-semibold text-cyan-300">
-                <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="" class="px-1 py-1 -mx-1 hover:underline hover:text-cyan-200">{{ $player->kills_total }}</button>
+                <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ http_build_query(['season' => $seasonId]) }}" class="px-1 py-1 -mx-1 hover:underline hover:text-cyan-200">{{ $player->kills_total }}</button>
                 @if($teamkillCount > 0)
-                    <button type="button" data-teamkill-trigger data-player="{{ $player->guid }}" data-params="" class="px-1 py-1 -my-1 text-red-500 font-medium text-base hover:underline">(-{{ $teamkillCount }})</button>
+                    <button type="button" data-teamkill-trigger data-player="{{ $player->guid }}" data-params="{{ http_build_query(['season' => $seasonId]) }}" class="px-1 py-1 -my-1 text-red-500 font-medium text-base hover:underline">(-{{ $teamkillCount }})</button>
                 @endif
             </div>
         </div>
@@ -69,7 +69,7 @@
                     </thead>
                     <tbody>
                         @forelse($player->mapStats->take(4) as $stat)
-                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map])]); @endphp
+                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
@@ -176,7 +176,7 @@
                     </thead>
                     <tbody>
                         @foreach($player->mapStats as $stat)
-                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map])]); @endphp
+                            @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
