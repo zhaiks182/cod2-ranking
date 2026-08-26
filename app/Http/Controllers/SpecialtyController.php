@@ -142,30 +142,37 @@ class SpecialtyController extends Controller
     public function suicides(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalSuicides = 0;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('suicides', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('suicides')
+            $counts = Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
+                ->where('rounds.server_id', $server->id)
+                ->where('rounds.gametype', 'sd')
+                ->where('kills.is_suicide', true)
+                ->whereNotNull('kills.attacker_player_id')
+                ->whereIn('kills.match_id', $matchIds)
+                ->selectRaw('kills.attacker_player_id as player_id, count(*) as c')
+                ->groupBy('kills.attacker_player_id')
+                ->orderByDesc('c')
                 ->limit(50)
-                ->get()
-                ->map(function ($row) {
-                    $row->value = $row->suicides;
-                    $row->share = null;
+                ->get();
 
-                    return $row;
-                });
+            $players = Player::whereIn('id', $counts->pluck('player_id'))->get()->keyBy('id');
 
-            $totalSuicides = (int) PlayerServerStat::where('server_id', $server->id)->sum('suicides');
+            $rows = $counts->map(function ($row) use ($players) {
+                $player = $players[$row->player_id] ?? null;
+
+                return $player ? (object) ['player' => $player, 'value' => $row->c, 'share' => null] : null;
+            })->filter()->values();
+
+            $totalSuicides = (int) $counts->sum('c');
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.suicides', 'icon' => '🤡', 'title' => 'Suicidios',
             'subtitle' => 'Los que más se matan solos (granada en la mano, caídas, etc.)',
             'valueLabel' => 'suicidios', 'valueColor' => 'text-fuchsia-400',
