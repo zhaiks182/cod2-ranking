@@ -48,7 +48,19 @@ class LeaderboardController extends Controller
             $from = $to = $latestDate;
         }
 
-        $rows = $server ? $this->aggregateFromKills($server->id, $mapCodes, $matchIds) : collect();
+        // The ranking table has to agree with the Axis/Allies panel below it — both
+        // show the same single session once a multi-session map tab picks its latest
+        // date above, instead of the table silently summing every session of the
+        // season while the panel only shows one.
+        $tableMatchIds = $matchIds;
+        if ($from) {
+            $tableMatchIds = GameMatch::whereIn('id', $matchIds)
+                ->where('started_at', '>=', Carbon::parse($from)->startOfDay())
+                ->where('started_at', '<=', Carbon::parse($to)->endOfDay())
+                ->pluck('id');
+        }
+
+        $rows = $server ? $this->aggregateFromKills($server->id, $mapCodes, $tableMatchIds) : collect();
 
         // Any map tab normally corresponds to exactly one played match (or, for a
         // multi-session map, one specific session once the date default above kicks
@@ -77,10 +89,7 @@ class LeaderboardController extends Controller
             }
         }
 
-        // Legacy view variables — will be removed in Task 3 when the view is refactored for seasons
-        $usingDateFilter = false;
-
-        return view('leaderboard', compact('servers', 'server', 'seasons', 'seasonId', 'mapGroups', 'map', 'mapCodes', 'from', 'to', 'usingDateFilter', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
+        return view('leaderboard', compact('servers', 'server', 'seasons', 'seasonId', 'mapGroups', 'map', 'mapCodes', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
     }
 
     /**

@@ -200,4 +200,81 @@ class LeaderboardSeasonTest extends TestCase
         $row = collect($response->viewData('rows'))->firstWhere('player.id', $attacker->id);
         $this->assertSame(2, $row->kills); // las 2 de Temporada 1, no la de Temporada 2
     }
+
+    /**
+     * Finding 1 del final review: en una pestana de mapa multi-sesion, la tabla
+     * (aggregateFromKills) y el panel Axis/Allies (que ya se narrowea con $from/$to)
+     * tenian que mostrar lo mismo -- la tabla sumaba TODA la temporada mientras el
+     * panel solo mostraba la ultima sesion. Esta partida crea dos sesiones del mismo
+     * mapa en dias distintos dentro de la misma temporada: 3 kills el dia viejo, 5
+     * kills el dia mas reciente. La tabla debe mostrar solo 5 (la sesion mas
+     * reciente), no 8 (la suma de toda la temporada).
+     */
+    public function test_ranking_table_on_multi_session_map_matches_latest_session_only(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+
+        $oldMatch = $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        $oldMatch->update(['started_at' => now()->subDays(3), 'ended_at' => now()->subDays(3)]);
+        $oldMatch->rounds()->update(['started_at' => now()->subDays(3), 'ended_at' => now()->subDays(3)]);
+        // 2 kills mas en la sesion vieja (3 en total con la del helper).
+        for ($i = 0; $i < 2; $i++) {
+            Kill::create([
+                'round_id' => $oldMatch->rounds()->first()->id,
+                'match_id' => $oldMatch->id,
+                'attacker_player_id' => $attacker->id,
+                'attacker_guid' => $attacker->guid,
+                'attacker_name' => $attacker->last_name,
+                'attacker_team' => 'allies',
+                'victim_player_id' => $victim->id,
+                'victim_guid' => $victim->guid,
+                'victim_name' => $victim->last_name,
+                'victim_team' => 'axis',
+                'weapon' => 'weapon_mp44',
+                'damage' => 100,
+                'mod' => 'MOD_RIFLE_BULLET',
+                'hitloc' => 'head',
+                'is_headshot' => false,
+                'is_grenade' => false,
+                'is_suicide' => false,
+                'is_teamkill' => false,
+                'occurred_at' => now()->subDays(3),
+            ]);
+        }
+
+        $newMatch = $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        // 4 kills mas en la sesion reciente (5 en total con la del helper).
+        for ($i = 0; $i < 4; $i++) {
+            Kill::create([
+                'round_id' => $newMatch->rounds()->first()->id,
+                'match_id' => $newMatch->id,
+                'attacker_player_id' => $attacker->id,
+                'attacker_guid' => $attacker->guid,
+                'attacker_name' => $attacker->last_name,
+                'attacker_team' => 'allies',
+                'victim_player_id' => $victim->id,
+                'victim_guid' => $victim->guid,
+                'victim_name' => $victim->last_name,
+                'victim_team' => 'axis',
+                'weapon' => 'weapon_mp44',
+                'damage' => 100,
+                'mod' => 'MOD_RIFLE_BULLET',
+                'hitloc' => 'head',
+                'is_headshot' => false,
+                'is_grenade' => false,
+                'is_suicide' => false,
+                'is_teamkill' => false,
+                'occurred_at' => now(),
+            ]);
+        }
+
+        $response = $this->get(route('leaderboard', ['server' => $this->server->slug, 'map' => 'mp_toujane']));
+
+        $response->assertOk();
+        $row = collect($response->viewData('rows'))->firstWhere('player.id', $attacker->id);
+        $this->assertNotNull($row);
+        $this->assertSame(5, $row->kills); // solo la sesion mas reciente, no las 8 de toda la temporada
+    }
 }
