@@ -272,6 +272,7 @@ class SpecialtyController extends Controller
     public function mapsWon(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalMaps = 0;
@@ -281,6 +282,7 @@ class SpecialtyController extends Controller
                 ->where('is_backfilled', false)
                 ->where('gametype', 'sd')
                 ->whereNotNull('ended_at')
+                ->whereIn('id', $matchIds)
                 ->with('rounds:id,match_id,winner_guids')
                 ->get();
 
@@ -313,7 +315,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.maps-won', 'icon' => '🏆', 'title' => 'Mapas Ganados',
             'subtitle' => "Partidas completas ganadas por jugador (de {$totalMaps} mapas jugados y decididos)",
             'valueLabel' => 'mapas', 'valueColor' => 'text-yellow-400',
@@ -485,6 +487,7 @@ class SpecialtyController extends Controller
     public function playtime(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalSeconds = 0;
@@ -493,6 +496,7 @@ class SpecialtyController extends Controller
             $rounds = Round::where('server_id', $server->id)
                 ->where('gametype', 'sd')
                 ->whereNotNull('ended_at')
+                ->whereIn('match_id', $matchIds)
                 ->get(['id', 'started_at', 'ended_at'])
                 ->keyBy('id');
 
@@ -542,7 +546,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.playtime', 'icon' => '⏱️', 'title' => 'Más Horas Jugadas',
             'subtitle' => 'Tiempo estimado en partida — suma la duración de las rondas SD en las que participó cada jugador',
             'valueLabel' => 'tiempo', 'valueColor' => 'text-sky-400',
@@ -557,6 +561,7 @@ class SpecialtyController extends Controller
     public function streaks(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $longestEver = null;
@@ -566,6 +571,7 @@ class SpecialtyController extends Controller
                 ->where('is_backfilled', false)
                 ->where('gametype', 'sd')
                 ->whereNotNull('ended_at')
+                ->whereIn('id', $matchIds)
                 ->orderBy('started_at')
                 ->with('rounds:id,match_id,winner_guids')
                 ->get();
@@ -616,7 +622,7 @@ class SpecialtyController extends Controller
             $longestEver = $rows->first();
         }
 
-        return view('specialties.streaks', compact('servers', 'server', 'rows', 'longestEver'));
+        return view('specialties.streaks', compact('servers', 'server', 'seasons', 'seasonId', 'rows', 'longestEver'));
     }
 
     public function recentActivity(Request $request)
@@ -707,6 +713,7 @@ class SpecialtyController extends Controller
     public function clutches(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalClutches = 0;
@@ -714,6 +721,7 @@ class SpecialtyController extends Controller
         if ($server) {
             $rounds = Round::where('server_id', $server->id)->where('gametype', 'sd')
                 ->whereNotNull('winner_guids')
+                ->whereIn('match_id', $matchIds)
                 ->whereHas('match', fn ($q) => $q->where('is_backfilled', false))
                 ->get(['id', 'winner_guids']);
 
@@ -764,7 +772,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.clutches', 'icon' => '🥶', 'title' => 'Clutches 1vX',
             'subtitle' => 'Rondas ganadas siendo el único sobreviviente de su equipo',
             'valueLabel' => 'clutches', 'valueColor' => 'text-cyan-300',
@@ -969,6 +977,7 @@ class SpecialtyController extends Controller
     public function winRate(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $minMaps = 3;
@@ -978,6 +987,7 @@ class SpecialtyController extends Controller
                 ->where('is_backfilled', false)
                 ->where('gametype', 'sd')
                 ->whereNotNull('ended_at')
+                ->whereIn('id', $matchIds)
                 ->with('rounds:id,match_id,winner_guids')
                 ->get();
 
@@ -1031,7 +1041,7 @@ class SpecialtyController extends Controller
                 ->values();
         }
 
-        return view('specialties.win-rate', compact('servers', 'server', 'rows', 'minMaps'));
+        return view('specialties.win-rate', compact('servers', 'server', 'seasons', 'seasonId', 'rows', 'minMaps'));
     }
 
     /**
@@ -1047,18 +1057,17 @@ class SpecialtyController extends Controller
     public function rango(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $minMatches = 5;
         $minKills = 20;
 
         if ($server) {
-            $stats = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('kills', '>=', $minKills)
-                ->whereHas('player')
-                ->get()
-                ->keyBy('player.guid');
+            $statsRows = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))
+                ->filter(fn ($row) => $row->kills >= $minKills);
+
+            $stats = $statsRows->keyBy(fn ($row) => $row->player->guid);
 
             // Mismo proxy de "partidas jugadas/ganadas" que winRate() de arriba —
             // sin lista de participantes por partida, un jugador cuenta como
@@ -1068,6 +1077,7 @@ class SpecialtyController extends Controller
                 ->where('is_backfilled', false)
                 ->where('gametype', 'sd')
                 ->whereNotNull('ended_at')
+                ->whereIn('id', $matchIds)
                 ->with('rounds:id,match_id,winner_guids')
                 ->get();
 
@@ -1165,7 +1175,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.rango', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'minMatches' => $minMatches, 'minKills' => $minKills,
         ]);
     }
