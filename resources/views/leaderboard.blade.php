@@ -17,11 +17,16 @@
             Ranking {{ $map ? '— '.\App\Support\MapCatalog::mapLabel($map) : 'general' }}
         </h1>
 
-        @include('partials.season-selector', [
-            'seasonDropdownId' => 'ranking-season-dropdown',
-            'seasonBaseRoute' => 'leaderboard',
-            'seasonBaseParams' => ['server' => $server?->slug, 'map' => $map],
-        ])
+        <div class="flex items-center gap-2">
+            @include('partials.season-selector', [
+                'seasonDropdownId' => 'ranking-season-dropdown',
+                'seasonBaseRoute' => 'leaderboard',
+                'seasonBaseParams' => ['server' => $server?->slug, 'map' => $map],
+            ])
+            @if(Route::has('team-balance'))
+                <a href="{{ route('team-balance', ['server' => $server?->slug]) }}" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold whitespace-nowrap">⚖️ Equipos</a>
+            @endif
+        </div>
     </div>
 
     <div class="flex items-center gap-2 text-sm flex-wrap">
