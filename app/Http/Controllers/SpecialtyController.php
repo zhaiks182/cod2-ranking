@@ -187,12 +187,13 @@ class SpecialtyController extends Controller
     public function grenadeDeaths(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalGrenadeDeaths = 0;
 
         if ($server) {
-            $counts = $this->sdKills($server->id)
+            $counts = $this->sdKills($server->id, $matchIds)
                 ->where('kills.is_grenade', true)
                 ->whereNotNull('kills.victim_player_id')
                 ->selectRaw('kills.victim_player_id as player_id, count(*) as c')
@@ -201,12 +202,10 @@ class SpecialtyController extends Controller
                 ->limit(50)
                 ->get();
 
-            $stats = PlayerServerStat::where('server_id', $server->id)
-                ->whereIn('player_id', $counts->pluck('player_id'))
-                ->get()->keyBy('player_id');
+            $totalsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
             $players = Player::whereIn('id', $counts->pluck('player_id'))->get()->keyBy('id');
 
-            $rows = $counts->map(function ($row) use ($players, $stats) {
+            $rows = $counts->map(function ($row) use ($players, $totalsByPlayer) {
                 $player = $players[$row->player_id] ?? null;
                 if (! $player) {
                     return null;
@@ -216,7 +215,7 @@ class SpecialtyController extends Controller
                     'player' => $player,
                     'value' => $row->c,
                     'share' => null,
-                    'kills' => $stats[$row->player_id]->kills ?? null,
+                    'kills' => $totalsByPlayer[$row->player_id]->kills ?? null,
                 ];
             })->filter()->values();
 
@@ -224,7 +223,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.grenade-deaths', 'icon' => '🪦', 'title' => 'Muertes por granada',
             'subtitle' => 'Los que más mueren por granadas ajenas (no cuenta autoeliminarse) — Search and Destroy',
             'valueLabel' => 'muertes por nade', 'valueColor' => 'text-lime-400',
@@ -328,18 +327,19 @@ class SpecialtyController extends Controller
     public function weapons(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $weapons = collect();
 
         if ($server) {
-            $totals = $this->sdKills($server->id)
+            $totals = $this->sdKills($server->id, $matchIds)
                 ->selectRaw('kills.weapon, count(*) as uses')
                 ->groupBy('kills.weapon')
                 ->orderByDesc('uses')
                 ->limit(20)
                 ->get();
 
-            $killersByWeapon = $this->sdKills($server->id)
+            $killersByWeapon = $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')
                 ->selectRaw('kills.weapon, kills.attacker_player_id, count(*) as uses')
                 ->groupBy('kills.weapon', 'kills.attacker_player_id')
@@ -373,17 +373,18 @@ class SpecialtyController extends Controller
             });
         }
 
-        return view('specialties.weapons', compact('servers', 'server', 'weapons'));
+        return view('specialties.weapons', compact('servers', 'server', 'seasons', 'seasonId', 'weapons'));
     }
 
     public function rivalries(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rivalries = collect();
 
         if ($server) {
-            $pairs = $this->sdKills($server->id)
+            $pairs = $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
                 ->selectRaw('kills.attacker_player_id, kills.victim_player_id, count(*) as kills_count')
                 ->groupBy('kills.attacker_player_id', 'kills.victim_player_id')
@@ -416,7 +417,7 @@ class SpecialtyController extends Controller
 
             // Favorite weapon in each dominant matchup — a different cut of the same
             // kills already queried above, grouped one level finer (by weapon too).
-            $topWeaponByPair = $this->sdKills($server->id)
+            $topWeaponByPair = $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
                 ->selectRaw('kills.attacker_player_id, kills.victim_player_id, kills.weapon, count(*) as c')
                 ->groupBy('kills.attacker_player_id', 'kills.victim_player_id', 'kills.weapon')
@@ -437,7 +438,7 @@ class SpecialtyController extends Controller
             })->filter(fn ($r) => $r->nemesis && $r->victim)->values();
         }
 
-        return view('specialties.rivalries', compact('servers', 'server', 'rivalries'));
+        return view('specialties.rivalries', compact('servers', 'server', 'seasons', 'seasonId', 'rivalries'));
     }
 
     public function mapKings(Request $request)
@@ -621,13 +622,14 @@ class SpecialtyController extends Controller
     public function recentActivity(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $since = now()->subDays(7);
         $totalKills = 0;
 
         if ($server) {
-            $tally = $this->sdKills($server->id)
+            $tally = $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')
                 ->where('kills.occurred_at', '>=', $since)
                 ->selectRaw('kills.attacker_player_id as player_id, count(*) as kills_count')
@@ -636,7 +638,7 @@ class SpecialtyController extends Controller
                 ->limit(50)
                 ->get();
 
-            $totalKills = (int) $this->sdKills($server->id)->where('kills.occurred_at', '>=', $since)->count();
+            $totalKills = (int) $this->sdKills($server->id, $matchIds)->where('kills.occurred_at', '>=', $since)->count();
 
             $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
 
@@ -651,7 +653,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.recent-activity', 'icon' => '📈', 'title' => 'Actividad Reciente',
             'subtitle' => 'Más bajas (Search and Destroy) en los últimos 7 días — '.$since->translatedFormat('d M').' a hoy',
             'valueLabel' => 'bajas', 'valueColor' => 'text-lime-400',
@@ -874,18 +876,19 @@ class SpecialtyController extends Controller
     public function peakTimes(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $byHour = collect();
         $byWeekday = collect();
 
         if ($server) {
-            $hourRows = $this->sdKills($server->id)
+            $hourRows = $this->sdKills($server->id, $matchIds)
                 ->selectRaw('hour(kills.occurred_at) as h, count(*) as c')
                 ->groupBy('h')->pluck('c', 'h');
             $byHour = collect(range(0, 23))->map(fn ($h) => (object) ['label' => sprintf('%02d:00', $h), 'value' => $hourRows[$h] ?? 0]);
 
             // DAYOFWEEK: 1=Sunday..7=Saturday — reorder to a Monday-first week for display.
-            $weekdayRows = $this->sdKills($server->id)
+            $weekdayRows = $this->sdKills($server->id, $matchIds)
                 ->selectRaw('dayofweek(kills.occurred_at) as d, count(*) as c')
                 ->groupBy('d')->pluck('c', 'd');
             $labels = [2 => 'Lun', 3 => 'Mar', 4 => 'Mié', 5 => 'Jue', 6 => 'Vie', 7 => 'Sáb', 1 => 'Dom'];
@@ -895,7 +898,7 @@ class SpecialtyController extends Controller
         $maxHour = $byHour->max('value') ?: 1;
         $maxWeekday = $byWeekday->max('value') ?: 1;
 
-        return view('specialties.peak-times', compact('servers', 'server', 'byHour', 'byWeekday', 'maxHour', 'maxWeekday'));
+        return view('specialties.peak-times', compact('servers', 'server', 'seasons', 'seasonId', 'byHour', 'byWeekday', 'maxHour', 'maxWeekday'));
     }
 
     public function timeouts(Request $request)
