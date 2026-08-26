@@ -650,10 +650,20 @@ class SpecialtyController extends Controller
 
     public function countries(Request $request)
     {
-        // Players are global (not per-server, see CLAUDE.md), and IP is only known
-        // from live RCON polls (not per-server log lines), so this page — unlike the
-        // rest of specialties — has no server switcher, it's a global breakdown.
-        $players = Player::whereNotNull('ip')->get(['id', 'guid', 'last_name', 'last_name_plain', 'ip', 'kills_total']);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
+
+        // Sigue sin selector de server (ver comentario original) -- $matchIds ya viene
+        // de GameMatch::forSeason(), que no filtra por server, asi que cubre todos los
+        // servers activos de una.
+        $activePlayerIds = Kill::whereIn('match_id', $matchIds)
+            ->where(fn ($q) => $q->whereNotNull('attacker_player_id')->orWhereNotNull('victim_player_id'))
+            ->get(['attacker_player_id', 'victim_player_id'])
+            ->flatMap(fn ($k) => [$k->attacker_player_id, $k->victim_player_id])
+            ->filter()
+            ->unique();
+
+        $players = Player::whereNotNull('ip')->whereIn('id', $activePlayerIds)
+            ->get(['id', 'guid', 'last_name', 'last_name_plain', 'ip', 'kills_total']);
 
         $grouped = [];
         foreach ($players as $player) {
@@ -684,6 +694,8 @@ class SpecialtyController extends Controller
             'countries' => $countries,
             'totalWithCountry' => $totalWithCountry,
             'totalPlayers' => $players->count(),
+            'seasons' => $seasons,
+            'seasonId' => $seasonId,
         ]);
     }
 
