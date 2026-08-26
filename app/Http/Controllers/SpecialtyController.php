@@ -10,6 +10,7 @@ use App\Models\Player;
 use App\Models\PlayerMapStat;
 use App\Models\PlayerServerStat;
 use App\Models\Round;
+use App\Models\Season;
 use App\Models\Server;
 use App\Services\GeoIp;
 use App\Support\TeamSideAnalyzer;
@@ -1320,15 +1321,27 @@ class SpecialtyController extends Controller
         return [$servers, $server];
     }
 
+    /** @return array{0: \Illuminate\Support\Collection, 1: int|string, 2: \Illuminate\Support\Collection} */
+    private function resolveSeason(Request $request): array
+    {
+        $seasons = Season::orderByDesc('started_at')->get();
+        $seasonParam = $request->query('season');
+        $seasonId = $seasonParam === 'all' ? 'all' : ($seasonParam ? (int) $seasonParam : Season::current()->id);
+        $matchIds = GameMatch::forSeason($seasonId)->pluck('id');
+
+        return [$seasons, $seasonId, $matchIds];
+    }
+
     /**
      * Base query for "real" kills on a server: Search & Destroy only (same rule as the
      * main ranking), joined to rounds, suicides excluded.
      */
-    private function sdKills(int $serverId)
+    private function sdKills(int $serverId, $matchIds)
     {
         return Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->where('rounds.server_id', $serverId)
             ->where('rounds.gametype', 'sd')
-            ->where('kills.is_suicide', false);
+            ->where('kills.is_suicide', false)
+            ->whereIn('kills.match_id', $matchIds);
     }
 }
