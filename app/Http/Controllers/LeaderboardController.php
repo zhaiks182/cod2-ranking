@@ -39,13 +39,28 @@ class LeaderboardController extends Controller
         $mapCodes = $map ? ($mapGroups[$map]->codes ?? [$map]) : [];
 
         // A map played across more than one calendar day can't honestly show one
-        // combined "all sessions" total (see the class-level note on buildMapGroups) —
-        // picking that map's tab defaults to its most recent session within the
-        // selected season/scope instead of silently mixing every session together.
+        // combined "all sessions" total (see the class-level note on buildMapGroups).
+        // Default: most recent session within the selected season/scope. The owner
+        // can pick a different one explicitly via ?from=YYYY-MM-DD (date-pills below,
+        // in the view) — restored 2026-08-26 after Task 3 dropped it entirely, which
+        // turned out to be a real regression (the owner uses this to look at one
+        // specific day's board, not just "this whole season"). Only a date that's
+        // actually one of this map's real sessions in the CURRENT scope is honored —
+        // an old bookmark from a different season, or a stray query param, silently
+        // falls back to the same "latest session" default as before.
         $from = $to = null;
+        $usingDateFilter = false;
         if ($map && ($mapGroups[$map]->dates ?? collect())->count() > 1) {
-            $latestDate = $mapGroups[$map]->dates->last()->toDateString();
-            $from = $to = $latestDate;
+            $requestedFrom = $request->query('from');
+            $isValidRequestedDate = $requestedFrom
+                && $mapGroups[$map]->dates->contains(fn ($d) => $d->toDateString() === $requestedFrom);
+
+            if ($isValidRequestedDate) {
+                $from = $to = $requestedFrom;
+                $usingDateFilter = true;
+            } else {
+                $from = $to = $mapGroups[$map]->dates->last()->toDateString();
+            }
         }
 
         // The ranking table has to agree with the Axis/Allies panel below it — both
@@ -89,7 +104,7 @@ class LeaderboardController extends Controller
             }
         }
 
-        return view('leaderboard', compact('servers', 'server', 'seasons', 'seasonId', 'mapGroups', 'map', 'mapCodes', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
+        return view('leaderboard', compact('servers', 'server', 'seasons', 'seasonId', 'mapGroups', 'map', 'mapCodes', 'from', 'to', 'usingDateFilter', 'rows', 'axisRows', 'alliesRows', 'sideScores'));
     }
 
     /**

@@ -277,4 +277,101 @@ class LeaderboardSeasonTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame(5, $row->kills); // solo la sesion mas reciente, no las 8 de toda la temporada
     }
+
+    public function test_ranking_table_honors_an_explicit_from_param_for_a_specific_session(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+
+        $oldDate = now()->subDays(3);
+        $oldMatch = $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        $oldMatch->update(['started_at' => $oldDate, 'ended_at' => $oldDate]);
+        $oldMatch->rounds()->update(['started_at' => $oldDate, 'ended_at' => $oldDate]);
+        // 2 kills mas en la sesion vieja (3 en total con la del helper).
+        for ($i = 0; $i < 2; $i++) {
+            Kill::create([
+                'round_id' => $oldMatch->rounds()->first()->id,
+                'match_id' => $oldMatch->id,
+                'attacker_player_id' => $attacker->id,
+                'attacker_guid' => $attacker->guid,
+                'attacker_name' => $attacker->last_name,
+                'attacker_team' => 'allies',
+                'victim_player_id' => $victim->id,
+                'victim_guid' => $victim->guid,
+                'victim_name' => $victim->last_name,
+                'victim_team' => 'axis',
+                'weapon' => 'weapon_mp44',
+                'damage' => 100,
+                'mod' => 'MOD_RIFLE_BULLET',
+                'hitloc' => 'head',
+                'is_headshot' => false,
+                'is_grenade' => false,
+                'is_suicide' => false,
+                'is_teamkill' => false,
+                'occurred_at' => $oldDate,
+            ]);
+        }
+
+        $newMatch = $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        // 4 kills mas en la sesion reciente (5 en total con la del helper).
+        for ($i = 0; $i < 4; $i++) {
+            Kill::create([
+                'round_id' => $newMatch->rounds()->first()->id,
+                'match_id' => $newMatch->id,
+                'attacker_player_id' => $attacker->id,
+                'attacker_guid' => $attacker->guid,
+                'attacker_name' => $attacker->last_name,
+                'attacker_team' => 'allies',
+                'victim_player_id' => $victim->id,
+                'victim_guid' => $victim->guid,
+                'victim_name' => $victim->last_name,
+                'victim_team' => 'axis',
+                'weapon' => 'weapon_mp44',
+                'damage' => 100,
+                'mod' => 'MOD_RIFLE_BULLET',
+                'hitloc' => 'head',
+                'is_headshot' => false,
+                'is_grenade' => false,
+                'is_suicide' => false,
+                'is_teamkill' => false,
+                'occurred_at' => now(),
+            ]);
+        }
+
+        $oldDateStr = $oldDate->toDateString();
+        $response = $this->get(route('leaderboard', [
+            'server' => $this->server->slug,
+            'map' => 'mp_toujane',
+            'from' => $oldDateStr,
+            'to' => $oldDateStr,
+        ]));
+
+        $response->assertOk();
+        $this->assertTrue($response->viewData('usingDateFilter'));
+        $row = collect($response->viewData('rows'))->firstWhere('player.id', $attacker->id);
+        $this->assertNotNull($row);
+        $this->assertSame(3, $row->kills); // la sesion vieja explicita, no la mas reciente (5) ni las 8 combinadas
+    }
+
+    public function test_ranking_table_ignores_an_unrelated_from_param_and_falls_back_to_latest_session(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+
+        $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix')
+            ->update(['started_at' => now()->subDays(3), 'ended_at' => now()->subDays(3)]);
+        $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+
+        $response = $this->get(route('leaderboard', [
+            'server' => $this->server->slug,
+            'map' => 'mp_toujane',
+            'from' => '2020-01-01', // fecha real, pero no una sesion real de este mapa/temporada
+            'to' => '2020-01-01',
+        ]));
+
+        $response->assertOk();
+        $this->assertFalse($response->viewData('usingDateFilter'));
+    }
 }

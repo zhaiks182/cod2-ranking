@@ -15,6 +15,9 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-lg font-semibold">
             Ranking {{ $map ? '— '.\App\Support\MapCatalog::mapLabel($map) : 'general' }}
+            @if($map && $usingDateFilter && $from && $from === $to)
+                <span class="text-slate-500 font-normal text-base">({{ \Illuminate\Support\Carbon::parse($from)->translatedFormat('j \d\e F') }})</span>
+            @endif
         </h1>
 
         <div class="flex items-center gap-2">
@@ -37,9 +40,44 @@
     </div>
 
     @if($map && ($mapGroups[$map]->dates ?? collect())->count() > 1)
+        @php
+            $monthGroups = $mapGroups[$map]->dates->groupBy(fn ($d) => $d->format('Y-m'));
+        @endphp
         <div class="flex items-center gap-2 text-xs -mt-2 flex-wrap">
-            <span class="text-slate-500 uppercase tracking-wide">{{ $mapGroups[$map]->dates->count() }} sesiones en esta temporada</span>
+            <span class="text-slate-500 uppercase tracking-wide">Sesiones</span>
+            @foreach($monthGroups as $monthKey => $dates)
+                @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+                <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.remove('hidden')"
+                    class="px-2.5 py-1 rounded-lg border {{ $dates->contains(fn ($d) => $d->toDateString() === $from) ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                    {{ $monthLabel }}
+                </button>
+            @endforeach
+            @if($usingDateFilter)
+                <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId]) }}" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-slate-200">Quitar filtro de fecha</a>
+            @endif
         </div>
+
+        @foreach($monthGroups as $monthKey => $dates)
+            @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
+            <div id="dates-modal-{{ $monthKey }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+                onclick="if(event.target === this) this.classList.add('hidden')">
+                <div class="w-full max-w-sm max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+                    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <span class="text-sm font-semibold">{{ $monthLabel }}</span>
+                        <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+                    </div>
+                    <div class="overflow-y-auto p-3 flex flex-wrap gap-2">
+                        @foreach($dates as $date)
+                            @php $dateStr = $date->toDateString(); @endphp
+                            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId, 'from' => $dateStr, 'to' => $dateStr]) }}"
+                                class="px-2.5 py-1 rounded-lg border text-xs {{ $from === $dateStr ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
+                                {{ $date->translatedFormat('j \d\e F') }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endforeach
     @endif
 
     @php
@@ -52,6 +90,8 @@
             'server' => $server?->slug,
             'map' => $mapCodes ? implode(',', $mapCodes) : null,
             'season' => $seasonId,
+            'from' => $from,
+            'to' => $to,
         ]));
     @endphp
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
