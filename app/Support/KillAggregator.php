@@ -92,4 +92,56 @@ class KillAggregator
             ];
         })->sortByDesc('kills')->values();
     }
+
+    /**
+     * Un item por mapa (codigo CRUDO, sin fusionar variantes -- mismo criterio que ya
+     * usaba mapKings() con PlayerMapStat, a proposito: mp_dawnville_fix y
+     * mp_dawnville_sun quedan separados aca), con el total de kills de ese mapa y el
+     * jugador con mas kills en el.
+     *
+     * @param  Closure(): \Illuminate\Database\Eloquent\Builder  $baseQuery  Query de
+     *      Kill ya scopeada (server/season/gametype/etc), SIN filtrar por mapa todavia.
+     */
+    public static function topByMap(Closure $baseQuery): Collection
+    {
+        $totals = $baseQuery()
+            ->selectRaw('rounds.map as map, count(*) as uses')
+            ->groupBy('rounds.map')
+            ->orderByDesc('uses')
+            ->get();
+
+        $byPlayer = $baseQuery()
+            ->whereNotNull('kills.attacker_player_id')
+            ->selectRaw('rounds.map as map, kills.attacker_player_id, count(*) as kills')
+            ->groupBy('rounds.map', 'kills.attacker_player_id')
+            ->get()
+            ->groupBy('map')
+            ->map(fn ($rows) => $rows->sortByDesc('kills')->first());
+
+        // Muertes del jugador top en ese mapa especifico -- segunda pasada chica, solo
+        // para los (mapa, jugador) que ya salieron ganadores arriba.
+        $deathsByPair = $baseQuery()
+            ->whereNotNull('kills.victim_player_id')
+            ->selectRaw('rounds.map as map, kills.victim_player_id as attacker_player_id, count(*) as deaths')
+            ->groupBy('rounds.map', 'kills.victim_player_id')
+            ->get()
+            ->keyBy(fn ($r) => $r->map.'|'.$r->attacker_player_id);
+
+        $playerIds = $byPlayer->pluck('attacker_player_id')->filter()->unique();
+        $players = Player::whereIn('id', $playerIds)->get()->keyBy('id');
+
+        return $totals->map(function ($row) use ($byPlayer, $deathsByPair, $players) {
+            $top = $byPlayer->get($row->map);
+            $topPlayer = $top ? ($players[$top->attacker_player_id] ?? null) : null;
+            $topDeaths = $top ? ($deathsByPair->get($row->map.'|'.$top->attacker_player_id)->deaths ?? 0) : 0;
+
+            return (object) [
+                'map' => $row->map,
+                'uses' => (int) $row->uses,
+                'topPlayer' => $topPlayer,
+                'topKills' => (int) ($top->kills ?? 0),
+                'topDeaths' => (int) $topDeaths,
+            ];
+        })->filter(fn ($m) => $m->topPlayer && $m->uses > 0)->values();
+    }
 }

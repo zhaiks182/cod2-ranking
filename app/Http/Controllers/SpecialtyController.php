@@ -7,7 +7,6 @@ use App\Models\GameMatch;
 use App\Models\Kill;
 use App\Models\MatchEvent;
 use App\Models\Player;
-use App\Models\PlayerMapStat;
 use App\Models\PlayerServerStat;
 use App\Models\Round;
 use App\Models\Season;
@@ -446,6 +445,7 @@ class SpecialtyController extends Controller
     public function mapKings(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $maps = collect();
 
@@ -454,34 +454,11 @@ class SpecialtyController extends Controller
             // mp_dawnville_fix y mp_dawnville_sun quedan separados. Se agrega el codigo
             // crudo debajo del nombre bonito para que dos filas con la misma etiqueta
             // ("St. Mere Eglise, France") no se vean como si fueran un duplicado.
-            $totals = PlayerMapStat::where('server_id', $server->id)
-                ->selectRaw('map, sum(kills) as uses')
-                ->groupBy('map')
-                ->orderByDesc('uses')
-                ->get();
-
-            $topByMap = PlayerMapStat::with('player')
-                ->where('server_id', $server->id)
-                ->whereHas('player')
-                ->get()
-                ->groupBy('map')
-                ->map(fn ($rows) => $rows->sortByDesc('kills')->first());
-
-            $maps = $totals->map(function ($row) use ($topByMap) {
-                $top = $topByMap->get($row->map);
-
-                return (object) [
-                    'map' => $row->map,
-                    'mapLabel' => \App\Support\MapCatalog::mapLabel($row->map),
-                    'uses' => $row->uses,
-                    'topPlayer' => $top?->player,
-                    'topKills' => $top->kills ?? 0,
-                    'topDeaths' => $top->deaths ?? 0,
-                ];
-            })->filter(fn ($m) => $m->topPlayer && $m->uses > 0)->values();
+            $maps = KillAggregator::topByMap(fn () => $this->sdKills($server->id, $matchIds))
+                ->map(fn ($m) => tap($m, fn ($m) => $m->mapLabel = \App\Support\MapCatalog::mapLabel($m->map)));
         }
 
-        return view('specialties.map-kings', compact('servers', 'server', 'maps'));
+        return view('specialties.map-kings', compact('servers', 'server', 'seasons', 'seasonId', 'maps'));
     }
 
     public function playtime(Request $request)
