@@ -18,7 +18,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('player_weapon_picks', function (Blueprint $table) {
-            $table->dropUnique(['player_id', 'weapon']);
             $table->unsignedBigInteger('season_id')->nullable()->after('player_id');
             $table->foreign('season_id')->references('id')->on('seasons');
         });
@@ -30,17 +29,28 @@ return new class extends Migration
         }
 
         Schema::table('player_weapon_picks', function (Blueprint $table) {
+            // El nuevo unique (que tambien arranca por player_id) tiene que crearse
+            // ANTES de borrar el viejo [player_id, weapon] -- MySQL no deja borrar un
+            // indice que sostiene el FK de player_id si no queda ningun otro indice
+            // que lo cubra mientras tanto (error 1553 "needed in a foreign key
+            // constraint", encontrado corriendo esto contra produccion real -- SQLite,
+            // que es lo que corren los tests, no modela esta restriccion y nunca lo
+            // atrapo).
             $table->unique(['player_id', 'weapon', 'season_id']);
+            $table->dropUnique(['player_id', 'weapon']);
         });
     }
 
     public function down(): void
     {
         Schema::table('player_weapon_picks', function (Blueprint $table) {
+            // Mismo motivo que en up(): crear el indice viejo antes de borrar el
+            // nuevo, para que el FK de player_id nunca se quede sin indice que lo
+            // cubra a mitad de camino.
+            $table->unique(['player_id', 'weapon']);
             $table->dropUnique(['player_id', 'weapon', 'season_id']);
             $table->dropForeign(['season_id']);
             $table->dropColumn('season_id');
-            $table->unique(['player_id', 'weapon']);
         });
     }
 };
