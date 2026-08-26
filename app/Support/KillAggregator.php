@@ -47,4 +47,49 @@ class KillAggregator
             ];
         })->sortByDesc('kills')->values();
     }
+
+    /**
+     * Igual proposito que aggregate(), pero agrupado por mapa+servidor para UN
+     * jugador especifico, en vez de por jugador para todos -- usado por el perfil
+     * de jugador ("Mejores mapas"), donde antes se leia player_map_stats
+     * (acumulado de por vida) y ahora se calcula al vuelo scopeado por temporada.
+     *
+     * @param  Closure(): \Illuminate\Database\Eloquent\Builder  $baseQuery  Query de
+     *      Kill ya scopeada (season/gametype/etc), SIN filtrar por jugador todavia.
+     */
+    public static function aggregateByMap(Closure $baseQuery, int $playerId): Collection
+    {
+        $kills = $baseQuery()->where('kills.attacker_player_id', $playerId)->where('kills.is_suicide', false)
+            ->selectRaw('rounds.map as map, rounds.server_id as server_id, count(*) as kills, sum(kills.is_teamkill) as teamkills')
+            ->groupBy('rounds.map', 'rounds.server_id')
+            ->get();
+
+        $deaths = $baseQuery()->where('kills.victim_player_id', $playerId)
+            ->selectRaw('rounds.map as map, rounds.server_id as server_id, count(*) as deaths')
+            ->groupBy('rounds.map', 'rounds.server_id')
+            ->get();
+
+        $key = fn ($row) => $row->map.'|'.$row->server_id;
+        $killsByKey = $kills->keyBy($key);
+        $deathsByKey = $deaths->keyBy($key);
+
+        $allKeys = $killsByKey->keys()->merge($deathsByKey->keys())->unique();
+        $serverIds = $allKeys->map(fn ($k) => (int) explode('|', $k)[1])->unique();
+        $servers = \App\Models\Server::whereIn('id', $serverIds)->get()->keyBy('id');
+
+        return $allKeys->map(function ($mapKey) use ($killsByKey, $deathsByKey, $servers) {
+            [$map, $serverId] = explode('|', $mapKey);
+            $k = $killsByKey->get($mapKey);
+            $d = $deathsByKey->get($mapKey);
+
+            return (object) [
+                'map' => $map,
+                'map_codes' => [$map],
+                'server' => $servers->get((int) $serverId),
+                'kills' => (int) ($k->kills ?? 0),
+                'deaths' => (int) ($d->deaths ?? 0),
+                'teamkills' => (int) ($k->teamkills ?? 0),
+            ];
+        })->sortByDesc('kills')->values();
+    }
 }
