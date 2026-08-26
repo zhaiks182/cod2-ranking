@@ -43,6 +43,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Ojo: si para cuando se corre esto ya existe mas de una temporada con picks
+        // del mismo jugador+arma (el caso normal que esta migracion existe para
+        // habilitar), este unique(['player_id','weapon']) va a fallar por duplicados
+        // -- el rollback de esquema solo es "limpio" mientras sigue habiendo una sola
+        // temporada. El rollback real de este sub-proyecto (ver el spec, seccion
+        // Rollback) es re-desplegar el codigo viejo y dejar la columna de mas sin
+        // usar, no correr este down() -- no vale la pena deduplicar aca para un
+        // camino que no es el rollback real.
         Schema::table('player_weapon_picks', function (Blueprint $table) {
             // Mismo motivo que en up(): crear el indice viejo antes de borrar el
             // nuevo, para que el FK de player_id nunca se quede sin indice que lo
