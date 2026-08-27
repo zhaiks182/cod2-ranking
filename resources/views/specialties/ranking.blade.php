@@ -20,11 +20,13 @@
             <p class="text-xs text-slate-500 mt-0.5">{{ $subtitle }}</p>
         </div>
 
-        @include('partials.season-selector', [
-            'seasonDropdownId' => 'specialty-season-dropdown',
-            'seasonBaseRoute' => $routeName,
-            'seasonBaseParams' => ['server' => $server?->slug],
-        ])
+        @isset($seasonId)
+            @include('partials.season-selector', [
+                'seasonDropdownId' => 'specialty-season-dropdown',
+                'seasonBaseRoute' => $routeName,
+                'seasonBaseParams' => ['server' => $server?->slug],
+            ])
+        @endisset
     </div>
 
     @if(count($statCards))
