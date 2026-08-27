@@ -656,10 +656,15 @@ class SpecialtyController extends Controller
         // de GameMatch::forSeason(), que no filtra por server, asi que cubre todos los
         // servers activos de una.
         $activePlayerIds = Kill::whereIn('match_id', $matchIds)
-            ->where(fn ($q) => $q->whereNotNull('attacker_player_id')->orWhereNotNull('victim_player_id'))
-            ->get(['attacker_player_id', 'victim_player_id'])
-            ->flatMap(fn ($k) => [$k->attacker_player_id, $k->victim_player_id])
-            ->filter()
+            ->whereNotNull('attacker_player_id')
+            ->distinct()
+            ->pluck('attacker_player_id')
+            ->merge(
+                Kill::whereIn('match_id', $matchIds)
+                    ->whereNotNull('victim_player_id')
+                    ->distinct()
+                    ->pluck('victim_player_id')
+            )
             ->unique();
 
         $players = Player::whereNotNull('ip')->whereIn('id', $activePlayerIds)
