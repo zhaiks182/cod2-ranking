@@ -1960,6 +1960,52 @@ deuda técnica.
   antes de tocar nada). Verificado en producción: `/rango`, `/rango?season=all`,
   `/equipos` responden `200`.
 
+## Bombas, daño y desconexiones por temporada (2026-08-27)
+
+Últimas 3 de las 25 páginas de `/especialidades` que quedaban sin selector de
+temporada (`bombas`, `daño`, "Se Fueron a Media Ronda"). Spec completa:
+`docs/superpowers/specs/2026-08-27-bombas-dano-desconexiones-por-temporada-design.md`.
+
+- **Motivo por el que quedaron fuera del sub-proyecto anterior:** las tres leen
+  `player_server_stats.bomb_plants`/`bomb_defuses`/`damage_dealt`/`damage_taken`/
+  `mid_round_disconnects` — acumuladores puros, sin ninguna tabla de detalle por
+  evento (a diferencia de `kills`). El parser ya leía `Bomb;`/`Damage;`/
+  `Disconnected;` del log (`ParseCod2Log::recordBomb()`/`recordDamage()`/
+  `recordDisconnect()`), pero solo sumaba a ese acumulador plano por servidor, sin
+  ningún vínculo a la partida.
+- **Tabla nueva `player_match_extras`** (una fila por jugador+partida, mismos 5
+  contadores) — poblada por `ParseCod2Log::bumpServerStatExtra()` **en paralelo**
+  al acumulador plano existente, que no se toca ni cambia de comportamiento. No
+  hizo falta tocar el parseo de las líneas en sí, solo agregar `$currentRound->match_id`
+  a los 3 call-sites que ya invocaban `bumpServerStatExtra()`.
+- **Limitación real e inevitable, no un defecto de este diseño:** solo se puede
+  atribuir a una temporada específica lo jugado **desde este deploy en
+  adelante** — nada de lo jugado antes (incluida la Temporada 1 actual, que ya
+  lleva partidas desde el 9 de agosto) se puede reconstruir por temporada, el
+  detalle granular nunca se guardó. Sigue existiendo únicamente bajo
+  `?season=all`, que sigue leyendo `player_server_stats` sin cambios — el
+  histórico completo real, sin ningún hueco.
+- `bombs()`/`damage()`/`disconnects()` ganan la misma rama por `$seasonId` que
+  el resto de `/especialidades`: `'all'` lee `PlayerServerStat` (código
+  idéntico al de antes de este cambio); cualquier temporada específica lee
+  `PlayerMatchExtra` agregado, filtrado por `GameMatch::where('server_id',
+  ...)->whereIn('id', $matchIds)->pluck('id')` (dos pasos porque
+  `player_match_extras` no tiene columna `server_id` propia).
+- **Sin cambios de vista.** `resources/views/specialties/ranking.blade.php`
+  (la plantilla compartida de estas 3 páginas) ya tenía `@isset($seasonId)
+  @include('partials.season-selector', ...) @endisset` desde el fix urgente
+  del sub-proyecto anterior (los 500 de estas mismas 3 páginas) — el selector
+  aparece solo con que el controller pase `seasons`/`seasonId`.
+- TDD: `tests/Feature/PlayerMatchExtraTest.php` (2 casos — relaciones,
+  constraint único), `tests/Feature/ParseCod2LogExtrasTest.php` (1 caso —
+  `Bomb;`/`Damage;`/`Disconnected;` reales pueblan `player_match_extras` con
+  el `match_id` correcto, y `player_server_stats` sigue actualizándose exacto
+  igual que antes), `tests/Feature/Specialties/ExtrasSeasonTest.php` (4 casos
+  — exclusión de temporada vieja en las 3 páginas + `?season=all` cae al
+  total histórico real, no a la suma de `player_match_extras`). Suite
+  completa: 122 tests/464 assertions, 1 fallo preexistente conocido, sin
+  regresiones.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y

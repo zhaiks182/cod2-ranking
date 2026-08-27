@@ -7,6 +7,7 @@ use App\Models\GameMatch;
 use App\Models\Kill;
 use App\Models\MatchEvent;
 use App\Models\Player;
+use App\Models\PlayerMatchExtra;
 use App\Models\PlayerServerStat;
 use App\Models\Round;
 use App\Models\Season;
@@ -1085,34 +1086,62 @@ class SpecialtyController extends Controller
     public function bombs(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalPlants = 0;
         $totalDefuses = 0;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('bomb_plants', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('bomb_plants')
-                ->limit(50)
-                ->get()
-                ->map(function ($row) {
-                    $row->value = $row->bomb_plants;
-                    $row->share = null;
+            if ($seasonId === 'all') {
+                $rows = PlayerServerStat::with('player')
+                    ->where('server_id', $server->id)
+                    ->where('bomb_plants', '>', 0)
+                    ->whereHas('player')
+                    ->orderByDesc('bomb_plants')
+                    ->limit(50)
+                    ->get()
+                    ->map(function ($row) {
+                        $row->value = $row->bomb_plants;
+                        $row->share = null;
 
-                    return $row;
-                });
+                        return $row;
+                    });
 
-            $totals = PlayerServerStat::where('server_id', $server->id)
-                ->selectRaw('sum(bomb_plants) as p, sum(bomb_defuses) as d')->first();
-            $totalPlants = (int) ($totals->p ?? 0);
-            $totalDefuses = (int) ($totals->d ?? 0);
+                $totals = PlayerServerStat::where('server_id', $server->id)
+                    ->selectRaw('sum(bomb_plants) as p, sum(bomb_defuses) as d')->first();
+                $totalPlants = (int) ($totals->p ?? 0);
+                $totalDefuses = (int) ($totals->d ?? 0);
+            } else {
+                $serverMatchIds = GameMatch::where('server_id', $server->id)->whereIn('id', $matchIds)->pluck('id');
+
+                $tally = PlayerMatchExtra::whereIn('match_id', $serverMatchIds)
+                    ->where('bomb_plants', '>', 0)
+                    ->selectRaw('player_id, sum(bomb_plants) as bomb_plants')
+                    ->groupBy('player_id')
+                    ->orderByDesc('bomb_plants')
+                    ->limit(50)
+                    ->get();
+
+                $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
+
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
+                    $player = $players[$row->player_id] ?? null;
+
+                    return $player ? (object) [
+                        'player' => $player, 'value' => (int) $row->bomb_plants, 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
+                })->filter()->values();
+
+                $totalPlants = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('bomb_plants');
+                $totalDefuses = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('bomb_defuses');
+            }
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.bombs', 'icon' => '💣', 'title' => 'Especialistas en Bombas',
             'subtitle' => 'Más bombas plantadas (Search and Destroy)',
             'valueLabel' => 'plantadas', 'valueColor' => 'text-red-400',
@@ -1127,30 +1156,57 @@ class SpecialtyController extends Controller
     public function damage(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
         $totalDamage = 0;
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('damage_dealt', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('damage_dealt')
-                ->limit(50)
-                ->get()
-                ->map(function ($row) {
-                    $row->value = number_format($row->damage_dealt);
-                    $row->share = null;
+            if ($seasonId === 'all') {
+                $rows = PlayerServerStat::with('player')
+                    ->where('server_id', $server->id)
+                    ->where('damage_dealt', '>', 0)
+                    ->whereHas('player')
+                    ->orderByDesc('damage_dealt')
+                    ->limit(50)
+                    ->get()
+                    ->map(function ($row) {
+                        $row->value = number_format($row->damage_dealt);
+                        $row->share = null;
 
-                    return $row;
-                });
+                        return $row;
+                    });
 
-            $totalDamage = (int) PlayerServerStat::where('server_id', $server->id)->sum('damage_dealt');
+                $totalDamage = (int) PlayerServerStat::where('server_id', $server->id)->sum('damage_dealt');
+            } else {
+                $serverMatchIds = GameMatch::where('server_id', $server->id)->whereIn('id', $matchIds)->pluck('id');
+
+                $tally = PlayerMatchExtra::whereIn('match_id', $serverMatchIds)
+                    ->where('damage_dealt', '>', 0)
+                    ->selectRaw('player_id, sum(damage_dealt) as damage_dealt')
+                    ->groupBy('player_id')
+                    ->orderByDesc('damage_dealt')
+                    ->limit(50)
+                    ->get();
+
+                $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
+
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
+                    $player = $players[$row->player_id] ?? null;
+
+                    return $player ? (object) [
+                        'player' => $player, 'value' => number_format((int) $row->damage_dealt), 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
+                })->filter()->values();
+
+                $totalDamage = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('damage_dealt');
+            }
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.damage', 'icon' => '💥', 'title' => 'Especialistas en Daño',
             'subtitle' => 'Más daño infligido en total (Search and Destroy)',
             'valueLabel' => 'daño', 'valueColor' => 'text-amber-400',
@@ -1164,27 +1220,52 @@ class SpecialtyController extends Controller
     public function disconnects(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
 
         if ($server) {
-            $rows = PlayerServerStat::with('player')
-                ->where('server_id', $server->id)
-                ->where('mid_round_disconnects', '>', 0)
-                ->whereHas('player')
-                ->orderByDesc('mid_round_disconnects')
-                ->limit(50)
-                ->get()
-                ->map(function ($row) {
-                    $row->value = $row->mid_round_disconnects;
-                    $row->share = null;
+            if ($seasonId === 'all') {
+                $rows = PlayerServerStat::with('player')
+                    ->where('server_id', $server->id)
+                    ->where('mid_round_disconnects', '>', 0)
+                    ->whereHas('player')
+                    ->orderByDesc('mid_round_disconnects')
+                    ->limit(50)
+                    ->get()
+                    ->map(function ($row) {
+                        $row->value = $row->mid_round_disconnects;
+                        $row->share = null;
 
-                    return $row;
-                });
+                        return $row;
+                    });
+            } else {
+                $serverMatchIds = GameMatch::where('server_id', $server->id)->whereIn('id', $matchIds)->pluck('id');
+
+                $tally = PlayerMatchExtra::whereIn('match_id', $serverMatchIds)
+                    ->where('mid_round_disconnects', '>', 0)
+                    ->selectRaw('player_id, sum(mid_round_disconnects) as mid_round_disconnects')
+                    ->groupBy('player_id')
+                    ->orderByDesc('mid_round_disconnects')
+                    ->limit(50)
+                    ->get();
+
+                $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
+
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
+                    $player = $players[$row->player_id] ?? null;
+
+                    return $player ? (object) [
+                        'player' => $player, 'value' => (int) $row->mid_round_disconnects, 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
+                })->filter()->values();
+            }
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.disconnects', 'icon' => '🔌', 'title' => 'Se Fueron a Media Ronda',
             'subtitle' => 'Desconexiones mientras la ronda seguía activa (Search and Destroy)',
             'valueLabel' => 'desconexiones', 'valueColor' => 'text-rose-400',
