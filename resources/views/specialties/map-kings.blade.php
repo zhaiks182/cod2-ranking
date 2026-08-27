@@ -12,11 +12,19 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>👑</span> Reyes de Cada Mapa
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">El jugador con más bajas (Search and Destroy) en cada mapa</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>👑</span> Reyes de Cada Mapa
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">El jugador con más bajas (Search and Destroy) en cada mapa</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.map-kings',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($maps->isEmpty())

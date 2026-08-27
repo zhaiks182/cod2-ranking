@@ -12,11 +12,19 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>😈</span> Rivalidades
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima). Click en una fila para ver el cara a cara completo.</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>😈</span> Rivalidades
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima). Click en una fila para ver el cara a cara completo.</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.rivalries',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($rivalries->isEmpty())

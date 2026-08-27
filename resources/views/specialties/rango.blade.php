@@ -12,16 +12,24 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>🎖️</span> Rangos
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">
-            Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra
-            el resto de jugadores calificados, Search and Destroy). Headshots y granadas se
-            muestran en la tabla como referencia pero no entran en el cálculo.
-            Mínimo {{ $minMatches }} partidas jugadas y {{ $minKills }} bajas para entrar.
-        </p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>🎖️</span> Rangos
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra
+                el resto de jugadores calificados, Search and Destroy). Headshots y granadas se
+                muestran en la tabla como referencia pero no entran en el cálculo.
+                Mínimo {{ $minMatches }} partidas jugadas y {{ $minKills }} bajas para entrar.
+            </p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'rango',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($rows->isEmpty())

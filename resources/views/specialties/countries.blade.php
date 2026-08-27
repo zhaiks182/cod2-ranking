@@ -4,11 +4,19 @@
 
 @section('content')
 <div class="space-y-6">
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>🌎</span> Países
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">Países de los Jugadores</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>🌎</span> Países
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">Países de los Jugadores</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.countries',
+            'seasonBaseParams' => [],
+        ])
     </div>
 
     <div class="grid grid-cols-2 gap-3">
