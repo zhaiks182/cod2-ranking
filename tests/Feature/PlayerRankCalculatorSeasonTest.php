@@ -122,20 +122,20 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $r = Player::create(['guid' => 902, 'last_name' => 'R', 'last_name_plain' => 'R']);
         $v = Player::create(['guid' => 903, 'last_name' => 'V', 'last_name_plain' => 'V']);
 
-        // Temporada vieja: 5 partidas, a: 4 kills/4 muertes cada una (20/20, K/D=1.0).
-        for ($i = 0; $i < 5; $i++) {
+        // Temporada vieja: 10 partidas (MIN_MATCHES), a: 4 kills/4 muertes cada una (40/40, K/D=1.0).
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($oldSeason->id, $a, $r, $v, 4, 4, 4, 0);
         }
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
-        // Temporada nueva: 5 partidas, a: 4 kills/2 muertes cada una (20/10, K/D=2.0).
-        for ($i = 0; $i < 5; $i++) {
+        // Temporada nueva: 10 partidas, a: 4 kills/2 muertes cada una (40/20, K/D=2.0).
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($newSeason->id, $a, $r, $v, 4, 2, 4, 4);
         }
 
         $ranks = PlayerRankCalculator::calculateForServer($this->server);
-        $this->assertSame(2.0, $ranks[$a->guid]->kd); // solo la temporada activa (nueva): 20/10
+        $this->assertSame(2.0, $ranks[$a->guid]->kd); // solo la temporada activa (nueva): 40/20
     }
 
     public function test_calculate_for_server_with_an_explicit_closed_season_id(): void
@@ -145,13 +145,13 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $r = Player::create(['guid' => 912, 'last_name' => 'R', 'last_name_plain' => 'R']);
         $v = Player::create(['guid' => 913, 'last_name' => 'V', 'last_name_plain' => 'V']);
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($oldSeason->id, $a, $r, $v, 4, 4, 4, 0);
         }
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($newSeason->id, $a, $r, $v, 4, 2, 4, 4);
         }
 
@@ -163,7 +163,7 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $closedRanks = PlayerRankCalculator::calculateForServer($this->server, $oldSeason->id);
         $this->assertSame(1.0, $closedRanks[$a->guid]->kd);
 
-        // Con 'all': combinado (40/30 = 1.33), igual que /rango?season=all.
+        // Con 'all': combinado (80/60 = 1.33), igual que /rango?season=all.
         $allRanks = PlayerRankCalculator::calculateForServer($this->server, 'all');
         $this->assertSame(1.33, $allRanks[$a->guid]->kd);
     }
@@ -175,7 +175,7 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $v = Player::create(['guid' => 923, 'last_name' => 'V', 'last_name_plain' => 'V']);
 
         $season = Season::current();
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($season->id, $a, $r, $v, 4, 2, 4, 4);
         }
 
@@ -189,5 +189,39 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         // misma temporada -- el punto entero de haberlos unificado.
         $this->assertSame($equiposRanks[$a->guid]->kd, $rangoRow->kd);
         $this->assertSame($equiposRanks[$a->guid]->rango, $rangoRow->rango);
+    }
+
+    public function test_low_kill_count_no_longer_disqualifies_a_player_with_enough_matches(): void
+    {
+        $season = Season::current();
+        $a = Player::create(['guid' => 931, 'last_name' => 'A', 'last_name_plain' => 'A']);
+        $r = Player::create(['guid' => 932, 'last_name' => 'R', 'last_name_plain' => 'R']);
+        $v = Player::create(['guid' => 933, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
+        // 10 partidas (cumple MIN_MATCHES), solo 1 kill por partida -- 10 kills
+        // totales, muy por debajo del viejo minimo de 20 bajas, que ya no existe.
+        for ($i = 0; $i < 10; $i++) {
+            $this->rangoMatch($season->id, $a, $r, $v, 1, 1, 4, 4);
+        }
+
+        $ranks = PlayerRankCalculator::calculateForServer($this->server);
+        $this->assertTrue($ranks->has($a->guid));
+    }
+
+    public function test_fewer_than_the_minimum_matches_still_does_not_qualify(): void
+    {
+        $season = Season::current();
+        $a = Player::create(['guid' => 941, 'last_name' => 'A', 'last_name_plain' => 'A']);
+        $r = Player::create(['guid' => 942, 'last_name' => 'R', 'last_name_plain' => 'R']);
+        $v = Player::create(['guid' => 943, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
+        // 9 partidas -- uno menos que el nuevo MIN_MATCHES (10), a pesar de tener
+        // muchas mas de 20 kills (viejo umbral eliminado, no alcanza igual).
+        for ($i = 0; $i < 9; $i++) {
+            $this->rangoMatch($season->id, $a, $r, $v, 10, 1, 4, 4);
+        }
+
+        $ranks = PlayerRankCalculator::calculateForServer($this->server);
+        $this->assertFalse($ranks->has($a->guid));
     }
 }

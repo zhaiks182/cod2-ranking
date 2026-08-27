@@ -23,18 +23,20 @@ use Illuminate\Support\Collection;
  * (el default) resuelve siempre a Season::current(). rango() en
  * SpecialtyController ahora llama a este mismo metodo en vez de duplicar el
  * calculo, para que los dos consumidores no puedan volver a desincronizarse.
+ *
+ * MIN_MATCHES subido de 5 a 10 y el minimo de bajas (antes 20) eliminado del
+ * todo (2026-08-27, a pedido del dueño) -- un jugador con pocas bajas pero
+ * muchas partidas ahora sí califica para un rango.
  */
 class PlayerRankCalculator
 {
-    public const MIN_MATCHES = 5;
-
-    public const MIN_KILLS = 20;
+    public const MIN_MATCHES = 10;
 
     /**
      * Devuelve una colección keyed por guid con: player, kd, hsPct, nadePct,
      * winPct, played, score, rango. Solo incluye jugadores que cumplen
-     * MIN_MATCHES/MIN_KILLS -- un guid ausente de la colección significa
-     * "todavía no tiene datos suficientes para un rango", no rango E.
+     * MIN_MATCHES -- un guid ausente de la colección significa "todavía no
+     * tiene datos suficientes para un rango", no rango E.
      *
      * $seasonId es un id real, el string literal 'all', o null (default --
      * resuelve a Season::current()->id).
@@ -51,7 +53,6 @@ class PlayerRankCalculator
             ->whereIn('kills.match_id', $matchIds);
 
         $stats = KillAggregator::aggregate($sdKills)
-            ->filter(fn ($row) => $row->kills >= self::MIN_KILLS)
             ->keyBy(fn ($row) => $row->player->guid);
 
         // Mismo proxy de "partidas jugadas/ganadas" que el resto de las

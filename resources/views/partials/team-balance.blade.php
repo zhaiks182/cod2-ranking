@@ -51,8 +51,8 @@
             </div>
             <p class="text-[11px] text-slate-500 mt-3">
                 Solo es una sugerencia — el cambio de equipo se hace a mano en el juego (<code class="font-mono">team axis</code>/<code class="font-mono">team allies</code>).
-                "?" significa que ese jugador todavía no tiene suficientes partidas/bajas en este server para un rango
-                (mínimo {{ \App\Support\PlayerRankCalculator::MIN_MATCHES }} partidas, {{ \App\Support\PlayerRankCalculator::MIN_KILLS }} bajas).
+                "?" significa que ese jugador todavía no tiene suficientes partidas en este server para un rango
+                (mínimo {{ \App\Support\PlayerRankCalculator::MIN_MATCHES }} partidas).
             </p>
         @endif
     </div>

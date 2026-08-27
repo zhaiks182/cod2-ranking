@@ -21,7 +21,7 @@
                 Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra
                 el resto de jugadores calificados, Search and Destroy). Headshots y granadas se
                 muestran en la tabla como referencia pero no entran en el cálculo.
-                Mínimo {{ $minMatches }} partidas jugadas y {{ $minKills }} bajas para entrar.
+                Mínimo {{ $minMatches }} partidas jugadas para entrar.
             </p>
         </div>
 
