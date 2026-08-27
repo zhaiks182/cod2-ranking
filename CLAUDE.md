@@ -1830,6 +1830,55 @@ sitio: la temporada activa**, con `?season={id}` para cualquier temporada cerrad
   aislado en el VPS (`/root/sdd_baseline`, sin PHP local en la máquina de
   desarrollo) antes de desplegar.
 
+## Especialidades por temporada (2026-08-26)
+
+Tercer y último sub-proyecto del plan de temporadas (el primero fue la infraestructura
+base, el segundo `/ranking` y `/jugadores/{guid}`). Spec completa:
+`docs/superpowers/specs/2026-08-26-especialidades-por-temporada-design.md`. **22 de
+las 25 páginas de `/especialidades` ahora respetan la temporada elegida** — mismo
+contrato de URL que `/ranking`: default la temporada activa, `?season={id}` para
+cualquier temporada cerrada, `?season=all` para el histórico completo.
+
+- **Fuera de alcance a propósito: `bombs`, `damage`, `disconnects`.** Estos tres
+  contadores son acumuladores puros (`player_server_stats`/`player_map_stats`) sin
+  ninguna tabla de detalle por línea de log de la que reconstruirse por temporada
+  (ver "Chat y eventos de partida" más arriba, "no se implementaron" para
+  `Damage;`/`Bomb;`/`Disconnected;`) — no hay forma de saber retroactivamente a qué
+  temporada perteneció cada bomba/desconexión ya contada. Siguen mostrando el
+  histórico completo, sin selector de temporada.
+- **`SpecialtyController::resolveSeason()`** (nuevo, mismo contrato que ya usan
+  `LeaderboardController`/`PlayerController` del sub-proyecto 2) centraliza
+  `[$seasons, $seasonId, $matchIds]` para las 22 páginas. `sdKills()` (el helper
+  interno ya existente) ahora exige `$matchIds` como segundo argumento.
+- **`mapKings`** se reescribió sobre `KillAggregator::topByMap()` (nuevo) en vez de
+  `PlayerMapStat` — mismo criterio de siempre (códigos de mapa crudos, sin fusionar
+  variantes).
+- **`rango()`** se reescribió sobre `KillAggregator::aggregate()` en vez de
+  `PlayerServerStat` — mismo patrón que ya usaban los métodos del Grupo A
+  (`grenades`, `headshots`, `friendlyFire`, `efficiency`, `bashCalls`).
+- **`countries()`** sigue sin selector de servidor (nunca lo tuvo) — ahora solo
+  cuenta jugadores con al menos un kill o muerte dentro de las partidas de la
+  temporada elegida, en vez de "cualquier jugador con IP conocida alguna vez".
+- **Equipos (el balanceador de equipos por rango) queda fuera de este trabajo — no
+  por decisión de alcance, sino porque ese módulo (`PlayerRankCalculator.php`,
+  `TeamBalanceController.php`) no existe en este repo git.** Se desplegó alguna vez
+  directo al VPS desde otra máquina de desarrollo y nunca se comiteó — mismo gap ya
+  conocido de otras features de este proyecto (ver "Deploy", sección "Alguien puede
+  desplegar desde otra máquina sin pasar por esta conversación"). Efecto real: el
+  `PlayerRankCalculator.php` que corre en producción sigue leyendo el acumulado
+  histórico completo (`PlayerServerStat`), no la temporada activa — hoy coincide con
+  `/especialidades/rango` porque solo existe "Temporada 1" (nunca cerrada), pero en
+  cuanto el dueño cierre una temporada por primera vez, Equipos y `/especialidades/rango`
+  van a mostrar rangos distintos para el mismo jugador. Se resuelve solo cuando
+  Equipos se sincronice con git.
+- Implementado con `subagent-driven-development`, mismo worktree que el
+  sub-proyecto 2 (`ranking-por-temporada`). TDD en cada task de código:
+  `tests/Feature/Specialties/GroupASeasonTest.php` (5 casos), `SuicidesSeasonTest`
+  (implícito en Grupo B), `GroupCSeasonTest.php` (5 casos), `GroupDSeasonTest.php`
+  (6 casos), `MapKingsSeasonTest.php` (2 casos), `GroupFSeasonTest.php` (2 casos),
+  `CountriesSeasonTest.php` (1 caso). Verificado en un entorno aislado en el VPS
+  (`/root/sdd_baseline`) antes de desplegar.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y
