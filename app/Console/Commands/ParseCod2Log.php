@@ -10,6 +10,7 @@ use App\Models\MatchEvent;
 use App\Models\Player;
 use App\Models\PlayerAlias;
 use App\Models\PlayerMapStat;
+use App\Models\PlayerMatchExtra;
 use App\Models\PlayerServerStat;
 use App\Models\PlayerWeaponPick;
 use App\Models\Round;
@@ -452,7 +453,7 @@ class ParseCod2Log extends Command
         $player = $this->upsertPlayer((int) $guid, $name);
 
         if ($player) {
-            $this->bumpServerStatExtra($player, $server->id, midRoundDisconnects: 1);
+            $this->bumpServerStatExtra($player, $server->id, $currentRound->match_id, midRoundDisconnects: 1);
         }
     }
 
@@ -473,9 +474,9 @@ class ParseCod2Log extends Command
         }
 
         if ($action === 'bomb_plant') {
-            $this->bumpServerStatExtra($player, $server->id, bombPlants: 1);
+            $this->bumpServerStatExtra($player, $server->id, $currentRound->match_id, bombPlants: 1);
         } elseif ($action === 'bomb_defuse') {
-            $this->bumpServerStatExtra($player, $server->id, bombDefuses: 1);
+            $this->bumpServerStatExtra($player, $server->id, $currentRound->match_id, bombDefuses: 1);
         }
     }
 
@@ -498,12 +499,12 @@ class ParseCod2Log extends Command
 
         $attacker = $this->upsertPlayer($aGuid, $this->toUtf8($aName));
         if ($attacker) {
-            $this->bumpServerStatExtra($attacker, $server->id, damageDealt: (int) $damage);
+            $this->bumpServerStatExtra($attacker, $server->id, $currentRound->match_id, damageDealt: (int) $damage);
         }
 
         $victim = $this->upsertPlayer($vGuid, $this->toUtf8($vName));
         if ($victim) {
-            $this->bumpServerStatExtra($victim, $server->id, damageTaken: (int) $damage);
+            $this->bumpServerStatExtra($victim, $server->id, $currentRound->match_id, damageTaken: (int) $damage);
         }
     }
 
@@ -787,6 +788,7 @@ class ParseCod2Log extends Command
     private function bumpServerStatExtra(
         Player $player,
         int $serverId,
+        ?int $matchId = null,
         int $bombPlants = 0,
         int $bombDefuses = 0,
         int $damageDealt = 0,
@@ -801,5 +803,17 @@ class ParseCod2Log extends Command
         $stat->damage_taken += $damageTaken;
         $stat->mid_round_disconnects += $midRoundDisconnects;
         $stat->save();
+
+        if ($matchId === null) {
+            return;
+        }
+
+        $extra = PlayerMatchExtra::firstOrCreate(['player_id' => $player->id, 'match_id' => $matchId]);
+        $extra->bomb_plants += $bombPlants;
+        $extra->bomb_defuses += $bombDefuses;
+        $extra->damage_dealt += $damageDealt;
+        $extra->damage_taken += $damageTaken;
+        $extra->mid_round_disconnects += $midRoundDisconnects;
+        $extra->save();
     }
 }
