@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\BackupPruner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
@@ -10,7 +11,7 @@ class RunDatabaseBackup extends Command
 {
     protected $signature = 'backup:run';
 
-    protected $description = 'Vuelca la base de datos con mysqldump, la comprime, y borra respaldos con mas de 10 dias';
+    protected $description = 'Vuelca la base de datos con mysqldump, la comprime, y borra respaldos con mas de 10 dias (o duplicados del mismo dia)';
 
     private const RETENTION_DAYS = 10;
 
@@ -61,19 +62,10 @@ class RunDatabaseBackup extends Command
 
     private function prune(): void
     {
-        $cutoff = now()->subDays(self::RETENTION_DAYS);
-        $deleted = 0;
-
-        foreach (Storage::disk('local')->files(self::DIR) as $path) {
-            $modified = Storage::disk('local')->lastModified($path);
-            if ($modified && \Illuminate\Support\Carbon::createFromTimestamp($modified)->lt($cutoff)) {
-                Storage::disk('local')->delete($path);
-                $deleted++;
-            }
-        }
+        $deleted = BackupPruner::prune(self::RETENTION_DAYS);
 
         if ($deleted > 0) {
-            $this->info("Borrados {$deleted} respaldo(s) con mas de ".self::RETENTION_DAYS.' dias.');
+            $this->info("Borrados {$deleted} respaldo(s) (mas de ".self::RETENTION_DAYS.' dias, o duplicados del mismo dia).');
         }
     }
 
