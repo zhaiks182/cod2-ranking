@@ -13,6 +13,7 @@ use App\Models\Season;
 use App\Models\Server;
 use App\Services\GeoIp;
 use App\Support\KillAggregator;
+use App\Support\PlayerRankCalculator;
 use App\Support\TeamSideAnalyzer;
 use Illuminate\Http\Request;
 
@@ -1062,118 +1063,17 @@ class SpecialtyController extends Controller
         [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
-        $minMatches = 5;
-        $minKills = 20;
+        $minMatches = PlayerRankCalculator::MIN_MATCHES;
+        $minKills = PlayerRankCalculator::MIN_KILLS;
 
+        // Mismo calculo exacto que usa el balanceador de Equipos (/equipos) --
+        // unificado el 2026-08-27 para que los dos consumidores no puedan
+        // volver a desincronizarse (antes esta pagina duplicaba la logica
+        // entera de percentiles/quintiles, ver historial de git antes de este
+        // commit si hace falta comparar). ->values() para renumerar 0..n-1,
+        // la vista usa el indice del foreach como puesto en el ranking.
         if ($server) {
-            $statsRows = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))
-                ->filter(fn ($row) => $row->kills >= $minKills);
-
-            $stats = $statsRows->keyBy(fn ($row) => $row->player->guid);
-
-            // Mismo proxy de "partidas jugadas/ganadas" que winRate() de arriba —
-            // sin lista de participantes por partida, un jugador cuenta como
-            // presente si aparece como atacante o victima en al menos una baja
-            // de esa partida.
-            $matches = GameMatch::where('server_id', $server->id)
-                ->where('is_backfilled', false)
-                ->where('gametype', 'sd')
-                ->whereNotNull('ended_at')
-                ->whereIn('id', $matchIds)
-                ->with('rounds:id,match_id,winner_guids')
-                ->get();
-
-            $played = [];
-            $won = [];
-            foreach ($matches as $match) {
-                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
-                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
-                    ->filter(fn ($g) => $g && $g !== '0')->unique();
-
-                foreach ($participantGuids as $guid) {
-                    $played[$guid] = ($played[$guid] ?? 0) + 1;
-                }
-
-                $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
-                if ($winningGuids) {
-                    foreach ($winningGuids as $guid) {
-                        $won[$guid] = ($won[$guid] ?? 0) + 1;
-                    }
-                }
-            }
-
-            $qualified = collect();
-            foreach ($stats as $guid => $stat) {
-                $playedCount = $played[$guid] ?? 0;
-                if ($playedCount < $minMatches) {
-                    continue;
-                }
-
-                $qualified->push((object) [
-                    'player' => $stat->player,
-                    'kd' => $stat->deaths > 0 ? round($stat->kills / $stat->deaths, 2) : $stat->kills,
-                    'hsPct' => $stat->kills > 0 ? round($stat->headshots / $stat->kills * 100, 1) : 0,
-                    'nadePct' => $stat->kills > 0 ? round($stat->grenade_kills / $stat->kills * 100, 1) : 0,
-                    'winPct' => round(min($won[$guid] ?? 0, $playedCount) / $playedCount * 100, 1),
-                    'played' => $playedCount,
-                ]);
-            }
-
-            $n = $qualified->count();
-            if ($n > 1) {
-                // Percentil 0-100 de cada metrica: ordenar ascendente y ubicar cada
-                // jugador por su posicion — el peor en esa metrica queda en 0, el
-                // mejor en 100. Empates comparten el mismo percentil (posicion del
-                // primero que aparece con ese valor), para que un grupo grande con
-                // el mismo valor no quede artificialmente desparejo entre si.
-                $percentiles = function (string $field) use ($qualified, $n) {
-                    $sorted = $qualified->pluck($field)->sort()->values();
-                    // Las claves de $firstIndexOf son el VALOR de la metrica (ej. 1.29)
-                    // castings a string a proposito — PHP trunca automaticamente una
-                    // key float a int (1.29 y 1.87 quedan las dos como key "1"),
-                    // lo que colapsaba a todos los jugadores con K/D entre 1.0 y 1.99
-                    // en el mismo percentil sin importar el valor real. Confirmado en
-                    // vivo: 6 jugadores con K/D distinto (1.19 a 1.5) daban el mismo
-                    // percentil 60 hasta este fix.
-                    $firstIndexOf = [];
-                    foreach ($sorted as $i => $value) {
-                        $key = (string) $value;
-                        if (! isset($firstIndexOf[$key])) {
-                            $firstIndexOf[$key] = $i;
-                        }
-                    }
-
-                    return $qualified->map(fn ($row) => round($firstIndexOf[(string) $row->$field] / ($n - 1) * 100, 2));
-                };
-
-                $kdPct = $percentiles('kd');
-                $winPctPct = $percentiles('winPct');
-
-                // Score final (2026-08-18): 70% K/D + 30% win rate, cada uno su
-                // percentil dentro del pool calificado. K/D pesa mas por ser la
-                // metrica mas estable/individual; win rate entra con menos peso
-                // porque en partidas pug (equipos armados al azar) depende bastante
-                // de con quien te toco jugar, no solo de tu nivel. Headshots% y
-                // granadas% quedan fuera del calculo — son mas de estilo de juego
-                // que de impacto competitivo, y con un pool chico solo metian ruido
-                // (se probo un promedio parejo de las 4 metricas y tambien solo K/D
-                // antes de asentarse en esta combinacion).
-                $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $winPctPct) {
-                    $row->score = round($kdPct[$i] * 0.7 + $winPctPct[$i] * 0.3, 1);
-
-                    return $row;
-                })->sortByDesc('score')->values();
-
-                $tiers = ['A', 'B', 'C', 'D', 'E'];
-                $qualified = $qualified->map(function ($row, $i) use ($n, $tiers) {
-                    $quintile = (int) floor($i / ($n / 5));
-                    $row->rango = $tiers[min($quintile, 4)];
-
-                    return $row;
-                });
-            }
-
-            $rows = $qualified;
+            $rows = PlayerRankCalculator::calculateForServer($server, $seasonId)->values();
         }
 
         return view('specialties.rango', [
