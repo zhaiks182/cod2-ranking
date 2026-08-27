@@ -1124,11 +1124,15 @@ class SpecialtyController extends Controller
                     ->get();
 
                 $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
 
-                $rows = $tally->map(function ($row) use ($players) {
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
                     $player = $players[$row->player_id] ?? null;
 
-                    return $player ? (object) ['player' => $player, 'value' => (int) $row->bomb_plants, 'share' => null] : null;
+                    return $player ? (object) [
+                        'player' => $player, 'value' => (int) $row->bomb_plants, 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
                 })->filter()->values();
 
                 $totalPlants = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('bomb_plants');
@@ -1186,11 +1190,15 @@ class SpecialtyController extends Controller
                     ->get();
 
                 $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
 
-                $rows = $tally->map(function ($row) use ($players) {
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
                     $player = $players[$row->player_id] ?? null;
 
-                    return $player ? (object) ['player' => $player, 'value' => number_format((int) $row->damage_dealt), 'share' => null] : null;
+                    return $player ? (object) [
+                        'player' => $player, 'value' => number_format((int) $row->damage_dealt), 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
                 })->filter()->values();
 
                 $totalDamage = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('damage_dealt');
@@ -1243,11 +1251,15 @@ class SpecialtyController extends Controller
                     ->get();
 
                 $players = Player::whereIn('id', $tally->pluck('player_id'))->get()->keyBy('id');
+                $killsByPlayer = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds))->keyBy('player.id');
 
-                $rows = $tally->map(function ($row) use ($players) {
+                $rows = $tally->map(function ($row) use ($players, $killsByPlayer) {
                     $player = $players[$row->player_id] ?? null;
 
-                    return $player ? (object) ['player' => $player, 'value' => (int) $row->mid_round_disconnects, 'share' => null] : null;
+                    return $player ? (object) [
+                        'player' => $player, 'value' => (int) $row->mid_round_disconnects, 'share' => null,
+                        'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
+                    ] : null;
                 })->filter()->values();
             }
         }

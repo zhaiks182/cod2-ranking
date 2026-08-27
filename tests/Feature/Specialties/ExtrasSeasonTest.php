@@ -3,6 +3,7 @@
 namespace Tests\Feature\Specialties;
 
 use App\Models\GameMatch;
+use App\Models\Kill;
 use App\Models\Player;
 use App\Models\PlayerMatchExtra;
 use App\Models\PlayerServerStat;
@@ -57,13 +58,49 @@ class ExtrasSeasonTest extends TestCase
         return $match;
     }
 
+    /**
+     * A real Kill by $attacker against $victim in the first round of $match -- used so
+     * the "Kills totales" column (fed by KillAggregator::aggregate() scoped to the same
+     * $matchIds as the rest of the season-specific branch) has a known, non-zero value
+     * to assert against. Same field shape as GroupDSeasonTest::rangoMatch()'s makeKill().
+     */
+    private function killInMatch(GameMatch $match, Player $attacker, Player $victim): void
+    {
+        $round = $match->rounds()->first();
+
+        Kill::create([
+            'round_id' => $round->id,
+            'match_id' => $match->id,
+            'attacker_player_id' => $attacker->id,
+            'attacker_guid' => $attacker->guid,
+            'attacker_name' => $attacker->last_name,
+            'attacker_team' => 'allies',
+            'victim_player_id' => $victim->id,
+            'victim_guid' => $victim->guid,
+            'victim_name' => $victim->last_name,
+            'victim_team' => 'axis',
+            'weapon' => 'weapon_mp44',
+            'damage' => 100,
+            'mod' => 'MOD_RIFLE_BULLET',
+            'hitloc' => 'torso_upper',
+            'is_headshot' => false,
+            'is_grenade' => false,
+            'is_suicide' => false,
+            'is_teamkill' => false,
+            'occurred_at' => now(),
+        ]);
+    }
+
     public function test_bombs_excludes_old_season_and_all_falls_back_to_the_lifetime_total(): void
     {
         $oldSeason = Season::current();
         $player = Player::create(['guid' => 111, 'last_name' => 'A', 'last_name_plain' => 'A']);
 
+        $victim = Player::create(['guid' => 112, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
         $oldMatch = $this->match($oldSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $oldMatch->id, 'bomb_plants' => 3, 'bomb_defuses' => 0]);
+        $this->killInMatch($oldMatch, $player, $victim);
 
         // Total historico de ANTES de este feature -- nunca tuvo fila en
         // player_match_extras, solo vive en el acumulador plano (simula datos reales
@@ -74,12 +111,16 @@ class ExtrasSeasonTest extends TestCase
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
         $newMatch = $this->match($newSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $newMatch->id, 'bomb_plants' => 5, 'bomb_defuses' => 1]);
+        $this->killInMatch($newMatch, $player, $victim);
+        $this->killInMatch($newMatch, $player, $victim);
+        $this->killInMatch($newMatch, $player, $victim);
 
         $response = $this->get(route('specialties.bombs', ['server' => $this->server->slug]));
         $response->assertOk();
         $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
         $this->assertNotNull($row);
         $this->assertSame(5, $row->value); // solo la temporada activa (nueva)
+        $this->assertSame(3, $row->kills); // "Kills totales" -- solo los 3 kills de la temporada activa, no los de la vieja
 
         $responseAll = $this->get(route('specialties.bombs', ['server' => $this->server->slug, 'season' => 'all']));
         $rowAll = collect($responseAll->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
@@ -91,20 +132,26 @@ class ExtrasSeasonTest extends TestCase
         $oldSeason = Season::current();
         $player = Player::create(['guid' => 111, 'last_name' => 'A', 'last_name_plain' => 'A']);
 
+        $victim = Player::create(['guid' => 112, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
         $oldMatch = $this->match($oldSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $oldMatch->id, 'damage_dealt' => 300]);
+        $this->killInMatch($oldMatch, $player, $victim);
         PlayerServerStat::create(['player_id' => $player->id, 'server_id' => $this->server->id, 'damage_dealt' => 1000]);
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
         $newMatch = $this->match($newSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $newMatch->id, 'damage_dealt' => 450]);
+        $this->killInMatch($newMatch, $player, $victim);
+        $this->killInMatch($newMatch, $player, $victim);
 
         $response = $this->get(route('specialties.damage', ['server' => $this->server->slug]));
         $response->assertOk();
         $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
         $this->assertNotNull($row);
         $this->assertSame(number_format(450), $row->value);
+        $this->assertSame(2, $row->kills); // "Kills totales" -- solo los 2 kills de la temporada activa
 
         $responseAll = $this->get(route('specialties.damage', ['server' => $this->server->slug, 'season' => 'all']));
         $rowAll = collect($responseAll->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
@@ -116,20 +163,25 @@ class ExtrasSeasonTest extends TestCase
         $oldSeason = Season::current();
         $player = Player::create(['guid' => 111, 'last_name' => 'A', 'last_name_plain' => 'A']);
 
+        $victim = Player::create(['guid' => 112, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
         $oldMatch = $this->match($oldSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $oldMatch->id, 'mid_round_disconnects' => 2]);
+        $this->killInMatch($oldMatch, $player, $victim);
         PlayerServerStat::create(['player_id' => $player->id, 'server_id' => $this->server->id, 'mid_round_disconnects' => 7]);
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
         $newMatch = $this->match($newSeason->id);
         PlayerMatchExtra::create(['player_id' => $player->id, 'match_id' => $newMatch->id, 'mid_round_disconnects' => 3]);
+        $this->killInMatch($newMatch, $player, $victim);
 
         $response = $this->get(route('specialties.disconnects', ['server' => $this->server->slug]));
         $response->assertOk();
         $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
         $this->assertNotNull($row);
         $this->assertSame(3, $row->value);
+        $this->assertSame(1, $row->kills); // "Kills totales" -- solo el kill de la temporada activa
 
         $responseAll = $this->get(route('specialties.disconnects', ['server' => $this->server->slug, 'season' => 'all']));
         $rowAll = collect($responseAll->viewData('rows'))->first(fn ($r) => $r->player->id === $player->id);
