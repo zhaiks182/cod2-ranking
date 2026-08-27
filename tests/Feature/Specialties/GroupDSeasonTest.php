@@ -255,15 +255,15 @@ class GroupDSeasonTest extends TestCase
         $r = Player::create(['guid' => 602, 'last_name' => 'R', 'last_name_plain' => 'R']);
         $v = Player::create(['guid' => 603, 'last_name' => 'V', 'last_name_plain' => 'V']);
 
-        // Temporada vieja: 5 partidas, a: 4 kills/4 muertes cada una (20/20, K/D=1.0).
-        for ($i = 0; $i < 5; $i++) {
+        // Temporada vieja: 10 partidas (MIN_MATCHES), a: 4 kills/4 muertes cada una (40/40, K/D=1.0).
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($oldSeason->id, $a, $r, $v, 4, 4, 4, 0);
         }
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
-        // Temporada nueva: 5 partidas, a: 4 kills/2 muertes cada una (20/10, K/D=2.0).
-        for ($i = 0; $i < 5; $i++) {
+        // Temporada nueva: 10 partidas, a: 4 kills/2 muertes cada una (40/20, K/D=2.0).
+        for ($i = 0; $i < 10; $i++) {
             $this->rangoMatch($newSeason->id, $a, $r, $v, 4, 2, 4, 4);
         }
 
@@ -271,11 +271,11 @@ class GroupDSeasonTest extends TestCase
         $response->assertOk();
         $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->guid === $a->guid);
         $this->assertNotNull($row);
-        $this->assertSame(2.0, $row->kd); // solo temporada activa: 20/10
+        $this->assertSame(2.0, $row->kd); // solo temporada activa: 40/20
 
         $responseAll = $this->get(route('rango', ['server' => $this->server->slug, 'season' => 'all']));
         $rowAll = collect($responseAll->viewData('rows'))->first(fn ($r) => $r->player->guid === $a->guid);
-        $this->assertSame(1.33, $rowAll->kd); // las 2 temporadas: 40/30 = 1.333... -> 1.33
+        $this->assertSame(1.33, $rowAll->kd); // las 2 temporadas: 80/60 = 1.333... -> 1.33
     }
 
     public function test_playtime_excludes_old_season_rounds(): void

@@ -2147,6 +2147,30 @@ día del deploy (no espera al próximo `backup:run` automático).
 cualquier entero de 1 a 365 — el límite estaba solo en el `<select>` hardcodeado
 de la vista (`[3, 5, 10, 20, 30, 60, 90]`, sin el 2), a pedido del dueño.
 
+## Rango (/especialidades/rango y Equipos): mínimo de partidas subido, mínimo de bajas eliminado (2026-08-27)
+
+A pedido del dueño: `PlayerRankCalculator::MIN_MATCHES` subido de 5 a 10, y
+`MIN_KILLS` (antes 20) **eliminado del todo** — ya no hay ningún piso de bajas
+para calificar a un rango A-E, solo la cantidad de partidas jugadas. Como
+`SpecialtyController::rango()` y `TeamBalanceController`/Equipos comparten este
+mismo calculator (unificados el mismo día, ver más arriba), el cambio aplica a
+los dos consumidores de una sola vez, sin poder desincronizarse.
+
+Un jugador con pocas bajas pero muchas partidas ahora sí entra al ranking —
+antes quedaba afuera aunque tuviera 10+ partidas si no llegaba a 20 bajas. El
+texto "Mínimo N partidas jugadas..." en `/rango` y el aviso de "?" en el widget
+de Equipos (`partials/team-balance.blade.php`) se actualizaron para no
+mencionar más un mínimo de bajas que ya no existe.
+
+TDD: `tests/Feature/PlayerRankCalculatorSeasonTest.php` ganó 2 casos nuevos
+(un jugador con pocas bajas pero 10+ partidas ahora califica; un jugador con
+9 partidas —una menos que el nuevo mínimo— sigue sin calificar aunque tenga
+muchas bajas). Los fixtures existentes de `GroupDSeasonTest`/
+`PlayerRankCalculatorSeasonTest` que asumían el viejo mínimo de 5 partidas se
+subieron a 10 (mismas proporciones de kills/muertes, mismos K/D esperados).
+Suite completa: 127 tests/475 assertions, 1 fallo preexistente conocido, sin
+regresiones.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

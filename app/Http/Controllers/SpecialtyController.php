@@ -1065,7 +1065,6 @@ class SpecialtyController extends Controller
 
         $rows = collect();
         $minMatches = PlayerRankCalculator::MIN_MATCHES;
-        $minKills = PlayerRankCalculator::MIN_KILLS;
 
         // Mismo calculo exacto que usa el balanceador de Equipos (/equipos) --
         // unificado el 2026-08-27 para que los dos consumidores no puedan
@@ -1079,7 +1078,7 @@ class SpecialtyController extends Controller
 
         return view('specialties.rango', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'minMatches' => $minMatches, 'minKills' => $minKills,
+            'minMatches' => $minMatches,
         ]);
     }
 
