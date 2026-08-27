@@ -31,6 +31,7 @@
                     <th class="px-4 py-2 font-medium">Desde</th>
                     <th class="px-4 py-2 font-medium">Hasta</th>
                     <th class="px-4 py-2 font-medium">Partidas</th>
+                    <th class="px-4 py-2 font-medium"></th>
                 </tr>
             </thead>
             <tbody>
@@ -46,6 +47,15 @@
                             @endif
                         </td>
                         <td class="px-4 py-2 text-slate-400 tabular-nums">{{ $season->matches_count }}</td>
+                        <td class="px-4 py-2 text-right">
+                            @if($season->ended_at)
+                                <form method="POST" action="{{ route('admin.seasons.reactivate', $season) }}"
+                                    onsubmit="return confirm('¿Reactivar \'{{ $season->name }}\'? Esto cierra la temporada activa ahora mismo; las partidas nuevas van a contar para \'{{ $season->name }}\' de nuevo.')">
+                                    @csrf
+                                    <button type="submit" class="px-2 py-1 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 text-xs">Reactivar</button>
+                                </form>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

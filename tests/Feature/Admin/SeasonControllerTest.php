@@ -59,4 +59,50 @@ class SeasonControllerTest extends TestCase
 
         $this->assertTrue(AdminAction::where('action', 'seasons.close')->exists());
     }
+
+    public function test_reactivate_closes_the_active_season_and_reopens_the_chosen_one(): void
+    {
+        $admin = User::factory()->create();
+        $season1 = Season::current();
+        $startedAt = $season1->started_at;
+
+        $this->actingAs($admin)->post(route('admin.seasons.store'), ['name' => 'Temporada 2']);
+        $season2 = Season::current();
+
+        $this->actingAs($admin)
+            ->post(route('admin.seasons.reactivate', $season1))
+            ->assertRedirect();
+
+        $season1->refresh();
+        $season2->refresh();
+
+        $this->assertNull($season1->ended_at);
+        $this->assertNotNull($season2->ended_at);
+        $this->assertSame($season1->id, Season::current()->id);
+        // started_at original de la temporada reactivada no se toca.
+        $this->assertTrue($season1->started_at->equalTo($startedAt));
+    }
+
+    public function test_reactivate_rejects_the_currently_active_season(): void
+    {
+        $admin = User::factory()->create();
+        $active = Season::current();
+
+        $this->actingAs($admin)
+            ->post(route('admin.seasons.reactivate', $active))
+            ->assertSessionHasErrors();
+
+        $this->assertNull($active->refresh()->ended_at);
+    }
+
+    public function test_reactivate_records_an_admin_action(): void
+    {
+        $admin = User::factory()->create();
+        $season1 = Season::current();
+        $this->actingAs($admin)->post(route('admin.seasons.store'), ['name' => 'Temporada 2']);
+
+        $this->actingAs($admin)->post(route('admin.seasons.reactivate', $season1));
+
+        $this->assertTrue(AdminAction::where('action', 'seasons.reactivate')->exists());
+    }
 }

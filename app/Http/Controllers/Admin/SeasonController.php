@@ -42,4 +42,32 @@ class SeasonController extends Controller
 
         return redirect()->route('admin.seasons.index')->with('status', "Se inició \"{$newSeason->name}\".");
     }
+
+    /**
+     * Reactiva una temporada cerrada: cierra la que esté activa ahora mismo y
+     * reabre la elegida (started_at original intacto, solo se toca
+     * ended_at). No hay restricción de "solo la más reciente" — cualquier
+     * temporada cerrada se puede volver a activar, a pedido del dueño.
+     */
+    public function reactivate(Season $season)
+    {
+        if ($season->ended_at === null) {
+            return back()->withErrors(['season' => 'Esa temporada ya está activa.']);
+        }
+
+        $oldActive = null;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($season, &$oldActive) {
+            $oldActive = Season::whereNull('ended_at')->lockForUpdate()->firstOrFail();
+            $oldActive->update(['ended_at' => now()]);
+            $season->update(['ended_at' => null]);
+        });
+
+        AdminAction::record(
+            'seasons.reactivate',
+            "Cerró \"{$oldActive->name}\" y reactivó \"{$season->name}\""
+        );
+
+        return redirect()->route('admin.seasons.index')->with('status', "\"{$season->name}\" está activa de nuevo.");
+    }
 }

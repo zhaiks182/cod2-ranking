@@ -166,5 +166,6 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/temporadas', [SeasonController::class, 'index'])->name('seasons.index');
         Route::post('/temporadas', [SeasonController::class, 'store'])->name('seasons.store');
+        Route::post('/temporadas/{season}/reactivar', [SeasonController::class, 'reactivate'])->name('seasons.reactivate');
     });
 });
