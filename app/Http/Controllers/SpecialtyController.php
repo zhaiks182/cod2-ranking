@@ -775,18 +775,21 @@ class SpecialtyController extends Controller
     public function killStreaks(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
+        [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
 
         $rows = collect();
 
         if ($server) {
             $killRows = Kill::join('rounds', 'rounds.id', '=', 'kills.round_id')
                 ->where('rounds.server_id', $server->id)->where('rounds.gametype', 'sd')
+                ->whereIn('kills.match_id', $matchIds)
                 ->whereNotNull('kills.attacker_player_id')->where('kills.is_suicide', false)
                 ->selectRaw("kills.attacker_player_id as player_id, kills.occurred_at, 'kill' as event_type")
                 ->get()->all();
 
             $deathRows = Kill::join('rounds', 'rounds.id', '=', 'kills.round_id')
                 ->where('rounds.server_id', $server->id)->where('rounds.gametype', 'sd')
+                ->whereIn('kills.match_id', $matchIds)
                 ->whereNotNull('kills.victim_player_id')
                 ->selectRaw("kills.victim_player_id as player_id, kills.occurred_at, 'death' as event_type")
                 ->get()->all();
@@ -825,7 +828,7 @@ class SpecialtyController extends Controller
         }
 
         return view('specialties.ranking', [
-            'servers' => $servers, 'server' => $server, 'rows' => $rows,
+            'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.streaks-kills', 'icon' => '🔥', 'title' => 'Rachas de Bajas',
             'subtitle' => 'Mejor racha histórica de bajas sin morir (Search and Destroy)',
             'valueLabel' => 'racha', 'valueColor' => 'text-orange-400',
