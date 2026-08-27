@@ -1767,6 +1767,26 @@ abrir otra, la siguiente partida toma la nueva), y
 activa, store cierra+abre atómico, store exige `name`, store deja rastro en
 `AdminAction`).
 
+**Reactivar una temporada cerrada (2026-08-27), a pedido del dueño para poder
+probar el corte de temporada sin quedar sin vuelta atrás.** El diseño original
+era intencionalmente de una sola dirección (cerrar + abrir nueva, sin "volver")
+— al usarlo por primera vez en la práctica, el dueño notó que no había forma de
+volver a una temporada anterior desde el panel. Se agregó
+`Admin\SeasonController::reactivate(Season $season)` (`POST
+/adm_cod2/temporadas/{season}/reactivar`, `admin.seasons.reactivate`): mismo
+patrón atómico que `store()` (`DB::transaction` + `lockForUpdate()`), pero en
+vez de crear una fila nueva, cierra la activa actual y reabre la elegida
+**sin tocar su `started_at` original** — solo `ended_at` cambia. Rechaza
+reactivar la que ya está activa (defensivo, la UI no ofrece ese botón en esa
+fila). Sin restricción de "solo la más reciente" — cualquier temporada cerrada
+se puede reactivar, incluida la primera. Botón "Reactivar" por fila cerrada en
+`/adm_cod2/temporadas`, con confirmación explicando que cierra la activa
+actual. TDD: 3 casos nuevos en `SeasonControllerTest.php` (reactivar
+cierra+reabre correctamente preservando `started_at`; rechaza reactivar la ya
+activa; deja rastro en `AdminAction` como `seasons.reactivate`) — suite
+completa 115 tests/436 assertions, 1 fallo preexistente conocido, sin
+regresiones.
+
 **Pendiente (fuera de alcance de este sub-proyecto):** `/ranking`,
 `/especialidades`, y cualquier otra pantalla de stats acumuladas siguen mostrando
 el histórico completo sin filtrar por temporada — filtrar esas vistas por
