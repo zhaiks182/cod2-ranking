@@ -2123,6 +2123,30 @@ Resultado: **354MB → 1.3GB libres (98% → 91%)**. Sigue siendo un margen ajus
 si se sigue achicando, no asumir que es de nuevo lo mismo, repetir el diagnóstico
 completo (`df -h`, `du -sh` por directorio) antes de actuar.
 
+## Respaldos de base de datos: poda de duplicados del mismo día (2026-08-27)
+
+`RunDatabaseBackup` (`backup:run`, cron diario a las 3am vía
+`Schedule::command('backup:run')->dailyAt('03:00')`, además disparable a mano desde
+`/adm_cod2/respaldos` y automático antes de cada `restore()`/`import()`) ya borraba
+respaldos con más de `RETENTION_DAYS` (10) días — pero un mismo día calendario podía
+acumular varios (el automático de las 3am + cualquier manual/pre-restore de ese
+mismo día), notado por el dueño al ver 2-3 respaldos con la misma fecha.
+
+Lógica de poda extraída a `app/Support/BackupPruner::prune(int $retentionDays): int`
+— el comando (`RunDatabaseBackup`) en sí no es testeable en el entorno de tests
+(SQLite en memoria, sin `mysqldump`/`mysql` reales), así que la extracción permite
+testear la lógica de poda sola. Dos reglas, en este orden: (1) borra lo que ya pasó
+los 10 días, sin importar el día; (2) de lo que queda, si un mismo día calendario
+tiene más de un respaldo, deja solo el **más reciente** de ese día (más completo/
+actualizado). TDD: `tests/Feature/BackupPrunerTest.php` (3 casos). Limpieza única
+de los duplicados ya existentes en producción corrida a mano vía tinker el mismo
+día del deploy (no espera al próximo `backup:run` automático).
+
+**De paso: `2` agregado a las opciones de retención de demos
+(`/adm_cod2/demos`).** El backend (`SettingController::update()`) ya aceptaba
+cualquier entero de 1 a 365 — el límite estaba solo en el `<select>` hardcodeado
+de la vista (`[3, 5, 10, 20, 30, 60, 90]`, sin el 2), a pedido del dueño.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
