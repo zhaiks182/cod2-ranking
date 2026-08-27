@@ -1879,6 +1879,67 @@ cualquier temporada cerrada, `?season=all` para el histórico completo.
   `CountriesSeasonTest.php` (1 caso). Verificado en un entorno aislado en el VPS
   (`/root/sdd_baseline`) antes de desplegar.
 
+## Equipos traído a git y unificado con /especialidades/rango (2026-08-27)
+
+El balanceador de equipos por rango (`/equipos`, ver el `CLAUDE.md` de la
+máquina de desarrollo para el diseño original del 2026-08-25) vivía **solo en
+el VPS** — nunca se había comiteado a git (el mismo gap ya documentado en
+"Ranking por temporada" y "Hallazgo grave..." más abajo). Se trajo a este
+repo trayendo los 6 archivos reales desde producción sin cambiarlos
+(`app/Support/TeamBalancer.php`, `app/Http/Controllers/TeamBalanceController.php`,
+`tests/Feature/TeamBalancerTest.php`, `resources/views/team-balance.blade.php`,
+`resources/views/partials/team-balance.blade.php`) y reconciliando los 3
+archivos que YA existían en git pero les faltaba la integración de Equipos que
+ya corría en el VPS (`routes/web.php` — ruta `/equipos`; `routes/web.php` es el
+mismo archivo cuya mezcla causó el "Hallazgo grave" de más abajo, así que se
+verificó **byte a byte contra producción antes y después** de este cambio, sin
+overlap con nada más; `Admin\ConsoleController::show()` — sugerencia de
+Equipos en la consola admin; `resources/views/admin/console.blade.php` — el
+`@include('partials.team-balance', ...)`).
+
+**El único archivo que SÍ cambió de comportamiento real: `PlayerRankCalculator.php`.**
+Antes leía `PlayerServerStat` (acumulado histórico completo, sin ningún
+concepto de temporada) — desde el sub-proyecto 2 de temporadas,
+`/especialidades/rango` ya no lee esa tabla (reescrito sobre
+`KillAggregator::aggregate()` scopeado por `$matchIds`), así que los dos
+consumidores del mismo score A-E habían quedado divergiendo: Equipos con el
+histórico completo, `/rango` con la temporada elegida. Esto se señaló
+explícitamente en la revisión final del plan de "especialidades por
+temporada" como un riesgo real y pendiente ("en cuanto exista una segunda
+temporada, Equipos y `/rango` van a mostrar rangos distintos para el mismo
+jugador") — resuelto directamente a pedido del dueño, en vez de quedar como
+deuda técnica.
+
+- `PlayerRankCalculator::calculateForServer(Server $server, int|string|null $seasonId = null)`
+  — `$seasonId` nuevo, nulo por default (resuelve a `Season::current()->id`,
+  ya que Equipos no tiene selector propio, siempre pide la activa implícita o
+  explícita). Reescrito internamente para usar `KillAggregator::aggregate()`
+  + `GameMatch::forSeason($seasonId)` — la matemática de percentiles/quintiles
+  (70% K/D + 30% win rate) no se tocó, solo de dónde sale `$stats`.
+- **`SpecialtyController::rango()` ya no duplica la lógica** — ahora es una
+  sola línea: `PlayerRankCalculator::calculateForServer($server, $seasonId)->values()`.
+  Antes tenía ~115 líneas de percentiles/quintiles copiadas casi
+  exactas del calculator (el propio calculator fue extraído de una versión
+  vieja de `rango()` el 2026-08-25, y desde entonces las dos copias vivían
+  por separado). Unificados para que no puedan volver a desincronizarse.
+- `TeamBalanceController::index()` no necesitó cambios — ya llamaba
+  `PlayerRankCalculator::calculateForServer($server)` sin segundo argumento,
+  así que hereda la temporada activa automáticamente.
+- TDD: `tests/Feature/PlayerRankCalculatorSeasonTest.php` (3 casos — sin
+  segundo argumento usa la temporada activa; con el id de una temporada
+  cerrada da esos datos; `/rango` y el calculator coinciden exacto en la
+  misma temporada, el punto entero de la unificación). Verificado junto a
+  `tests/Feature/TeamBalancerTest.php` (4 casos, sin cambios, solo
+  reconfirmado que sigue pasando) y toda la suite (112 tests/428
+  assertions, 1 fallo preexistente conocido) en el clon descartable del VPS
+  antes de desplegar.
+- Desplegado a producción: solo `PlayerRankCalculator.php` y
+  `SpecialtyController.php` tenían cambio de comportamiento real (los otros
+  5 archivos reconciliados quedaron byte-a-byte idénticos a lo que ya corría
+  en el VPS, confirmado con `sha256sum` de todo `app/`/`resources/`/`routes/`
+  antes de tocar nada). Verificado en producción: `/rango`, `/rango?season=all`,
+  `/equipos` responden `200`.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y
