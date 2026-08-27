@@ -127,6 +127,22 @@ class GameMatch extends Model
     }
 
     /**
+     * Que partidas cuentan para una temporada dada -- $seasonId es un id real o el
+     * string literal 'all' (todas las temporadas juntas). Las partidas abandonadas
+     * sin resultado real se excluyen SIEMPRE, sin importar la temporada (incluido
+     * en 'all') -- mismo criterio que ya usa StatsRecalculator para los
+     * acumuladores de por vida.
+     */
+    public function scopeForSeason($query, $seasonId)
+    {
+        if ($seasonId !== 'all') {
+            $query->where('season_id', $seasonId);
+        }
+
+        return $query->whereNotIn('id', static::abandonedWithoutConclusion()->pluck('id'));
+    }
+
+    /**
      * Human-readable elapsed time — counts up to now() while the match has no
      * ended_at yet, so an in-progress match shows a live-growing duration instead of
      * nothing.

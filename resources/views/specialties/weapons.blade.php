@@ -12,11 +12,19 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>🔫</span> Ranking por Arma
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">Las armas más letales del servidor, y quién es el más mortal con cada una</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>🔫</span> Ranking por Arma
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">Las armas más letales del servidor, y quién es el más mortal con cada una</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.weapons',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($weapons->isEmpty())

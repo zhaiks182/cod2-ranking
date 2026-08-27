@@ -12,11 +12,21 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>{{ $icon }}</span> {{ $title }}
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">{{ $subtitle }}</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>{{ $icon }}</span> {{ $title }}
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">{{ $subtitle }}</p>
+        </div>
+
+        @isset($seasonId)
+            @include('partials.season-selector', [
+                'seasonDropdownId' => 'specialty-season-dropdown',
+                'seasonBaseRoute' => $routeName,
+                'seasonBaseParams' => ['server' => $server?->slug],
+            ])
+        @endisset
     </div>
 
     @if(count($statCards))

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PlayerWeaponPick extends Model
 {
-    protected $fillable = ['player_id', 'weapon', 'picks'];
+    protected $fillable = ['player_id', 'season_id', 'weapon', 'picks'];
 
     public function player(): BelongsTo
     {

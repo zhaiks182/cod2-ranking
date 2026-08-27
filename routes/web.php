@@ -24,6 +24,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\SpecialtyController;
+use App\Http\Controllers\TeamBalanceController;
 use App\Http\Controllers\TeamkillController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,7 @@ Route::get('/widget/live-status', [DashboardController::class, 'liveStatusWidget
 Route::get('/widget/discord', [DashboardController::class, 'discordWidget'])->name('dashboard.discord-widget');
 Route::get('/ranking', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/rango', [SpecialtyController::class, 'rango'])->name('rango');
+Route::get('/equipos', [TeamBalanceController::class, 'index'])->name('team-balance');
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');

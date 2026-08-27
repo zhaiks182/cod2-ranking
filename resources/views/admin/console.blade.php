@@ -99,6 +99,8 @@
         </div>
     </div>
 
+    @include('partials.team-balance', ['teamBalance' => $teamBalance])
+
     <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
         <h2 class="text-xs uppercase tracking-wide text-slate-400">Mensaje a todos</h2>
         <form method="POST" action="{{ route('admin.console.message', $server) }}" class="flex gap-2">

@@ -1773,6 +1773,173 @@ el histórico completo sin filtrar por temporada — filtrar esas vistas por
 temporada (con selector de temporada, probablemente) es el sub-proyecto 2/3 del
 plan, todavía no arrancado.
 
+## Ranking por temporada (2026-08-26)
+
+Segundo sub-proyecto de 3 (el primero fue la infraestructura base de arriba). Spec
+completa: `docs/superpowers/specs/2026-08-25-ranking-por-temporada-design.md`.
+`/ranking` y `/jugadores/{guid}` ahora respetan la temporada — **default en todo el
+sitio: la temporada activa**, con `?season={id}` para cualquier temporada cerrada o
+`?season=all` para el histórico completo. Cualquier link a un perfil de jugador sin
+`?season=` explícito hereda la temporada activa; solo `/ranking` arma el link con
+`?season=` explícito para que el perfil "herede" la que se estaba mirando.
+
+- **Cálculo al vuelo, no una tabla `player_season_stats` nueva.** Mismo patrón que
+  ya usaba `LeaderboardController::aggregateFromKills()` para el filtro de fecha
+  manual (ahora eliminado, reemplazado por el selector de temporada) — un join
+  `kills → rounds → matches` filtrado por `matches.season_id`, sin ningún
+  acumulador que sincronizar. Decisión deliberada: el patrón "acumulador +
+  corrección retroactiva" (`player_server_stats`/`player_map_stats`) ya causó
+  varios bugs reales documentados en la bitácora de bugs más arriba (entradas 13,
+  15, 16) — con ~50 partidas/~12k kills reales, calcular al vuelo es rápido y no
+  necesita ningún mecanismo de sincronización aparte. `GameMatch::scopeForSeason($seasonId)`
+  (nuevo) centraliza "qué partidas cuentan para esta temporada" — `$seasonId` es un
+  id real o el string literal `'all'` — y lo consumen tanto `LeaderboardController`
+  como `PlayerController`. Las tablas pre-calculadas `player_server_stats`/
+  `player_map_stats`/`players.kills_total` etc. **no se tocan ni se borran** — solo
+  dejan de leerse desde estas dos vistas.
+- **Bug heredado corregido de una:** `aggregateFromKills()` nunca excluía partidas
+  abandonadas sin resultado real (a diferencia de las tablas pre-calculadas, que sí
+  lo hacían desde un fix anterior de esta misma sesión) — `scopeForSeason()` ahora
+  excluye `GameMatch::abandonedWithoutConclusion()` siempre, sin importar la
+  temporada elegida, incluido `season=all`.
+- **`player_weapon_picks.season_id`** (columna nueva, mismo patrón que
+  `matches.season_id` — nullable a nivel de esquema, asignada una sola vez en
+  `ParseCod2Log`) hizo falta porque "arma más equipada" era un acumulador puro sin
+  ninguna referencia temporal. Con `season=all`, toma el pick con más `picks` de
+  cualquier temporada individual, no la suma entre temporadas — límite aceptado a
+  propósito, "todo el historial" ya es la vista de excepción.
+- **El filtro de fecha manual (`from`/`to`) se sacó de la UI de `/ranking`** — el
+  selector de temporada lo reemplaza. La navegación por sesión específica de un
+  mapa jugado varias veces (antes date-pills clickeables) también cambió: ahora
+  siempre muestra la sesión más reciente automáticamente dentro de la temporada
+  elegida (con un contador "N sesiones en esta temporada"), sin leer `from`/`to` de
+  la URL — decisión ya tomada en el spec de este sub-proyecto (no una regresión;
+  ver ese documento, sección "Axis/Allies panel").
+- **Alcance del perfil de jugador:** todas sus secciones respetan la temporada —
+  números principales, mejores mapas (`KillAggregator::aggregateByMap()`, nuevo),
+  arma favorita, arma más equipada, team-kills, últimas bajas/muertes — no solo un
+  subconjunto.
+- **`/especialidades` sigue sin temporada** (fuera de alcance, sub-proyecto 3 de 3,
+  todavía no arrancado) — sigue mostrando el histórico completo sin filtrar.
+- Implementado con `subagent-driven-development` (5 tasks de código + esta). TDD en
+  cada task: `tests/Feature/PlayerWeaponPickSeasonTest.php` (2 casos),
+  `tests/Feature/LeaderboardSeasonTest.php` (4 casos),
+  `tests/Feature/PlayerShowSeasonTest.php` (8 casos, incluye cobertura explícita de
+  exclusión cross-temporada para arma favorita/team-kills/últimas muertes/mejores
+  mapas, agregada en una ronda de fix tras la revisión). Verificado en un entorno
+  aislado en el VPS (`/root/sdd_baseline`, sin PHP local en la máquina de
+  desarrollo) antes de desplegar.
+
+## Especialidades por temporada (2026-08-26)
+
+Tercer y último sub-proyecto del plan de temporadas (el primero fue la infraestructura
+base, el segundo `/ranking` y `/jugadores/{guid}`). Spec completa:
+`docs/superpowers/specs/2026-08-26-especialidades-por-temporada-design.md`. **22 de
+las 25 páginas de `/especialidades` ahora respetan la temporada elegida** — mismo
+contrato de URL que `/ranking`: default la temporada activa, `?season={id}` para
+cualquier temporada cerrada, `?season=all` para el histórico completo.
+
+- **Fuera de alcance a propósito: `bombs`, `damage`, `disconnects`.** Estos tres
+  contadores son acumuladores puros (`player_server_stats`/`player_map_stats`) sin
+  ninguna tabla de detalle por línea de log de la que reconstruirse por temporada
+  (ver "Chat y eventos de partida" más arriba, "no se implementaron" para
+  `Damage;`/`Bomb;`/`Disconnected;`) — no hay forma de saber retroactivamente a qué
+  temporada perteneció cada bomba/desconexión ya contada. Siguen mostrando el
+  histórico completo, sin selector de temporada.
+- **`SpecialtyController::resolveSeason()`** (nuevo, mismo contrato que ya usan
+  `LeaderboardController`/`PlayerController` del sub-proyecto 2) centraliza
+  `[$seasons, $seasonId, $matchIds]` para las 22 páginas. `sdKills()` (el helper
+  interno ya existente) ahora exige `$matchIds` como segundo argumento.
+- **`mapKings`** se reescribió sobre `KillAggregator::topByMap()` (nuevo) en vez de
+  `PlayerMapStat` — mismo criterio de siempre (códigos de mapa crudos, sin fusionar
+  variantes).
+- **`rango()`** se reescribió sobre `KillAggregator::aggregate()` en vez de
+  `PlayerServerStat` — mismo patrón que ya usaban los métodos del Grupo A
+  (`grenades`, `headshots`, `friendlyFire`, `efficiency`, `bashCalls`).
+- **`countries()`** sigue sin selector de servidor (nunca lo tuvo) — ahora solo
+  cuenta jugadores con al menos un kill o muerte dentro de las partidas de la
+  temporada elegida, en vez de "cualquier jugador con IP conocida alguna vez".
+- **Equipos (el balanceador de equipos por rango) queda fuera de este trabajo — no
+  por decisión de alcance, sino porque ese módulo (`PlayerRankCalculator.php`,
+  `TeamBalanceController.php`) no existe en este repo git.** Se desplegó alguna vez
+  directo al VPS desde otra máquina de desarrollo y nunca se comiteó — mismo gap ya
+  conocido de otras features de este proyecto (ver "Deploy", sección "Alguien puede
+  desplegar desde otra máquina sin pasar por esta conversación"). Efecto real: el
+  `PlayerRankCalculator.php` que corre en producción sigue leyendo el acumulado
+  histórico completo (`PlayerServerStat`), no la temporada activa — hoy coincide con
+  `/especialidades/rango` porque solo existe "Temporada 1" (nunca cerrada), pero en
+  cuanto el dueño cierre una temporada por primera vez, Equipos y `/especialidades/rango`
+  van a mostrar rangos distintos para el mismo jugador. Se resuelve solo cuando
+  Equipos se sincronice con git.
+- Implementado con `subagent-driven-development`, mismo worktree que el
+  sub-proyecto 2 (`ranking-por-temporada`). TDD en cada task de código:
+  `tests/Feature/Specialties/GroupASeasonTest.php` (5 casos), `SuicidesSeasonTest`
+  (implícito en Grupo B), `GroupCSeasonTest.php` (5 casos), `GroupDSeasonTest.php`
+  (6 casos), `MapKingsSeasonTest.php` (2 casos), `GroupFSeasonTest.php` (2 casos),
+  `CountriesSeasonTest.php` (1 caso). Verificado en un entorno aislado en el VPS
+  (`/root/sdd_baseline`) antes de desplegar.
+
+## Equipos traído a git y unificado con /especialidades/rango (2026-08-27)
+
+El balanceador de equipos por rango (`/equipos`, ver el `CLAUDE.md` de la
+máquina de desarrollo para el diseño original del 2026-08-25) vivía **solo en
+el VPS** — nunca se había comiteado a git (el mismo gap ya documentado en
+"Ranking por temporada" y "Hallazgo grave..." más abajo). Se trajo a este
+repo trayendo los 6 archivos reales desde producción sin cambiarlos
+(`app/Support/TeamBalancer.php`, `app/Http/Controllers/TeamBalanceController.php`,
+`tests/Feature/TeamBalancerTest.php`, `resources/views/team-balance.blade.php`,
+`resources/views/partials/team-balance.blade.php`) y reconciliando los 3
+archivos que YA existían en git pero les faltaba la integración de Equipos que
+ya corría en el VPS (`routes/web.php` — ruta `/equipos`; `routes/web.php` es el
+mismo archivo cuya mezcla causó el "Hallazgo grave" de más abajo, así que se
+verificó **byte a byte contra producción antes y después** de este cambio, sin
+overlap con nada más; `Admin\ConsoleController::show()` — sugerencia de
+Equipos en la consola admin; `resources/views/admin/console.blade.php` — el
+`@include('partials.team-balance', ...)`).
+
+**El único archivo que SÍ cambió de comportamiento real: `PlayerRankCalculator.php`.**
+Antes leía `PlayerServerStat` (acumulado histórico completo, sin ningún
+concepto de temporada) — desde el sub-proyecto 2 de temporadas,
+`/especialidades/rango` ya no lee esa tabla (reescrito sobre
+`KillAggregator::aggregate()` scopeado por `$matchIds`), así que los dos
+consumidores del mismo score A-E habían quedado divergiendo: Equipos con el
+histórico completo, `/rango` con la temporada elegida. Esto se señaló
+explícitamente en la revisión final del plan de "especialidades por
+temporada" como un riesgo real y pendiente ("en cuanto exista una segunda
+temporada, Equipos y `/rango` van a mostrar rangos distintos para el mismo
+jugador") — resuelto directamente a pedido del dueño, en vez de quedar como
+deuda técnica.
+
+- `PlayerRankCalculator::calculateForServer(Server $server, int|string|null $seasonId = null)`
+  — `$seasonId` nuevo, nulo por default (resuelve a `Season::current()->id`,
+  ya que Equipos no tiene selector propio, siempre pide la activa implícita o
+  explícita). Reescrito internamente para usar `KillAggregator::aggregate()`
+  + `GameMatch::forSeason($seasonId)` — la matemática de percentiles/quintiles
+  (70% K/D + 30% win rate) no se tocó, solo de dónde sale `$stats`.
+- **`SpecialtyController::rango()` ya no duplica la lógica** — ahora es una
+  sola línea: `PlayerRankCalculator::calculateForServer($server, $seasonId)->values()`.
+  Antes tenía ~115 líneas de percentiles/quintiles copiadas casi
+  exactas del calculator (el propio calculator fue extraído de una versión
+  vieja de `rango()` el 2026-08-25, y desde entonces las dos copias vivían
+  por separado). Unificados para que no puedan volver a desincronizarse.
+- `TeamBalanceController::index()` no necesitó cambios — ya llamaba
+  `PlayerRankCalculator::calculateForServer($server)` sin segundo argumento,
+  así que hereda la temporada activa automáticamente.
+- TDD: `tests/Feature/PlayerRankCalculatorSeasonTest.php` (3 casos — sin
+  segundo argumento usa la temporada activa; con el id de una temporada
+  cerrada da esos datos; `/rango` y el calculator coinciden exacto en la
+  misma temporada, el punto entero de la unificación). Verificado junto a
+  `tests/Feature/TeamBalancerTest.php` (4 casos, sin cambios, solo
+  reconfirmado que sigue pasando) y toda la suite (112 tests/428
+  assertions, 1 fallo preexistente conocido) en el clon descartable del VPS
+  antes de desplegar.
+- Desplegado a producción: solo `PlayerRankCalculator.php` y
+  `SpecialtyController.php` tenían cambio de comportamiento real (los otros
+  5 archivos reconciliados quedaron byte-a-byte idénticos a lo que ya corría
+  en el VPS, confirmado con `sha256sum` de todo `app/`/`resources/`/`routes/`
+  antes de tocar nada). Verificado en producción: `/rango`, `/rango?season=all`,
+  `/equipos` responden `200`.
+
 ## Variantes de mapa combinadas (2026-08-19)
 
 `MapCatalog::normalize()` ya existía para que `mp_dawnville_fix` y

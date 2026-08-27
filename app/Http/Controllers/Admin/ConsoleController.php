@@ -9,6 +9,8 @@ use App\Models\Player;
 use App\Models\Server;
 use App\Models\ServerResourceSample;
 use App\Services\Cod2RconClient;
+use App\Support\PlayerRankCalculator;
+use App\Support\TeamBalancer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\Process\Process;
@@ -19,7 +21,16 @@ class ConsoleController extends Controller
     {
         $status = Cod2RconClient::forServer($server)->status();
 
-        return view('admin.console', compact('server', 'status'));
+        // Sugerencia de equipos balanceados por rango (PlayerRankCalculator,
+        // el mismo score de /especialidades/rangos) -- solo se calcula si el
+        // server respondio por RCON, ya que depende de la lista de
+        // conectados. Ver TeamBalancer para el porque del snake draft y por
+        // que solo sugiere en vez de mover jugadores por RCON.
+        $teamBalance = $status
+            ? TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server))
+            : null;
+
+        return view('admin.console', compact('server', 'status', 'teamBalance'));
     }
 
     /**

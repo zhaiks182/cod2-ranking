@@ -7,7 +7,7 @@
     @if($servers->count() > 1)
         <div class="flex items-center gap-2 text-sm">
             @foreach($servers as $s)
-                <a href="{{ route('leaderboard', ['server' => $s->slug, 'map' => $map, 'from' => $from, 'to' => $to]) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
+                <a href="{{ route('leaderboard', ['server' => $s->slug, 'map' => $map, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
             @endforeach
         </div>
     @endif
@@ -15,17 +15,23 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-lg font-semibold">
             Ranking {{ $map ? '— '.\App\Support\MapCatalog::mapLabel($map) : 'general' }}
-            @if($map && $usingDateFilter && $from && $from === $to)
+            @if($usingDateFilter && $from && $from === $to)
                 <span class="text-slate-500 font-normal text-base">({{ \Illuminate\Support\Carbon::parse($from)->translatedFormat('j \d\e F') }})</span>
             @endif
         </h1>
 
-        <div class="flex items-center gap-2 text-sm flex-wrap">
-            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'from' => $from, 'to' => $to]) }}" class="px-3 py-1.5 rounded-lg border {{ !$map ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">General</a>
-            @foreach($mapGroups as $mapCode => $group)
-                <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $mapCode]) }}" class="px-3 py-1.5 rounded-lg border {{ $map === $mapCode ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ \App\Support\MapCatalog::mapLabel($mapCode) }}</a>
-            @endforeach
-        </div>
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'ranking-season-dropdown',
+            'seasonBaseRoute' => 'leaderboard',
+            'seasonBaseParams' => ['server' => $server?->slug, 'map' => $map],
+        ])
+    </div>
+
+    <div class="flex items-center gap-2 text-sm flex-wrap">
+        <a href="{{ route('leaderboard', ['server' => $server?->slug, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ !$map ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">General</a>
+        @foreach($mapGroups as $mapCode => $group)
+            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $mapCode, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ $map === $mapCode ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ \App\Support\MapCatalog::mapLabel($mapCode) }}</a>
+        @endforeach
     </div>
 
     @if($map && ($mapGroups[$map]->dates ?? collect())->count() > 1)
@@ -33,7 +39,7 @@
             $monthGroups = $mapGroups[$map]->dates->groupBy(fn ($d) => $d->format('Y-m'));
         @endphp
         <div class="flex items-center gap-2 text-xs -mt-2 flex-wrap">
-            <span class="text-slate-500 uppercase tracking-wide">Partidas</span>
+            <span class="text-slate-500 uppercase tracking-wide">Atajo por sesión</span>
             @foreach($monthGroups as $monthKey => $dates)
                 @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
                 <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.remove('hidden')"
@@ -55,7 +61,7 @@
                     <div class="overflow-y-auto p-3 flex flex-wrap gap-2">
                         @foreach($dates as $date)
                             @php $dateStr = $date->toDateString(); @endphp
-                            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'from' => $dateStr, 'to' => $dateStr]) }}"
+                            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId, 'from' => $dateStr, 'to' => $dateStr]) }}"
                                 class="px-2.5 py-1 rounded-lg border text-xs {{ $from === $dateStr ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">
                                 {{ $date->translatedFormat('j \d\e F') }}
                             </a>
@@ -69,6 +75,7 @@
     <form method="get" class="flex flex-wrap items-end gap-3 text-sm bg-panel border border-slate-800 rounded-xl px-4 py-3">
         <input type="hidden" name="server" value="{{ $server?->slug }}">
         <input type="hidden" name="map" value="{{ $map }}">
+        <input type="hidden" name="season" value="{{ $seasonId }}">
         <div>
             <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Desde</label>
             <input type="date" name="from" value="{{ $from }}" class="bg-panel2 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
@@ -79,7 +86,10 @@
         </div>
         <button type="submit" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-500 hover:text-cyan-400">Filtrar</button>
         @if($usingDateFilter)
-            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map]) }}" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">Quitar filtro de fecha</a>
+            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">Quitar filtro de fecha</a>
+        @endif
+        @if(Route::has('team-balance'))
+            <a href="{{ route('team-balance', ['server' => $server?->slug]) }}" class="ml-auto px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold whitespace-nowrap">⚖️ Equipos</a>
         @endif
     </form>
 
@@ -92,6 +102,7 @@
         $tkParams = http_build_query(array_filter([
             'server' => $server?->slug,
             'map' => $mapCodes ? implode(',', $mapCodes) : null,
+            'season' => $seasonId,
             'from' => $from,
             'to' => $to,
         ]));
@@ -117,7 +128,7 @@
                         <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                         <td class="px-4 py-2 font-medium">
                             @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                            <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                            <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             @if($i < 3)
                                 <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
                             @endif
@@ -136,7 +147,7 @@
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->grenade_kills }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin datos para este filtro.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin datos para esta temporada.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -173,7 +184,7 @@
                                 <tr class="border-b border-slate-800/60 last:border-0">
                                     <td class="px-4 py-2 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                                        <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                        <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                                     </td>
                                     <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">
@@ -220,7 +231,7 @@
                                 <tr class="border-b border-slate-800/60 last:border-0">
                                     <td class="px-4 py-2 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                                        <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                        <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                                     </td>
                                     <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">

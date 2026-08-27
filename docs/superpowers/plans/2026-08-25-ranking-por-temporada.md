@@ -1045,7 +1045,8 @@ class PlayerShowSeasonTest extends TestCase
         $response->assertOk();
         $player = $response->viewData('player');
         $this->assertSame(2, $player->kills_total); // solo Temporada 2 (activa)
-        $this->assertSame(1.0, $player->headshot_rate * 0.005 * 100 >= 0 ? $player->headshot_rate : 0); // sanity: headshot_rate se recalcula sobre el total scopeado
+        $this->assertSame(0, $player->deaths_total); // el attacker no murio en esas partidas
+        $this->assertSame(100.0, $player->headshot_rate); // getHeadshotRateAttribute() recalcula sobre kills_total/headshots_total ya scopeados -- los 2 kills de la fixture son headshot
     }
 
     public function test_profile_with_season_all_shows_lifetime_total(): void
@@ -1245,7 +1246,7 @@ class PlayerController extends Controller
 - [ ] **Step 5: Correr el test y confirmar que pasa**
 
 Run: `vendor/bin/phpunit tests/Feature/PlayerShowSeasonTest.php`
-Expected: PASS (4 tests) — si `test_profile_without_season_param_shows_only_the_active_season` falla por la aserción rara de `headshot_rate` (la segunda `assertSame` es solo una comprobación de cordura, no crítica), simplificarla a solo verificar `$player->kills_total` — lo importante de este test es el conteo de kills scopeado, no una fórmula de headshot rate.
+Expected: PASS (4 tests) — `test_profile_without_season_param_shows_only_the_active_season` verifica `kills_total`, `deaths_total` y `headshot_rate` directamente contra los valores esperados de la fixture (ver Step 4 más arriba); no hay ambigüedad que resolver acá.
 
 - [ ] **Step 6: Correr toda la suite**
 

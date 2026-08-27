@@ -12,11 +12,19 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>📈</span> Hora Pico
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">Cuándo hay más actividad — bajas de Search and Destroy por hora y día</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>📈</span> Hora Pico
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">Cuándo hay más actividad — bajas de Search and Destroy por hora y día</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.peak-times',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4">

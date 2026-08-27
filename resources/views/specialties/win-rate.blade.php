@@ -12,14 +12,22 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>📈</span> Win Rate por Mapa
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">
-            Mapas ganados / mapas jugados (Search and Destroy) — mínimo {{ $minMaps }} mapas jugados para entrar.
-            "Jugados" es aproximado: cuenta partidas donde el jugador tuvo al menos una baja o muerte registrada.
-        </p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>📈</span> Win Rate por Mapa
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Mapas ganados / mapas jugados (Search and Destroy) — mínimo {{ $minMaps }} mapas jugados para entrar.
+                "Jugados" es aproximado: cuenta partidas donde el jugador tuvo al menos una baja o muerte registrada.
+            </p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.win-rate',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($rows->isEmpty())

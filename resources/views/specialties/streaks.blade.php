@@ -12,11 +12,19 @@
         </div>
     @endif
 
-    <div>
-        <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>🔥</span> Racha de Mapas
-        </h1>
-        <p class="text-xs text-slate-500 mt-0.5">Mapas completos ganados de forma consecutiva (Search and Destroy) — mínimo 2 seguidos para entrar</p>
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+            <h1 class="text-lg font-semibold flex items-center gap-2">
+                <span>🔥</span> Racha de Mapas
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">Mapas completos ganados de forma consecutiva (Search and Destroy) — mínimo 2 seguidos para entrar</p>
+        </div>
+
+        @include('partials.season-selector', [
+            'seasonDropdownId' => 'specialty-season-dropdown',
+            'seasonBaseRoute' => 'specialties.streaks',
+            'seasonBaseParams' => ['server' => $server?->slug],
+        ])
     </div>
 
     @if($longestEver)
