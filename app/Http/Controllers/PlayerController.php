@@ -65,6 +65,11 @@ class PlayerController extends Controller
         // solo numero agregado, mas simple de leer de un vistazo).
         $winRate = WinRateCalculator::forPlayer($player, $matchIds);
 
+        // Mapas ganados (2026-08-29, seguimiento del punto anterior -- el dueño
+        // igual pidio una seccion aparte con el desglose de partidas por mapa,
+        // no solo el numero agregado de arriba).
+        $mapsWon = WinRateCalculator::byMapForPlayer($player, $matchIds);
+
         // Reemplaza "Últimas bajas"/"Últimas muertes" (2026-08-29, a pedido del
         // dueño relayando feedback real de un jugador: esa lista cronologica era
         // "poco relevante", pedia algo mas util). Desglose COMPLETO de armas (no
@@ -129,6 +134,6 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'weaponBreakdown', 'topNemesis', 'topVictim', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapsWon', 'weaponBreakdown', 'topNemesis', 'topVictim', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
     }
 }

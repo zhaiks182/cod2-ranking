@@ -310,7 +310,11 @@
     <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="w-full max-w-3xl max-h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">Ronda</span></span>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="cod2-round-prev" onclick="cod2StepRound(-1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda anterior">‹</button>
+                    <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">Ronda</span></span>
+                    <button type="button" id="cod2-round-next" onclick="cod2StepRound(1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda siguiente">›</button>
+                </div>
                 <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="overflow-y-auto">
@@ -355,9 +359,6 @@
                                                 @endif
                                             </td>
                                             <td class="px-4 py-2 text-slate-400 flex items-center gap-1.5">
-                                                @if($iconUrl = \App\Support\WeaponCatalog::iconUrl($kill->weapon))
-                                                    <img src="{{ $iconUrl }}" alt="" class="w-4 h-4 object-contain shrink-0">
-                                                @endif
                                                 {{ \App\Support\WeaponCatalog::label($kill->weapon) }}
                                                 @if($kill->is_headshot)<span title="Headshot">🎯</span>@endif
                                                 @if($kill->is_teamkill)<span class="text-red-500 text-xs" title="Fuego amigo">FF</span>@endif
@@ -379,18 +380,45 @@
     // Cada cuadradito de la linea de tiempo abre el popup directo en esa ronda --
     // ya no hay lista de botones "Ronda N" adentro del popup (se saco a pedido del
     // dueño, 2026-08-28): la linea de tiempo de arriba ES el selector de rondas.
-    document.querySelectorAll('[data-round-jump]').forEach((link) => {
+    // Botones ‹/› + flechas del teclado (2026-08-29, a pedido del dueño: antes
+    // habia que cerrar el popup y buscar el siguiente cuadradito a mano) navegan
+    // por el mismo orden de $roundDetails, sin volver a pedir nada al server.
+    const cod2RoundLinks = Array.from(document.querySelectorAll('[data-round-jump]'));
+    let cod2CurrentRoundIdx = -1;
+
+    function cod2ShowRoundByIndex(idx) {
+        if (idx < 0 || idx >= cod2RoundLinks.length) return;
+
+        const link = cod2RoundLinks[idx];
+        const target = document.getElementById(link.dataset.roundJump);
+        if (!target) return;
+
+        document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
+        target.classList.remove('hidden');
+        document.getElementById('cod2-rounds-modal-title').textContent = 'Ronda ' + link.dataset.roundNumber;
+        document.getElementById('cod2-rounds-modal')?.classList.remove('hidden');
+
+        cod2CurrentRoundIdx = idx;
+        document.getElementById('cod2-round-prev').disabled = idx <= 0;
+        document.getElementById('cod2-round-next').disabled = idx >= cod2RoundLinks.length - 1;
+    }
+
+    function cod2StepRound(delta) {
+        cod2ShowRoundByIndex(cod2CurrentRoundIdx + delta);
+    }
+
+    cod2RoundLinks.forEach((link, idx) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-
-            const target = document.getElementById(link.dataset.roundJump);
-            if (!target) return;
-
-            document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
-            target.classList.remove('hidden');
-            document.getElementById('cod2-rounds-modal-title').textContent = 'Ronda ' + link.dataset.roundNumber;
-            document.getElementById('cod2-rounds-modal')?.classList.remove('hidden');
+            cod2ShowRoundByIndex(idx);
         });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('cod2-rounds-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        if (e.key === 'ArrowLeft') cod2StepRound(-1);
+        if (e.key === 'ArrowRight') cod2StepRound(1);
     });
 </script>
 

@@ -44,12 +44,12 @@ class WinRateCalculatorTest extends TestCase
      * @param  int[]  $winnerGuidsEachRound  Same winner_guids on all 13 rounds --
      *      enough for clusterRoundWinners() to call a 13-0 result.
      */
-    private function makeMatch(array $winnerGuidsEachRound, Player $attacker, Player $victim): GameMatch
+    private function makeMatch(array $winnerGuidsEachRound, Player $attacker, Player $victim, string $map = 'mp_toujane_fix'): GameMatch
     {
         $match = GameMatch::create([
             'server_id' => $this->server->id,
             'season_id' => 1,
-            'map' => 'mp_toujane_fix',
+            'map' => $map,
             'gametype' => 'sd',
             'started_at' => now(),
             'ended_at' => now(),
@@ -59,7 +59,7 @@ class WinRateCalculatorTest extends TestCase
             Round::create([
                 'server_id' => $this->server->id,
                 'match_id' => $match->id,
-                'map' => 'mp_toujane_fix',
+                'map' => $map,
                 'gametype' => 'sd',
                 'started_at' => now(),
                 'ended_at' => now(),
@@ -183,5 +183,43 @@ class WinRateCalculatorTest extends TestCase
 
         $this->assertSame(0, $result['played']);
         $this->assertSame(0, $result['wins']);
+    }
+
+    public function test_by_map_breaks_down_played_and_won_per_map(): void
+    {
+        $toujaneWin = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_toujane_fix');
+        $toujaneLoss = $this->makeMatch([$this->opponent->guid], $this->opponent, $this->player, 'mp_toujane_fix');
+        $burgundyWin = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_burgundy_fix');
+
+        $rows = WinRateCalculator::byMapForPlayer($this->player, collect([$toujaneWin->id, $toujaneLoss->id, $burgundyWin->id]));
+
+        $toujane = $rows->firstWhere('map', 'mp_toujane');
+        $burgundy = $rows->firstWhere('map', 'mp_burgundy');
+
+        $this->assertNotNull($toujane);
+        $this->assertSame(2, $toujane->played);
+        $this->assertSame(1, $toujane->wins);
+        $this->assertSame(50.0, $toujane->rate);
+
+        $this->assertNotNull($burgundy);
+        $this->assertSame(1, $burgundy->played);
+        $this->assertSame(1, $burgundy->wins);
+        $this->assertSame(100.0, $burgundy->rate);
+    }
+
+    public function test_by_map_merges_community_patch_variants_of_the_same_real_map(): void
+    {
+        // mp_toujane_fix and mp_toujane_bal are both community variants of the
+        // same real map -- MapCatalog::normalize() collapses both to mp_toujane,
+        // same criterion already used by mergeVariants() for "Mejores mapas".
+        $fixVariant = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_toujane_fix');
+        $balVariant = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_toujane_bal');
+
+        $rows = WinRateCalculator::byMapForPlayer($this->player, collect([$fixVariant->id, $balVariant->id]));
+
+        $this->assertSame(1, $rows->count());
+        $this->assertSame('mp_toujane', $rows->first()->map);
+        $this->assertSame(2, $rows->first()->played);
+        $this->assertSame(2, $rows->first()->wins);
     }
 }

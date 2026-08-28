@@ -129,6 +129,42 @@
         </section>
     </div>
 
+    <section>
+        <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Mapas ganados</h2>
+        <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                        <th class="px-4 py-2 font-medium">Mapa</th>
+                        <th class="px-4 py-2 font-medium text-right">Jugadas</th>
+                        <th class="px-4 py-2 font-medium text-right">Ganadas</th>
+                        <th class="px-4 py-2 font-medium text-right">Win rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($mapsWon->take(5) as $m)
+                        <tr class="border-b border-slate-800/60 last:border-0">
+                            <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($m->map) }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $m->played }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $m->wins }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $m->rate }}%</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+            </div>
+        </div>
+        @if($mapsWon->count() > 5)
+            <button type="button" onclick="document.getElementById('maps-won-modal').classList.remove('hidden')"
+                class="mt-2 text-xs text-cyan-400 hover:underline">
+                Ver todos los mapas ({{ $mapsWon->count() }}) →
+            </button>
+        @endif
+    </section>
+
     <div class="grid md:grid-cols-2 gap-6">
         <section>
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Armas</h2>
@@ -143,17 +179,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($weaponBreakdown as $w)
-                            @if($iconUrl = \App\Support\WeaponCatalog::iconUrl($w->weapon))
-                                @php $weaponIcon = $iconUrl; @endphp
-                            @else
-                                @php $weaponIcon = null; @endphp
-                            @endif
+                        @forelse($weaponBreakdown->take(5) as $w)
                             <tr class="border-b border-slate-800/60 last:border-0">
-                                <td class="px-4 py-2 flex items-center gap-1.5">
-                                    @if($weaponIcon)<img src="{{ $weaponIcon }}" alt="" class="w-4 h-4 object-contain shrink-0">@endif
-                                    {{ \App\Support\WeaponCatalog::label($w->weapon) }}
-                                </td>
+                                <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums text-cyan-300">{{ $w->kills }}</td>
                                 <td class="px-4 py-2 text-right tabular-nums">{{ $w->headshots }}</td>
                             </tr>
@@ -164,6 +192,12 @@
                 </table>
                 </div>
             </div>
+            @if($weaponBreakdown->count() > 5)
+                <button type="button" onclick="document.getElementById('weapon-modal').classList.remove('hidden')"
+                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    Ver todas las armas ({{ $weaponBreakdown->count() }}) →
+                </button>
+            @endif
         </section>
 
         <section>
@@ -250,6 +284,72 @@
                         <span class="text-xs text-slate-500 shrink-0 ml-3">{{ $alias->last_seen_at->diffForHumans() }}</span>
                     </div>
                 @endforeach
+            </div>
+        </div>
+    </div>
+@endif
+
+@if($mapsWon->count() > 5)
+    <div id="maps-won-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+        onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-sm font-semibold">Todos los mapas ({{ $mapsWon->count() }})</span>
+                <button type="button" onclick="document.getElementById('maps-won-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+            </div>
+            <div class="overflow-y-auto overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Mapa</th>
+                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($mapsWon as $m)
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($m->map) }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $m->played }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $m->wins }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $m->rate }}%</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if($weaponBreakdown->count() > 5)
+    <div id="weapon-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+        onclick="if(event.target === this) this.classList.add('hidden')">
+        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-sm font-semibold">Todas las armas ({{ $weaponBreakdown->count() }})</span>
+                <button type="button" onclick="document.getElementById('weapon-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+            </div>
+            <div class="overflow-y-auto overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Arma</th>
+                            <th class="px-4 py-2 font-medium text-right">Kills</th>
+                            <th class="px-4 py-2 font-medium text-right">Headshots</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($weaponBreakdown as $w)
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">{{ $w->kills }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums">{{ $w->headshots }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

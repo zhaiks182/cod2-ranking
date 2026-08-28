@@ -2710,6 +2710,58 @@ Batch de pedidos del dueño relayando feedback de jugadores.
   `curl` contra un jugador real (`/jugadores/-1106466662`): card de Win rate muestra
   "45.7% (16/35)".
 
+## Iconos de armas sacados, "Mapas ganados" en el perfil, y navegación ‹/› en el popup de rondas (2026-08-29)
+
+Tres pedidos del dueño el mismo día del batch anterior.
+
+- **Iconos de armas sacados de dos lugares** (a pedido explícito, "eso elimina"):
+  la tabla "Armas" del perfil de jugador (`players/show.blade.php`) y la columna
+  Arma del grid por ronda en `/partidas/{id}` (`matches/show.blade.php`) — ambos
+  usaban `WeaponCatalog::iconUrl()`, que sigue existiendo (no se tocó el
+  método) por si algún otro lugar la necesita en el futuro, solo se dejó de
+  invocar en estos dos `<img>`.
+- **"Ver todas las armas"** — la tabla "Armas" del perfil ahora trunca a 5 filas
+  (antes mostraba el desglose completo sin límite) con un botón que abre un
+  modal con la lista completa, mismo patrón exacto que ya usan "Ver todos los
+  mapas" y "Ver todos los alias" en esa misma página.
+- **Nueva sección "Mapas ganados"** en el perfil de jugador — partidas
+  jugadas/ganadas/win rate por mapa (no solo el número agregado de la card de
+  arriba). `WinRateCalculator::forPlayer()` se refactorizó para compartir su
+  query de "partidas SD donde el jugador participó, con ganador determinable"
+  vía un método privado nuevo (`decidedMatchesForPlayer()`), y
+  `WinRateCalculator::byMapForPlayer()` (nuevo) agrupa esas mismas partidas por
+  `MapCatalog::normalize($match->map)` — variantes comunitarias del mismo mapa
+  real (`mp_toujane_fix`/`mp_toujane_bal`) se fusionan en una sola fila, mismo
+  criterio que `MapCatalog::mergeVariants()` ya usa para "Mejores mapas". Mismo
+  patrón de truncar a 5 + modal "Ver todos los mapas" que el resto de la
+  página. **Nombre coincide por casualidad con la página ya existente
+  `/mapas-ganados`** (`SpecialtyController::mapsWon()`, nav "Mapas y
+  partidas") — son cálculos independientes y con alcance distinto (esa es un
+  ranking global de "quién ganó más veces cada mapa", esta sección es el
+  propio historial de un jugador) — no se unificaron ni se renombró ninguna
+  de las dos.
+- **Navegación ‹/› en el popup de rondas de `/partidas/{id}`** (pedido del
+  dueño: antes había que cerrar el popup y volver a buscar el siguiente
+  cuadradito de la línea de tiempo) — dos botones en el header del modal
+  (`cod2-round-prev`/`cod2-round-next`, deshabilitados en los extremos) más
+  flechas del teclado (←/→, solo mientras el modal está abierto). JS vanilla,
+  sin librerías: recorre el mismo array de `[data-round-jump]` en el orden ya
+  existente del DOM (mismo orden que `$roundDetails`), sin pedir nada nuevo al
+  server. El listener de click de cada cuadradito de la línea de tiempo se
+  reescribió para compartir la misma función (`cod2ShowRoundByIndex()`) que
+  los botones ‹/›, en vez de tener dos caminos separados para "abrir una
+  ronda".
+- TDD: `tests/Feature/Support/WinRateCalculatorTest.php` ganó 2 casos
+  (desglose por mapa correcto entre partidas ganadas/perdidas en distintos
+  mapas; fusión de variantes de parche comunitario del mismo mapa real).
+  Verificado junto a `MatchRoundDetailsTest`/`PlayerShowSeasonTest` y la
+  suite completa en un clone descartable del VPS: 168/170 tests, mismos 2
+  fallos preexistentes sin relación. Desplegado a producción, verificado con
+  `curl` contra un jugador real: sin `<img>` de armas en el perfil ni en el
+  grid de rondas, sección "Mapas ganados" con datos reales (ej. "St. Mere
+  Eglise, France · 9 jugadas · 6 ganadas · 66.7%"), botones/JS del popup de
+  rondas presentes en el HTML de una partida real.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
