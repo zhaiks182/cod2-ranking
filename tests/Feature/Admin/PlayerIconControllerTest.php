@@ -88,6 +88,32 @@ class PlayerIconControllerTest extends TestCase
         $this->assertNull($player->fresh()->icon_path);
     }
 
+    /**
+     * Bug real (2026-08-28): un fallo de escritura en disco (permisos) dejaba
+     * la fila con icon_path apuntando a un archivo que nunca se creo -- ícono
+     * roto en el sitio, sin ningun aviso para el admin que lo subio. Ahora
+     * PlayerIcon::store() lanza y el controller lo convierte en un error de
+     * formulario en vez de un 500 crudo o un exito falso.
+     */
+    public function test_store_shows_a_form_error_instead_of_a_broken_icon_when_the_disk_write_fails(): void
+    {
+        $admin = User::factory()->create();
+        $player = Player::create(['guid' => 1, 'last_name' => 'X', 'last_name_plain' => 'X']);
+
+        $failingDisk = \Mockery::mock();
+        $failingDisk->shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($failingDisk);
+
+        $response = $this->actingAs($admin)->post(route('admin.players.icons.store', $player), [
+            'icon' => $this->fakeImage(),
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors();
+        $this->assertNull($player->fresh()->icon_path);
+        $this->assertDatabaseMissing('admin_actions', ['action' => 'players.icon-upload']);
+    }
+
     public function test_destroy_removes_the_icon_and_audits_it(): void
     {
         $admin = User::factory()->create();

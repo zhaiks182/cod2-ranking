@@ -7,6 +7,7 @@ use App\Models\AdminAction;
 use App\Models\Player;
 use App\Support\PlayerIcon;
 use Illuminate\Http\Request;
+use RuntimeException;
 
 /**
  * Iconos personalizados por jugador (2026-08-28) -- generaliza el chiste
@@ -31,7 +32,11 @@ class PlayerIconController extends Controller
             'icon' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,webp', 'max:5120'],
         ]);
 
-        PlayerIcon::store($player, $request->file('icon'));
+        try {
+            PlayerIcon::store($player, $request->file('icon'));
+        } catch (RuntimeException $e) {
+            return back()->withErrors($e->getMessage());
+        }
 
         AdminAction::record('players.icon-upload', "Subió un ícono para \"{$player->last_name_plain}\" (guid {$player->guid})");
 

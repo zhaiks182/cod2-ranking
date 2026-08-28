@@ -105,4 +105,35 @@ class PlayerIconTest extends TestCase
 
         $this->assertNull($player->icon_url);
     }
+
+    /**
+     * Bug real (2026-08-28), encontrado en vivo con la subida real de un
+     * jugador: Storage::put() devuelve false en un fallo (permisos, disco
+     * lleno) en vez de lanzar una excepcion -- store() ignoraba ese valor de
+     * retorno y actualizaba icon_path igual, dejando la fila apuntando a un
+     * archivo que nunca se creo (icono roto en el sitio, sin ningun error
+     * visible para el admin que lo subio). Causa raiz real de ese incidente:
+     * el directorio player-icons habia quedado con permisos de root de una
+     * migracion anterior corrida por SSH, asi que www-data no podia escribir
+     * ahi -- ver tambien la leccion ya documentada sobre probar como www-data,
+     * no como root, en "Servidores temporales self-service" del CLAUDE.md.
+     */
+    public function test_store_throws_and_does_not_touch_the_database_if_the_disk_write_fails(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'A', 'last_name_plain' => 'A']);
+
+        $failingDisk = \Mockery::mock();
+        $failingDisk->shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($failingDisk);
+
+        $thrown = null;
+        try {
+            PlayerIcon::store($player, $this->fakeImage(100, 100));
+        } catch (\RuntimeException $e) {
+            $thrown = $e;
+        }
+
+        $this->assertNotNull($thrown, 'PlayerIcon::store() must throw when the disk write fails.');
+        $this->assertNull($player->fresh()->icon_path, 'icon_path must never point at a file that was never written.');
+    }
 }

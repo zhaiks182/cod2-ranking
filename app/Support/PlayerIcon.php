@@ -55,10 +55,25 @@ class PlayerIcon
         $contents = ob_get_clean();
         imagedestroy($resized);
 
-        self::destroy($player);
-
+        // El path es siempre "{player_id}.png" (nombre fijo) -- guardar acá
+        // pisa directo cualquier icono anterior de este jugador, no hace falta
+        // borrar uno viejo antes. Importante hacerlo en este orden: escribir
+        // PRIMERO y solo actualizar la columna si Storage::put() confirma que
+        // el archivo quedo escrito -- put() devuelve false en un fallo (permisos,
+        // disco lleno) en vez de lanzar una excepcion, y antes este metodo
+        // ignoraba ese valor de retorno: la fila quedaba con icon_path apuntando
+        // a un archivo que nunca se creo, mostrando un icono roto en el sitio en
+        // vez de un error visible para el admin (encontrado en vivo 2026-08-28,
+        // con la subida real de un jugador -- el directorio player-icons habia
+        // quedado con permisos de root de una migracion anterior corrida por
+        // SSH, asi que www-data no podia escribir ahi y el fallo pasaba
+        // desapercibido).
         $path = self::DISK_DIR.'/'.$player->id.'.png';
-        Storage::disk('public')->put($path, $contents);
+        $written = Storage::disk('public')->put($path, $contents);
+
+        if (! $written) {
+            throw new RuntimeException('No se pudo guardar el ícono en el servidor (revisar permisos de storage/app/public/player-icons).');
+        }
 
         $player->update(['icon_path' => $path]);
     }

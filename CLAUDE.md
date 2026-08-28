@@ -3075,6 +3075,67 @@ un módulo de admin nuevo en vez de vivir pegado al código de cada view.
   confirmación de que la ruta está protegida y registrada
   (`route:list`, redirect 302 sin sesión).
 
+## Bug real y urgente: ícono roto para el primer jugador real que lo probó (2026-08-28)
+
+Mismo día del módulo de arriba — el dueño reportó "el ícono que le subí a
+GenuineuPP. aparece como imagen tipo error" apenas lo probó de verdad.
+
+**Causa raíz, encontrada en producción:** `storage/app/public/player-icons`
+había quedado con dueño `root:root` (`755`) en vez de `www-data:www-data` —
+porque el directorio se creó la primera vez que corrí `PlayerIcon::store()`
+por SSH como `root` (migrando el burro de harek, entrada anterior), y ese
+proceso "dueño" el directorio. La subida real de GenuineuPP. vino del form
+web de verdad (Apache/PHP-FPM corriendo como `www-data`), que no tenía
+permiso de escritura ahí — **exactamente la misma lección ya documentada en
+"Servidores temporales self-service" sobre probar como `www-data`, no como
+`root`**, y caí en la misma trampa en este módulo por no releerla antes de
+armar el Task.
+
+**Bug de código real, independiente del permiso, que agravó el síntoma:**
+`Storage::disk('public')->put()` devuelve `false` en un fallo (permisos,
+disco lleno) en vez de lanzar una excepción — `PlayerIcon::store()` ignoraba
+ese valor de retorno y actualizaba `icon_path` en la fila de todas formas.
+Resultado: la base decía "este jugador tiene ícono" apuntando a un archivo
+que nunca se creó — ícono roto visible en el sitio, sin ningún error para el
+admin que lo subió (ni un 500, ni un mensaje — el form devolvía "éxito").
+Solo `dtN.harek` tenía un ícono real funcionando; `GenuineuPP.` era la
+**primera subida real por el form web**, así que fue la primera en topar con
+el bug.
+
+- **Fix de infraestructura:** `chown -R www-data:www-data
+  storage/app/public/player-icons` en el VPS — confirmado con
+  `sudo -u www-data touch` que ya puede escribir ahí.
+- **Fix de código en `PlayerIcon::store()`:** se saca el `self::destroy($player)`
+  redundante que corría ANTES de escribir el archivo nuevo (el path es
+  siempre `{player_id}.png`, nombre fijo — `put()` ya pisa el archivo
+  anterior directo, no hacía falta borrar nada antes) y ahora se revisa el
+  valor de retorno de `put()`: si es `false`, lanza `RuntimeException` y
+  **nunca llega a tocar `icon_path`** — sin este orden (escribir primero,
+  solo actualizar la columna si se confirma), un fallo de escritura en un
+  reemplazo de ícono existente hubiera sido peor: el viejo se borraba, el
+  nuevo fallaba, y el jugador se quedaba sin ninguno de los dos.
+- **`Admin\PlayerIconController::store()`** atrapa esa excepción y la
+  convierte en un error de formulario (`withErrors`) en vez de un 500 crudo
+  o un "éxito" falso — la vista ya tenía el bloque `@if($errors->any())`
+  desde el principio, solo faltaba que el controller lo alimentara en este
+  camino.
+- **El registro roto de GenuineuPP. se limpió a mano** (`icon_path` puesto
+  en `null` vía tinker) — no había forma de recuperar el archivo que nunca
+  llegó a crearse, así que la única opción real era que el ícono roto
+  desapareciera del sitio y el dueño lo vuelva a subir (ahora sí va a
+  funcionar, con el permiso corregido).
+- TDD: 2 casos nuevos de regresión — `PlayerIconTest::test_store_throws_and_does_not_touch_the_database_if_the_disk_write_fails`
+  (mockea `Storage::disk('public')->put()` para que devuelva `false`,
+  confirma la excepción y que `icon_path` nunca se toca) y
+  `PlayerIconControllerTest::test_store_shows_a_form_error_instead_of_a_broken_icon_when_the_disk_write_fails`
+  (mismo mock a nivel de controller, confirma error de sesión en vez de
+  éxito falso, y que no queda una `AdminAction` de un upload que en
+  realidad falló). Verificado junto a la suite completa en un clone
+  descartable del VPS: 190/192 tests, mismos 2 fallos preexistentes sin
+  relación. Desplegado a producción, verificado con `sudo -u www-data
+  touch` (permiso de escritura confirmado) y `curl` contra `/ranking`
+  (el ícono roto de GenuineuPP. ya no aparece).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
