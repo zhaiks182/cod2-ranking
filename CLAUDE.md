@@ -2315,34 +2315,57 @@ directo cada vez.
 
 Seguimiento directo del módulo de fusión de arriba: el dueño preguntó si
 `/adm_cod2` tenía algo para borrar un jugador cualquiera (no solo limpiar el
-`ip` como ya hacía "Países") — no existía, y se armó.
+`ip` como ya hacía "Países") — no existía, y se armó. **Primera versión vivía
+como un botón dentro de `/adm_cod2/jugadores/fusionar`; el dueño pidió
+sacarlo de ahí y hacerlo un módulo independiente**, con el listado completo
+de jugadores (no depender de buscar primero) y doble confirmación en vez de
+una sola — rehecho así mismo día, antes de que la primera versión llegara a
+usarse.
 
-- **`Admin\PlayerController::destroy()`** (nuevo) — `$player->delete()` sin
-  más. Nada de cascada custom hecha a mano (a diferencia de `PlayerMerger`,
-  que sí tuvo que sumar filas para no romper los `unique(player_id, X)`):
-  acá no hace falta, porque el esquema ya está diseñado para esto desde que
-  se crearon las tablas — `kills.attacker_player_id`/`victim_player_id`,
-  `chat_messages.player_id`, `bans.player_id`, `demos.player_id` son todos
-  `nullOnDelete()`, así que el kill/mensaje/ban/demo sobrevive con el
-  `guid`/nombre crudo tal cual estaba (misma lógica que ya usan los kills de
-  un bot, `guid=0` sin `player_id`) — el jugador borrado simplemente deja de
-  sumar a ningún ranking, pero no desaparece del historial de partidas. Lo
-  que sí se pierde (`cascadeOnDelete()`, correcto — no tiene sentido sin el
-  jugador): `player_aliases`, `player_map_stats`, `player_server_stats`,
+- **`Admin\PlayerDeleteController`** (nuevo, controller propio — antes vivía
+  el método `destroy()` dentro de `Admin\PlayerController`, se movió acá para
+  que el módulo sea de verdad independiente, no solo visualmente). `index()`
+  lista **todos** los jugadores (`Player::with('aliases')->orderByDesc('last_seen_at')->get()`,
+  sin filtrar por `ip` como sí hace `/paises`) — mismas columnas que la
+  tarjeta de fusión (guid, alias, kills/deaths, primera/última vez visto)
+  pero en tabla completa. `destroy()` (misma lógica que antes, sin cambios):
+  `$player->delete()` sin cascada custom a mano (a diferencia de
+  `PlayerMerger`, que sí tuvo que sumar filas para no romper los
+  `unique(player_id, X)`) — no hace falta acá porque el esquema ya está
+  diseñado para esto desde que se crearon las tablas:
+  `kills.attacker_player_id`/`victim_player_id`, `chat_messages.player_id`,
+  `bans.player_id`, `demos.player_id` son todos `nullOnDelete()`, así que el
+  kill/mensaje/ban/demo sobrevive con el `guid`/nombre crudo tal cual estaba
+  (misma lógica que ya usan los kills de un bot, `guid=0` sin `player_id`) —
+  el jugador borrado simplemente deja de sumar a ningún ranking, pero no
+  desaparece del historial de partidas. Lo que sí se pierde
+  (`cascadeOnDelete()`, correcto — no tiene sentido sin el jugador):
+  `player_aliases`, `player_map_stats`, `player_server_stats`,
   `player_weapon_picks`, `player_match_extras`.
-- Ruta `DELETE /adm_cod2/jugadores/{player}` (bind por `id`, no por `guid` —
-  mismo patrón que `/paises/{player}`). Botón "Borrar jugador" agregado a
-  cada tarjeta de `/adm_cod2/jugadores/fusionar` (reusa la búsqueda por
-  nombre/alias que ya existía ahí, sin armar una pantalla nueva) — confirm()
-  explícito avisando qué sobrevive y qué no. Auditado vía
-  `AdminAction::record('players.destroy', ...)`, guardando nombre/guid/kills
-  en la descripción porque la fila va a desaparecer.
-- TDD: `tests/Feature/Admin/PlayerDestroyTest.php` (2 casos: guest
-  redirigido a login; borrar deja el kill con `attacker_player_id=null` pero
-  `attacker_guid`/`attacker_name` intactos, borra el alias, audita).
-  Verificado en un clone descartable del VPS: 2/2 nuevos, suite completa 143
-  tests/527 assertions, mismos 2 fallos preexistentes sin relación.
-  Desplegado, ruta confirmada con `route:list`.
+- Rutas propias, separadas de fusión: `GET /adm_cod2/jugadores/borrar`
+  (listado) y `DELETE /adm_cod2/jugadores/borrar/{player}` (bind por `id`,
+  no por `guid` — mismo patrón que `/paises/{player}`). Link "Borrar
+  jugadores" agregado al dropdown Moderación, al lado de "Fusionar
+  jugadores" pero como entrada separada.
+- **Doble confirmación real** (a pedido explícito, no una sola `confirm()`
+  como el resto del panel): dos `confirm()` de JS encadenados en el submit
+  del form — el primero resume qué se pierde, el segundo es la advertencia
+  final de "no se puede deshacer"; cualquiera de los dos que se cancele
+  aborta el submit (`e.preventDefault()`).
+- Auditado vía `AdminAction::record('players.destroy', ...)`, guardando
+  nombre/guid/kills en la descripción porque la fila va a desaparecer (sin
+  cambios respecto a la primera versión).
+- TDD: `tests/Feature/Admin/PlayerDeleteControllerTest.php` (3 casos: guest
+  redirigido a login tanto en `index` como en `destroy`; el listado muestra
+  jugadores sin `ip` — a diferencia de `/paises`, que los excluye; borrar
+  deja el kill con `attacker_player_id=null` pero `attacker_guid`/
+  `attacker_name` intactos, borra el alias, audita). El test viejo
+  (`PlayerDestroyTest.php`, apuntaba a la ruta `admin.players.destroy` ya
+  eliminada) se borró, no solo se dejó sin usar. Verificado en un clone
+  descartable del VPS: 12/12 tests relacionados en verde, suite completa 144
+  tests/531 assertions, mismos 2 fallos preexistentes sin relación.
+  Desplegado, rutas confirmadas con `route:list`, listado verificado
+  renderizando con los 69 jugadores reales vía `tinker`.
 
 ## Pendientes / conocido-roto
 

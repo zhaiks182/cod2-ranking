@@ -12,6 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
+ * Modulo independiente (2026-08-28, a pedido del dueño) -- antes era un botón
+ * dentro de /adm_cod2/jugadores/fusionar, se separó a su propia pantalla con
+ * el listado completo de jugadores (no depende de buscar primero).
+ *
  * Borrar un jugador no debe borrar el historial de partidas -- kills.*_player_id
  * usa nullOnDelete() (misma familia que demos.match_id, ver
  * MatchDestroyDeletesDemosTest), así que el kill sobrevive con el guid/nombre
@@ -19,17 +23,29 @@ use Tests\TestCase;
  * player_id). Lo que sí desaparece es lo que solo existe para sostener ESE
  * player_id: alias y los acumuladores cacheados (cascadeOnDelete).
  */
-class PlayerDestroyTest extends TestCase
+class PlayerDeleteControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guests_are_redirected_to_login(): void
+    public function test_guests_are_redirected_to_login_for_both_index_and_destroy(): void
     {
         $player = Player::create(['guid' => 1, 'last_name' => 'X', 'last_name_plain' => 'X', 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
 
-        $this->delete(route('admin.players.destroy', $player))->assertRedirect(route('admin.login'));
+        $this->get(route('admin.players.delete.index'))->assertRedirect(route('admin.login'));
+        $this->delete(route('admin.players.delete.destroy', $player))->assertRedirect(route('admin.login'));
 
         $this->assertDatabaseHas('players', ['id' => $player->id]);
+    }
+
+    public function test_index_lists_every_player_not_just_ones_with_ip(): void
+    {
+        $admin = User::factory()->create();
+        $player = Player::create(['guid' => 1, 'last_name' => 'SinIP', 'last_name_plain' => 'SinIP', 'ip' => null, 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+
+        $response = $this->actingAs($admin)->get(route('admin.players.delete.index'));
+
+        $response->assertOk();
+        $response->assertSee('SinIP');
     }
 
     public function test_destroying_a_player_keeps_their_kills_in_history_with_the_raw_guid_and_name(): void
@@ -51,7 +67,7 @@ class PlayerDestroyTest extends TestCase
         ]);
         $player->aliases()->create(['name' => 'Genuine', 'name_plain' => 'Genuine', 'last_seen_at' => now()]);
 
-        $this->actingAs($admin)->delete(route('admin.players.destroy', $player))->assertRedirect();
+        $this->actingAs($admin)->delete(route('admin.players.delete.destroy', $player))->assertRedirect();
 
         $this->assertDatabaseMissing('players', ['id' => $player->id]);
         $this->assertDatabaseMissing('player_aliases', ['player_id' => $player->id]);

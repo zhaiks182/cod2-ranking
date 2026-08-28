@@ -40,26 +40,4 @@ class PlayerController extends Controller
 
         return back()->with('status', "Se quitó el país de \"{$player->last_name_plain}\".");
     }
-
-    /**
-     * Borra la fila del jugador -- sus kills/chat/bans/demos NO se borran (las
-     * FK son nullOnDelete, ver migraciones de esas tablas), quedan en el
-     * historial con el guid/nombre tal cual estaban en el momento, igual que ya
-     * pasa con los kills de un bot (guid=0, sin player_id). Lo que sí se pierde
-     * es lo que solo existe para sostener ESE player_id: alias
-     * (cascadeOnDelete) y los acumuladores cacheados
-     * (player_map_stats/player_server_stats/player_weapon_picks/
-     * player_match_extras, todos cascadeOnDelete) -- ninguno tiene sentido sin
-     * el jugador al que pertenecen.
-     */
-    public function destroy(Player $player)
-    {
-        $label = "{$player->last_name_plain} (guid {$player->guid}, {$player->kills_total} kills)";
-
-        $player->delete();
-
-        AdminAction::record('players.destroy', "Borro al jugador \"{$label}\"");
-
-        return back()->with('status', "Se borró a \"{$label}\". Sus kills/chat/demos quedan en el historial sin asociar a ningún perfil.");
-    }
 }

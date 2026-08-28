@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PlayerController as AdminPlayerController;
+use App\Http\Controllers\Admin\PlayerDeleteController;
 use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
@@ -144,7 +145,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/jugadores/fusionar', [PlayerMergeController::class, 'index'])->name('players.merge.index');
         Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
-        Route::delete('/jugadores/{player}', [AdminPlayerController::class, 'destroy'])->name('players.destroy');
+
+        Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
+        Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');

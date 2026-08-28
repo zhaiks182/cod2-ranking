@@ -66,12 +66,6 @@
                                     <button type="button" class="merge-add rounded-full w-6 h-6 leading-none text-cyan-400 border border-cyan-800 hover:bg-cyan-900/40" title="Agregar al grupo">+</button>
                                 </div>
                             </div>
-                            <form method="POST" action="{{ route('admin.players.destroy', $player) }}" class="mt-1.5 text-right"
-                                onsubmit="return confirm('¿Borrar a {{ $player->last_name_plain }} (guid {{ $player->guid }})? Sus kills quedan en el historial sin dueño, como los de un bot, pero sus alias y stats cacheadas se pierden. No se puede deshacer.')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-[11px] text-red-500 hover:underline">Borrar jugador</button>
-                            </form>
                         </div>
                     @endforeach
                 </div>
