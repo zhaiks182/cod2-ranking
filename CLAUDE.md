@@ -2289,6 +2289,24 @@ directo cada vez.
   contra "MOKOS" probada por tinker (sin ejecutar ningún merge real todavía —
   la fusión de los perfiles reales de MOKOS/Dav1Ds queda para cuando el dueño
   la dispare desde el panel).
+- **UI rehecha a drag-and-drop (mismo día, a pedido del dueño).** La tabla de
+  checkboxes/radios se reemplazó por dos columnas: resultados como tarjetas
+  arrastrables (`draggable="true"`, vainilla JS, sin librería) a la izquierda,
+  y una "zona de destino" a la derecha donde se sueltan las que son la misma
+  persona — cada tarjeta soltada muestra una ★ (toca para marcarla como
+  destino, la primera entra por default) y una × para sacarla del grupo.
+  Fallback de accesibilidad/touch: cada tarjeta también tiene un botón `+`
+  que hace exactamente lo mismo que arrastrarla (drag-and-drop nativo de
+  HTML5 no anda en touch ni es accesible por teclado). El submit sigue
+  mandando los mismos `source_ids[]`/`target_id` de siempre — la UI nueva
+  solo cambia cómo se arman esos campos client-side (inputs hidden generados
+  por JS), así que el controller/`PlayerMerger` no cambiaron y los tests de
+  backend siguen siendo válidos tal cual. Verificado renderizando la vista
+  real con datos reales de "MOKOS" vía `tinker` antes de desplegar (sin
+  tocar el navegador, sin poder correr Dusk/JS en este entorno) — confirma
+  que compila y trae el guid/nombre correctos en los `data-*`, no que el
+  drag-and-drop en sí funcione en un navegador real (eso queda para que el
+  dueño lo prueble).
 
 ## Pendientes / conocido-roto
 
