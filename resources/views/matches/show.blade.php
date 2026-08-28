@@ -128,7 +128,7 @@
             ronda -- ver data-round-jump en el script al final del archivo. --}}
             <div class="flex flex-wrap items-center gap-1">
                 @foreach($roundDetails as $rd)
-                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}"
+                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}" data-round-winner="{{ $rd->winningSide }}"
                         title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
                         class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
                             {{ match($rd->winningSide) { 'axis' => 'bg-red-900/70 text-red-300', 'allies' => 'bg-blue-900/70 text-blue-300', default => 'bg-slate-800 text-slate-500' } }}
@@ -307,12 +307,13 @@
 </div>
 
 @if($roundDetails->isNotEmpty())
-    <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-3xl h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+    <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="w-full max-w-3xl max-h-[calc(100vh-8rem)] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2">
                     <button type="button" id="cod2-round-prev" onclick="cod2StepRound(-1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda anterior">‹</button>
                     <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">Ronda</span></span>
+                    <span id="cod2-rounds-modal-winner" class="px-1.5 py-0.5 rounded text-[10px] font-medium hidden"></span>
                     <button type="button" id="cod2-round-next" onclick="cod2StepRound(1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda siguiente">›</button>
                 </div>
                 <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
@@ -396,6 +397,16 @@
         document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
         target.classList.remove('hidden');
         document.getElementById('cod2-rounds-modal-title').textContent = 'Ronda ' + link.dataset.roundNumber;
+
+        const winnerEl = document.getElementById('cod2-rounds-modal-winner');
+        const winner = link.dataset.roundWinner;
+        if (winner === 'axis' || winner === 'allies') {
+            winnerEl.textContent = (winner === 'axis' ? 'Axis' : 'Allies') + ' ganó';
+            winnerEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-medium ' + (winner === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300');
+        } else {
+            winnerEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-medium hidden';
+        }
+
         document.getElementById('cod2-rounds-modal')?.classList.remove('hidden');
 
         cod2CurrentRoundIdx = idx;
