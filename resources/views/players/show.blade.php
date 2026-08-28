@@ -132,18 +132,35 @@
     <div class="grid md:grid-cols-2 gap-6">
         <section>
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
-                @forelse($matchHistory->take(5) as $h)
-                    <a href="{{ route('matches.show', $h->match->id) }}" class="px-3 py-1.5 flex items-center justify-between text-xs hover:bg-slate-800/30">
-                        <span class="flex items-center gap-1.5 min-w-0">
-                            <span class="px-1 py-0.5 rounded text-[9px] font-medium shrink-0 {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'G' : 'P' }}</span>
-                            <span class="truncate">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</span>
-                        </span>
-                        <span class="text-slate-500 shrink-0 ml-2">{{ $h->match->started_at->diffForHumans(null, null, true) }}</span>
-                    </a>
-                @empty
-                    <div class="px-4 py-4 text-center text-slate-500 text-sm">Sin partidas con resultado registrado todavía.</div>
-                @endforelse
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Mapa</th>
+                            <th class="px-4 py-2 font-medium text-right">Resultado</th>
+                            <th class="px-4 py-2 font-medium text-right">Marcador</th>
+                            <th class="px-4 py-2 font-medium text-right">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($matchHistory->take(5) as $h)
+                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                                <td class="px-4 py-2">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->diffForHumans() }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                </div>
             </div>
             @if($matchHistory->count() > 5)
                 <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
@@ -322,21 +339,36 @@
 @if($matchHistory->count() > 5)
     <div id="match-history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
         onclick="if(event.target === this) this.classList.add('hidden')">
-        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+        <div class="w-full max-w-lg max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <span class="text-sm font-semibold">Todo el historial ({{ $matchHistory->count() }})</span>
                 <button type="button" onclick="document.getElementById('match-history-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-            <div class="overflow-y-auto divide-y divide-slate-800/60">
-                @foreach($matchHistory as $h)
-                    <a href="{{ route('matches.show', $h->match->id) }}" class="px-4 py-2.5 flex items-center justify-between text-sm hover:bg-slate-800/30">
-                        <span class="flex items-center gap-2">
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
-                            <span>{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</span>
-                        </span>
-                        <span class="text-xs text-slate-500 shrink-0 ml-3">{{ $h->match->started_at->diffForHumans() }}</span>
-                    </a>
-                @endforeach
+            <div class="overflow-y-auto overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Mapa</th>
+                            <th class="px-4 py-2 font-medium text-right">Resultado</th>
+                            <th class="px-4 py-2 font-medium text-right">Marcador</th>
+                            <th class="px-4 py-2 font-medium text-right">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($matchHistory as $h)
+                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                                <td class="px-4 py-2">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
+                                </td>
+                                <td class="px-4 py-2 text-right">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->diffForHumans() }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
