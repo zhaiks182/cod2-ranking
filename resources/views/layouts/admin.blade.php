@@ -44,12 +44,12 @@
                     nav publico (layouts/app.blade.php), agrupados asi (2026-08-24) porque
                     10 links sueltos en una fila se saturaban. --}}
                     <div class="relative">
-                        <button type="button" data-content-toggle onclick="document.getElementById('admin-content-dropdown').classList.toggle('hidden')"
+                        <button type="button" data-dropdown-toggle="admin-content-dropdown"
                             class="text-slate-300 hover:text-gsaccent flex items-center gap-1">
                             Contenido
                             <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div id="admin-content-dropdown" class="hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <div id="admin-content-dropdown" class="admin-dropdown hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                             <a href="{{ route('admin.matches.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Partidas</a>
                             <a href="{{ route('admin.demos.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Demos</a>
                             <a href="{{ route('admin.maps.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Mapas</a>
@@ -58,12 +58,12 @@
                     </div>
 
                     <div class="relative">
-                        <button type="button" data-moderation-toggle onclick="document.getElementById('admin-moderation-dropdown').classList.toggle('hidden')"
+                        <button type="button" data-dropdown-toggle="admin-moderation-dropdown"
                             class="text-slate-300 hover:text-gsaccent flex items-center gap-1">
                             Moderación
                             <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div id="admin-moderation-dropdown" class="hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <div id="admin-moderation-dropdown" class="admin-dropdown hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                             <a href="{{ route('admin.bans.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Bans</a>
                             <a href="{{ route('admin.players.merge.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Fusionar jugadores</a>
                             <a href="{{ route('admin.players.delete.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Borrar jugadores</a>
@@ -72,12 +72,12 @@
                     </div>
 
                     <div class="relative">
-                        <button type="button" data-system-toggle onclick="document.getElementById('admin-system-dropdown').classList.toggle('hidden')"
+                        <button type="button" data-dropdown-toggle="admin-system-dropdown"
                             class="text-slate-300 hover:text-gsaccent flex items-center gap-1">
                             Sistema
                             <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                         </button>
-                        <div id="admin-system-dropdown" class="hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <div id="admin-system-dropdown" class="admin-dropdown hidden absolute left-0 mt-2 w-40 bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                             <a href="{{ route('admin.seasons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Temporadas</a>
                             <a href="{{ route('admin.backups.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Respaldos</a>
                             <a href="{{ route('admin.discord.edit') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Discord</a>
@@ -104,5 +104,28 @@
         @endif
         @yield('content')
     </main>
+
+    <script>
+        // Los 3 dropdowns del nav (Contenido/Moderación/Sistema) son independientes
+        // entre si -- cada toggle() solo miraba SU propio dropdown, asi que abrir uno
+        // nunca cerraba los demas y quedaban varios abiertos a la vez a la vez
+        // (reportado 2026-08-28). Un solo listener delegado: abre el que se tocó,
+        // cierra el resto, y cierra todo si se hace click afuera.
+        document.querySelectorAll('[data-dropdown-toggle]').forEach((button) => {
+            button.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const target = document.getElementById(button.dataset.dropdownToggle);
+                const wasOpen = !target.classList.contains('hidden');
+
+                document.querySelectorAll('.admin-dropdown').forEach((d) => d.classList.add('hidden'));
+
+                if (!wasOpen) target.classList.remove('hidden');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.admin-dropdown').forEach((d) => d.classList.add('hidden'));
+        });
+    </script>
 </body>
 </html>
