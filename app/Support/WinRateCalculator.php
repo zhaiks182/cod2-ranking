@@ -99,4 +99,18 @@ class WinRateCalculator
             ->sortByDesc('played')
             ->values();
     }
+
+    /**
+     * Historial cronologico (mas reciente primero) de las mismas partidas
+     * decididas de arriba, sin agrupar -- una fila por partida, para que el
+     * perfil pueda mostrar "cuando" se jugo cada una, no solo el total.
+     *
+     * @return Collection<int, object{match: GameMatch, won: bool}>
+     */
+    public static function matchHistoryForPlayer(Player $player, Collection $matchIds): Collection
+    {
+        return self::decidedMatchesForPlayer($player, $matchIds)
+            ->sortByDesc(fn ($row) => $row->match->started_at)
+            ->values();
+    }
 }

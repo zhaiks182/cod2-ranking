@@ -2762,6 +2762,30 @@ Tres pedidos del dueño el mismo día del batch anterior.
   Eglise, France · 9 jugadas · 6 ganadas · 66.7%"), botones/JS del popup de
   rondas presentes en el HTML de una partida real.
 
+## Historial de partidas en el perfil de jugador (2026-08-29)
+
+Seguimiento directo de "Mapas ganados" de arriba — el dueño preguntó si esa
+sección mostraba también el historial partida por partida, no solo los
+totales agregados por mapa. No lo hacía; se agregó.
+
+- `WinRateCalculator::decidedMatchesForPlayer()` (privado, ya existía como
+  base compartida de `forPlayer()`/`byMapForPlayer()`) ya devolvía exactamente
+  la forma que hacía falta (`{match, won}` por partida) — `matchHistoryForPlayer()`
+  (nuevo, público) es solo ese mismo resultado ordenado por `started_at` desc,
+  sin agrupar por mapa.
+- Nueva sección "Historial de partidas" en el perfil, entre "Mapas ganados" y
+  "Armas/Rivalidad" — lista de partidas (badge Ganada/Perdida, mapa, "hace
+  cuánto"), cada fila linkeando a `/partidas/{id}`. Trunca a 10 con modal "Ver
+  todo el historial", mismo patrón que el resto de la página.
+- TDD: `tests/Feature/Support/WinRateCalculatorTest.php` ganó 1 caso (orden
+  cronológico correcto + flag de ganada/perdida por partida; `makeMatch()`
+  ganó un parámetro opcional `$startedAt` para poder variar la fecha entre
+  partidas de prueba). Verificado junto a `PlayerShowSeasonTest` y la suite
+  completa en un clone descartable del VPS: 169/171 tests, mismos 2 fallos
+  preexistentes sin relación. Desplegado a producción, verificado con `curl`
+  contra un jugador real — filas reales con badge/mapa/fecha correctos,
+  linkeando a la partida real (`/partidas/107`, etc.).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

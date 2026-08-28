@@ -44,15 +44,17 @@ class WinRateCalculatorTest extends TestCase
      * @param  int[]  $winnerGuidsEachRound  Same winner_guids on all 13 rounds --
      *      enough for clusterRoundWinners() to call a 13-0 result.
      */
-    private function makeMatch(array $winnerGuidsEachRound, Player $attacker, Player $victim, string $map = 'mp_toujane_fix'): GameMatch
+    private function makeMatch(array $winnerGuidsEachRound, Player $attacker, Player $victim, string $map = 'mp_toujane_fix', ?\Illuminate\Support\Carbon $startedAt = null): GameMatch
     {
+        $startedAt ??= now();
+
         $match = GameMatch::create([
             'server_id' => $this->server->id,
             'season_id' => 1,
             'map' => $map,
             'gametype' => 'sd',
-            'started_at' => now(),
-            'ended_at' => now(),
+            'started_at' => $startedAt,
+            'ended_at' => $startedAt,
         ]);
 
         for ($i = 1; $i <= 13; $i++) {
@@ -183,6 +185,18 @@ class WinRateCalculatorTest extends TestCase
 
         $this->assertSame(0, $result['played']);
         $this->assertSame(0, $result['wins']);
+    }
+
+    public function test_match_history_is_sorted_most_recent_first_with_win_loss_flag(): void
+    {
+        $oldest = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_toujane_fix', now()->subDays(3));
+        $middle = $this->makeMatch([$this->opponent->guid], $this->opponent, $this->player, 'mp_burgundy_fix', now()->subDays(2));
+        $newest = $this->makeMatch([$this->player->guid], $this->player, $this->opponent, 'mp_carentan_fix', now()->subDay());
+
+        $history = WinRateCalculator::matchHistoryForPlayer($this->player, collect([$oldest->id, $middle->id, $newest->id]));
+
+        $this->assertSame([$newest->id, $middle->id, $oldest->id], $history->pluck('match.id')->all());
+        $this->assertSame([true, false, true], $history->pluck('won')->all());
     }
 
     public function test_by_map_breaks_down_played_and_won_per_map(): void
