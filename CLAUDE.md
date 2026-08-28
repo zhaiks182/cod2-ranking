@@ -2613,6 +2613,27 @@ implementar, 4 se construyeron esta misma sesión:
   `KillDetailControllerTypeFilterTest.php` (4 casos). Verificado en un
   clone descartable junto con el cambio de `MIN_MATCHES`: suite completa
   164 tests/600 assertions, mismos 2 fallos preexistentes sin relación.
+- **Línea de tiempo de rondas en `/partidas/{id}`** (pedido de un jugador,
+  2026-08-28, completando el #8 del batch original — el grid por ronda ya
+  estaba, faltaba esto) — una fila de cuadraditos, uno por ronda en orden,
+  verde si ganó axis esa ronda específica, gris si ganó allies. **No** es el
+  lado "actual" de nadie (eso ya existía, `TeamSideAnalyzer::splitByCurrentSide()`,
+  un snapshot de todo el match) — los lados cambian de bando en el
+  entretiempo, así que hacía falta el lado real DENTRO de cada ronda
+  puntual. Nuevo `MatchController::roundWinningSide()`: mismo patrón de
+  votación por mayoría que `TeamSideAnalyzer::sideScores()` ya usa para
+  todo el match, acá acotado a las kills de una sola ronda (cualquier kill
+  de esa ronda donde el atacante O la víctima esté en el roster ganador
+  aporta un voto por el lado que esa persona tenía en ESA kill puntual).
+  Cada cuadradito es un link que salta a esa ronda y la fuerza a abrirse
+  (a diferencia de los botones "Ronda N" de abajo, que solo togglean).
+  TDD: 3 casos nuevos en `MatchRoundDetailsTest.php` (mismo guid ganando
+  como axis en una ronda y como allies en otra, prueba que no es "guid 1
+  siempre = axis"; ronda sin ninguna kill involucrando al roster ganador
+  → `null`, no adivina). Verificado en un clone descartable (suite completa
+  167 tests/603 assertions, mismos 2 fallos preexistentes) y contra la
+  partida real `match_id=109` (36 rondas, las 36 con lado determinado —
+  17 axis, 19 allies — cero `null`).
 
 ## Pendientes / conocido-roto
 

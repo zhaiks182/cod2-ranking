@@ -147,7 +147,39 @@ class MatchController extends Controller
                 'round' => $round,
                 'kills' => $kills,
                 'clutchGuid' => $clutchGuid,
+                'winningSide' => $this->roundWinningSide($roster, $kills),
             ];
         });
+    }
+
+    /**
+     * Linea de tiempo de rondas (pedido de un jugador, 2026-08-28): que lado (axis/
+     * allies) gano CADA ronda -- no alcanza con el lado "actual" de un jugador
+     * (TeamSideAnalyzer::splitByCurrentSide(), que es un snapshot del match entero,
+     * ya usado para las tablas axis/allies de arriba) porque los lados cambian de
+     * bando en el entretiempo; hace falta el lado real DENTRO de esa ronda especifica.
+     * Mismo patron de votacion por mayoria que TeamSideAnalyzer::sideScores() usa
+     * para todo el match, aca acotado a las kills de una sola ronda: cualquier kill
+     * de esa ronda donde el atacante O la victima este en el roster ganador aporta
+     * un voto por el lado (axis/allies) que esa persona tenia en ESA kill puntual.
+     */
+    private function roundWinningSide($roster, $kills): ?string
+    {
+        $votes = ['axis' => 0, 'allies' => 0];
+
+        foreach ($kills as $kill) {
+            if ($roster->contains($kill->attacker_guid) && isset($votes[$kill->attacker_team])) {
+                $votes[$kill->attacker_team]++;
+            }
+            if ($roster->contains($kill->victim_guid) && isset($votes[$kill->victim_team])) {
+                $votes[$kill->victim_team]++;
+            }
+        }
+
+        if ($votes['axis'] === $votes['allies']) {
+            return null;
+        }
+
+        return $votes['axis'] > $votes['allies'] ? 'axis' : 'allies';
     }
 }

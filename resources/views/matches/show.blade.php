@@ -262,7 +262,31 @@
 
     @if($roundDetails->isNotEmpty())
         <div>
-            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Rondas</h2>
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold">Rondas</h2>
+                <div class="flex items-center gap-3 text-[11px] text-slate-500">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Axis ganó</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-slate-600 inline-block"></span> Allies ganó</span>
+                </div>
+            </div>
+
+            {{-- Linea de tiempo (pedido de un jugador, 2026-08-28): un cuadrado por
+            ronda, en orden, verde si gano axis esa ronda especifica, gris si gano
+            allies -- el lado real DENTRO de esa ronda, no el lado "actual" de nadie
+            (ver comentario de roundWinningSide() en el controller: los lados
+            cambian de bando en el entretiempo). --}}
+            <div class="flex flex-wrap gap-1 mb-3">
+                @foreach($roundDetails as $rd)
+                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}"
+                        title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
+                        class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
+                            {{ match($rd->winningSide) { 'axis' => 'bg-emerald-500 text-emerald-950', 'allies' => 'bg-slate-600 text-slate-200', default => 'bg-slate-800 text-slate-500' } }}
+                            hover:ring-2 hover:ring-cyan-400 cursor-pointer">
+                        {{ $rd->number }}
+                    </a>
+                @endforeach
+            </div>
+
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
                 <div class="flex flex-wrap gap-2 p-3 border-b border-slate-800">
                     @foreach($roundDetails as $rd)
@@ -338,18 +362,33 @@
 </div>
 
 <script>
+    function openRoundDetail(id, { forceOpen = false, scroll = false } = {}) {
+        const target = document.getElementById(id);
+        if (!target) return;
+
+        const wasOpen = !target.classList.contains('hidden');
+
+        document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
+        document.querySelectorAll('.round-toggle-btn').forEach((b) => b.classList.remove('border-cyan-500', 'text-cyan-400'));
+
+        if (forceOpen || !wasOpen) {
+            target.classList.remove('hidden');
+            document.querySelector(`.round-toggle-btn[data-round-toggle="${id}"]`)?.classList.add('border-cyan-500', 'text-cyan-400');
+            if (scroll) target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
     document.querySelectorAll('[data-round-toggle]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const target = document.getElementById(button.dataset.roundToggle);
-            const wasOpen = !target.classList.contains('hidden');
+        button.addEventListener('click', () => openRoundDetail(button.dataset.roundToggle));
+    });
 
-            document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
-            document.querySelectorAll('.round-toggle-btn').forEach((b) => b.classList.remove('border-cyan-500', 'text-cyan-400'));
-
-            if (!wasOpen) {
-                target.classList.remove('hidden');
-                button.classList.add('border-cyan-500', 'text-cyan-400');
-            }
+    // Cuadraditos de la linea de tiempo -- saltan directo a la ronda y la abren
+    // (a diferencia de los botones "Ronda N" de abajo, siempre fuerzan que quede
+    // abierta en vez de cerrarla si ya lo estaba, porque el punto es ir a verla).
+    document.querySelectorAll('[data-round-jump]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            openRoundDetail(link.dataset.roundJump, { forceOpen: true, scroll: true });
         });
     });
 </script>

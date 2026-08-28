@@ -37,10 +37,15 @@ class MatchRoundDetailsTest extends TestCase
 
     private function makeKill(Round $round, GameMatch $match, Player $attacker, Player $victim, string $weapon = 'kar98k_mp'): Kill
     {
+        return $this->makeKillWithSides($round, $match, $attacker, 'allies', $victim, 'axis', $weapon);
+    }
+
+    private function makeKillWithSides(Round $round, GameMatch $match, Player $attacker, string $attackerTeam, Player $victim, string $victimTeam, string $weapon = 'kar98k_mp'): Kill
+    {
         return Kill::create([
             'round_id' => $round->id, 'match_id' => $match->id,
-            'attacker_player_id' => $attacker->id, 'attacker_guid' => $attacker->guid, 'attacker_name' => $attacker->last_name, 'attacker_team' => 'allies',
-            'victim_player_id' => $victim->id, 'victim_guid' => $victim->guid, 'victim_name' => $victim->last_name, 'victim_team' => 'axis',
+            'attacker_player_id' => $attacker->id, 'attacker_guid' => $attacker->guid, 'attacker_name' => $attacker->last_name, 'attacker_team' => $attackerTeam,
+            'victim_player_id' => $victim->id, 'victim_guid' => $victim->guid, 'victim_name' => $victim->last_name, 'victim_team' => $victimTeam,
             'weapon' => $weapon, 'damage' => 100, 'mod' => 'MOD_RIFLE_BULLET',
             'is_headshot' => false, 'is_grenade' => false, 'is_suicide' => false, 'is_teamkill' => false,
             'occurred_at' => now(),
@@ -118,5 +123,67 @@ class MatchRoundDetailsTest extends TestCase
         $rd = $response->viewData('roundDetails')->first();
         $this->assertSame(0, $rd->kills->count());
         $this->assertNull($rd->clutchGuid);
+    }
+
+    /**
+     * Linea de tiempo (pedido de un jugador, 2026-08-28): verde/gris por ronda
+     * segun quien ganó ESA ronda especifica -- no el lado "actual" del jugador en
+     * todo el match (los lados cambian en el entretiempo), sino el lado real
+     * dentro de esa ronda puntual.
+     */
+    public function test_round_winning_side_is_axis_when_the_winning_roster_played_axis_that_round(): void
+    {
+        $match = GameMatch::create(['server_id' => $this->server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now(), 'ended_at' => now()]);
+
+        $winner = Player::create(['guid' => 1, 'last_name' => 'Winner', 'last_name_plain' => 'Winner']);
+        $loser = Player::create(['guid' => 2, 'last_name' => 'Loser', 'last_name_plain' => 'Loser']);
+
+        $round = Round::create([
+            'server_id' => $this->server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now(), 'ended_at' => now(), 'winner_guids' => [1],
+        ]);
+
+        $this->makeKillWithSides($round, $match, $winner, 'axis', $loser, 'allies');
+
+        $response = $this->get(route('matches.show', $match));
+        $rd = $response->viewData('roundDetails')->first();
+
+        $this->assertSame('axis', $rd->winningSide);
+    }
+
+    public function test_round_winning_side_is_allies_when_the_winning_roster_played_allies_that_round(): void
+    {
+        $match = GameMatch::create(['server_id' => $this->server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now(), 'ended_at' => now()]);
+
+        $winner = Player::create(['guid' => 1, 'last_name' => 'Winner', 'last_name_plain' => 'Winner']);
+        $loser = Player::create(['guid' => 2, 'last_name' => 'Loser', 'last_name_plain' => 'Loser']);
+
+        $round = Round::create([
+            'server_id' => $this->server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now(), 'ended_at' => now(), 'winner_guids' => [1],
+        ]);
+
+        // Same winning guid as the test above, but this time THEY played allies in
+        // this specific round -- proves it's not just "guid 1 always = axis".
+        $this->makeKillWithSides($round, $match, $winner, 'allies', $loser, 'axis');
+
+        $response = $this->get(route('matches.show', $match));
+        $rd = $response->viewData('roundDetails')->first();
+
+        $this->assertSame('allies', $rd->winningSide);
+    }
+
+    public function test_round_winning_side_is_null_when_there_is_no_side_signal(): void
+    {
+        $match = GameMatch::create(['server_id' => $this->server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now(), 'ended_at' => now()]);
+        Round::create([
+            'server_id' => $this->server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now(), 'ended_at' => now(), 'winner_guids' => [1],
+        ]);
+
+        $response = $this->get(route('matches.show', $match));
+        $rd = $response->viewData('roundDetails')->first();
+
+        $this->assertNull($rd->winningSide, 'No kills at all in the round -- no side signal, must not guess.');
     }
 }
