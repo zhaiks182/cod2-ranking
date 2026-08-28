@@ -21,13 +21,23 @@ class KillDetailController extends Controller
         // Reused for both directions below (this player's kills, and — per victim —
         // how many times that victim killed this player back) so the two queries stay
         // scoped identically (server/map/match/date), just with attacker/victim swapped.
-        $applyScope = function ($query) use ($request) {
+        // Reused by the Headshots/Granadas columns of /ranking (a jugador pidio que
+        // esos valores fueran clickeables "igual que las kills", 2026-08-28) --
+        // ?type=headshot|grenade acota el mismo popover a solo esas bajas, en vez de
+        // ser un endpoint nuevo. La reverse-count ("te mato de vuelta") tambien
+        // respeta el mismo type: sin esto, ver "a quien headshoteo" pero la cara-a-
+        // cara mostrando CUALQUIER baja de vuelta (no solo headshots) seria confuso.
+        $type = in_array($request->query('type'), ['headshot', 'grenade'], true) ? $request->query('type') : null;
+
+        $applyScope = function ($query) use ($request, $type) {
             $query->join('rounds', 'rounds.id', '=', 'kills.round_id')
                 ->where('kills.is_suicide', false)
                 // Teammates killed by mistake have their own breakdown under the red
                 // "Fuego amigo" indicator — keep them out of the regular kills list so it
                 // only shows real opponents.
-                ->where('kills.is_teamkill', false);
+                ->where('kills.is_teamkill', false)
+                ->when($type === 'headshot', fn ($q) => $q->where('kills.is_headshot', true))
+                ->when($type === 'grenade', fn ($q) => $q->where('kills.is_grenade', true));
 
             if ($matchId = $request->query('match')) {
                 // A single match's own page shows what actually happened in it, regardless

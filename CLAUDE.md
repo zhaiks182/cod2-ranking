@@ -2594,6 +2594,25 @@ implementar, 4 se construyeron esta misma sesión:
   si el jugador que lo pidió no lo vio o si la queja era específicamente
   sobre la sección de "últimas kills/muertes" de abajo, sin tocar hasta
   tener más claridad.
+- **Seguimiento el mismo día:** el dueño sí confirmó el #5 después — `MIN_MATCHES`
+  bajado de 10 a 9 (`app/Support/PlayerRankCalculator.php`). Fixture de
+  `PlayerRankCalculatorSeasonTest.php` que probaba el límite (antes 9
+  partidas = no califica) bajado a 8 partidas para seguir probando el
+  límite real ("uno menos que el mínimo").
+- **Rivalidades devuelta al menú Especialista → Combate** (mismo día) —
+  estaba oculta a pedido sin razón registrada en el código; el dueño la
+  quiso de vuelta al ver el tab nuevo de granadas.
+- **Headshots/Granadas del ranking general ahora son clickeables, igual que
+  Kills** (mismo día, reporte de un jugador) — reusan el mismo popover y el
+  mismo endpoint `/kills/{guid}` que ya usaba la columna Kills
+  (`KillDetailController`), solo con `?type=headshot|grenade` acotando el
+  resultado — no un endpoint nuevo. La "cara a cara" (reverse count, cuántas
+  veces esa víctima te mató de vuelta) también respeta el mismo `type`: sin
+  esto, ver "a quién headshoteaste" pero la cara-a-cara mostrando cualquier
+  baja de vuelta (no solo headshots) sería confuso. TDD:
+  `KillDetailControllerTypeFilterTest.php` (4 casos). Verificado en un
+  clone descartable junto con el cambio de `MIN_MATCHES`: suite completa
+  164 tests/600 assertions, mismos 2 fallos preexistentes sin relación.
 
 ## Pendientes / conocido-roto
 

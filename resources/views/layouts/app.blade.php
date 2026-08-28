@@ -328,8 +328,13 @@
             popover.dataset.owner = key;
 
             try {
+                // headshots/grenades (2026-08-28, a pedido de un jugador -- "debe ser
+                // igual que las kills") reusan el mismo endpoint /kills/{guid} que
+                // 'kills', solo con &type=headshot|grenade para acotar el popover a
+                // ese subconjunto -- no es un endpoint nuevo, ver KillDetailController.
+                const typeParam = kind === 'headshots' ? '&type=headshot' : kind === 'grenades' ? '&type=grenade' : '';
                 const url = kind === 'teamkill' ? `/teamkills/${guid}` : `/kills/${guid}`;
-                const res = await fetch(`${url}?${params}`);
+                const res = await fetch(`${url}?${params}${typeParam}`);
                 const data = await res.json();
 
                 // A slower, earlier fetch can land after the user already opened a
@@ -341,8 +346,9 @@
                     return;
                 }
 
-                const title = kind === 'teamkill'
-                    ? `Fuego amigo (${data.length})`
+                const title = kind === 'teamkill' ? `Fuego amigo (${data.length})`
+                    : kind === 'headshots' ? `Headshots (${data.reduce((s, k) => s + (k.count || 1), 0)})`
+                    : kind === 'grenades' ? `Bajas con granada (${data.reduce((s, k) => s + (k.count || 1), 0)})`
                     : `Bajas (${data.reduce((s, k) => s + (k.count || 1), 0)})`;
                 const titleColor = kind === 'teamkill' ? 'text-red-400' : 'text-cyan-400';
 
@@ -398,6 +404,16 @@
             }
             if (killsTrigger) {
                 openDetailsPopover(killsTrigger, 'kills');
+                return;
+            }
+            const headshotsTrigger = e.target.closest('[data-headshots-trigger]');
+            if (headshotsTrigger) {
+                openDetailsPopover(headshotsTrigger, 'headshots');
+                return;
+            }
+            const grenadesTrigger = e.target.closest('[data-grenades-trigger]');
+            if (grenadesTrigger) {
+                openDetailsPopover(grenadesTrigger, 'grenades');
                 return;
             }
             // Other pages (e.g. rivalidades) populate the same shared popover directly

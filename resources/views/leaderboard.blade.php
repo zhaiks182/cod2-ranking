@@ -150,8 +150,12 @@
                         </td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->deaths }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums">{{ $row->headshots }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums">{{ $row->grenade_kills }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums">
+                            <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
+                        </td>
+                        <td class="px-4 py-2 text-right tabular-nums">
+                            <button type="button" data-grenades-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->grenade_kills }}</button>
+                        </td>
                         <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->days_played }}</td>
                         <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_day }}</td>
                     </tr>

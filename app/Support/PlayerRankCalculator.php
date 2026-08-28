@@ -26,11 +26,13 @@ use Illuminate\Support\Collection;
  *
  * MIN_MATCHES subido de 5 a 10 y el minimo de bajas (antes 20) eliminado del
  * todo (2026-08-27, a pedido del dueño) -- un jugador con pocas bajas pero
- * muchas partidas ahora sí califica para un rango.
+ * muchas partidas ahora sí califica para un rango. Bajado de 10 a 9 al dia
+ * siguiente (2026-08-28, a pedido del dueño, relayando feedback de
+ * jugadores -- juegan ~3 partidas por dia, 9 deja calificar un dia antes).
  */
 class PlayerRankCalculator
 {
-    public const MIN_MATCHES = 10;
+    public const MIN_MATCHES = 9;
 
     /**
      * Devuelve una colección keyed por guid con: player, kd, hsPct, nadePct,

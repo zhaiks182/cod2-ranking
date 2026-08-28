@@ -215,9 +215,9 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $r = Player::create(['guid' => 942, 'last_name' => 'R', 'last_name_plain' => 'R']);
         $v = Player::create(['guid' => 943, 'last_name' => 'V', 'last_name_plain' => 'V']);
 
-        // 9 partidas -- uno menos que el nuevo MIN_MATCHES (10), a pesar de tener
+        // 8 partidas -- uno menos que el nuevo MIN_MATCHES (9), a pesar de tener
         // muchas mas de 20 kills (viejo umbral eliminado, no alcanza igual).
-        for ($i = 0; $i < 9; $i++) {
+        for ($i = 0; $i < 8; $i++) {
             $this->rangoMatch($season->id, $a, $r, $v, 10, 1, 4, 4);
         }
 
