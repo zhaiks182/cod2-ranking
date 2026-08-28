@@ -144,6 +144,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/jugadores/fusionar', [PlayerMergeController::class, 'index'])->name('players.merge.index');
         Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
+        Route::delete('/jugadores/{player}', [AdminPlayerController::class, 'destroy'])->name('players.destroy');
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');

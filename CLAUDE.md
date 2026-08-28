@@ -2307,6 +2307,42 @@ directo cada vez.
   que compila y trae el guid/nombre correctos en los `data-*`, no que el
   drag-and-drop en sí funcione en un navegador real (eso queda para que el
   dueño lo prueble).
+- **guid en el perfil público reajustado (mismo día):** color subido de
+  `slate-600` (casi ilegible sobre el tema oscuro) a `text-cyan-400` — mismo
+  color que "Ver todos los mapas", a pedido del dueño tras verlo en vivo.
+
+## Borrar un jugador (admin) — kills quedan en el historial, sin dueño (2026-08-28)
+
+Seguimiento directo del módulo de fusión de arriba: el dueño preguntó si
+`/adm_cod2` tenía algo para borrar un jugador cualquiera (no solo limpiar el
+`ip` como ya hacía "Países") — no existía, y se armó.
+
+- **`Admin\PlayerController::destroy()`** (nuevo) — `$player->delete()` sin
+  más. Nada de cascada custom hecha a mano (a diferencia de `PlayerMerger`,
+  que sí tuvo que sumar filas para no romper los `unique(player_id, X)`):
+  acá no hace falta, porque el esquema ya está diseñado para esto desde que
+  se crearon las tablas — `kills.attacker_player_id`/`victim_player_id`,
+  `chat_messages.player_id`, `bans.player_id`, `demos.player_id` son todos
+  `nullOnDelete()`, así que el kill/mensaje/ban/demo sobrevive con el
+  `guid`/nombre crudo tal cual estaba (misma lógica que ya usan los kills de
+  un bot, `guid=0` sin `player_id`) — el jugador borrado simplemente deja de
+  sumar a ningún ranking, pero no desaparece del historial de partidas. Lo
+  que sí se pierde (`cascadeOnDelete()`, correcto — no tiene sentido sin el
+  jugador): `player_aliases`, `player_map_stats`, `player_server_stats`,
+  `player_weapon_picks`, `player_match_extras`.
+- Ruta `DELETE /adm_cod2/jugadores/{player}` (bind por `id`, no por `guid` —
+  mismo patrón que `/paises/{player}`). Botón "Borrar jugador" agregado a
+  cada tarjeta de `/adm_cod2/jugadores/fusionar` (reusa la búsqueda por
+  nombre/alias que ya existía ahí, sin armar una pantalla nueva) — confirm()
+  explícito avisando qué sobrevive y qué no. Auditado vía
+  `AdminAction::record('players.destroy', ...)`, guardando nombre/guid/kills
+  en la descripción porque la fila va a desaparecer.
+- TDD: `tests/Feature/Admin/PlayerDestroyTest.php` (2 casos: guest
+  redirigido a login; borrar deja el kill con `attacker_player_id=null` pero
+  `attacker_guid`/`attacker_name` intactos, borra el alias, audita).
+  Verificado en un clone descartable del VPS: 2/2 nuevos, suite completa 143
+  tests/527 assertions, mismos 2 fallos preexistentes sin relación.
+  Desplegado, ruta confirmada con `route:list`.
 
 ## Pendientes / conocido-roto
 

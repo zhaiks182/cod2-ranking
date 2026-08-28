@@ -1,0 +1,66 @@
+<?php
+
+namespace Tests\Feature\Admin;
+
+use App\Models\GameMatch;
+use App\Models\Kill;
+use App\Models\Player;
+use App\Models\Round;
+use App\Models\Server;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * Borrar un jugador no debe borrar el historial de partidas -- kills.*_player_id
+ * usa nullOnDelete() (misma familia que demos.match_id, ver
+ * MatchDestroyDeletesDemosTest), así que el kill sobrevive con el guid/nombre
+ * tal cual estaba, igual que ya pasa con los kills de un bot (guid=0, sin
+ * player_id). Lo que sí desaparece es lo que solo existe para sostener ESE
+ * player_id: alias y los acumuladores cacheados (cascadeOnDelete).
+ */
+class PlayerDestroyTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_guests_are_redirected_to_login(): void
+    {
+        $player = Player::create(['guid' => 1, 'last_name' => 'X', 'last_name_plain' => 'X', 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+
+        $this->delete(route('admin.players.destroy', $player))->assertRedirect(route('admin.login'));
+
+        $this->assertDatabaseHas('players', ['id' => $player->id]);
+    }
+
+    public function test_destroying_a_player_keeps_their_kills_in_history_with_the_raw_guid_and_name(): void
+    {
+        $admin = User::factory()->create();
+        $player = Player::create(['guid' => 42, 'last_name' => 'Genuine', 'last_name_plain' => 'Genuine', 'kills_total' => 1, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+
+        $server = Server::create(['name' => 'S', 'slug' => 's', 'log_path' => '/tmp/x.log', 'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'x', 'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true]);
+        $match = GameMatch::create(['server_id' => $server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now()]);
+        $round = Round::create(['server_id' => $server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now()]);
+
+        $kill = Kill::create([
+            'round_id' => $round->id, 'match_id' => $match->id,
+            'attacker_player_id' => $player->id, 'attacker_guid' => 42, 'attacker_name' => 'Genuine',
+            'victim_player_id' => null, 'victim_guid' => 0, 'victim_name' => 'Bot',
+            'weapon' => 'M1Garand', 'damage' => 100, 'mod' => 'MOD_RIFLE_BULLET',
+            'is_headshot' => false, 'is_grenade' => false, 'is_suicide' => false,
+            'occurred_at' => now(),
+        ]);
+        $player->aliases()->create(['name' => 'Genuine', 'name_plain' => 'Genuine', 'last_seen_at' => now()]);
+
+        $this->actingAs($admin)->delete(route('admin.players.destroy', $player))->assertRedirect();
+
+        $this->assertDatabaseMissing('players', ['id' => $player->id]);
+        $this->assertDatabaseMissing('player_aliases', ['player_id' => $player->id]);
+
+        $kill->refresh();
+        $this->assertNull($kill->attacker_player_id);
+        $this->assertSame(42, $kill->attacker_guid);
+        $this->assertSame('Genuine', $kill->attacker_name);
+
+        $this->assertDatabaseHas('admin_actions', ['action' => 'players.destroy']);
+    }
+}
