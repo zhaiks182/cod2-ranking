@@ -2898,6 +2898,42 @@ Tres pedidos chicos del dueño, mismo día.
   `curl` contra un jugador real: una sola tabla con los 6 datos combinados
   por mapa, y fechas reales (`26/08/2026 23:44`, etc.) en el historial.
 
+## Pulido visual del perfil de jugador (2026-08-29)
+
+El dueño pidió mejorar el diseño del perfil porque "se veía muy desordenado" —
+usado el skill `ui-ux-pro-max` (búsqueda local de patrones UI/UX) para guiar la
+revisión. La búsqueda `--design-system` con keywords genéricas de gaming devolvió
+un match de estilo "3D & Hyperrealism" que no aplicaba (esta es una página densa
+en tablas, no un hero/showcase) — se descartó y se reconsultó con
+`--domain style` usando "analytics dashboard data dense stats", que sí acertó:
+**Data-Dense Dashboard** (múltiples tablas/cards, padding mínimo, grid eficiente)
+es el patrón real de esta página. Cambios aplicados, todos verificados con
+`curl` contra producción real antes de darlos por buenos:
+
+- **Historial de partidas: Resultado y Marcador ahora enlazan a la partida**,
+  igual que Mapa (antes solo el mapa era clickeable, pedido explícito del
+  dueño) — en la tabla principal y en el modal "ver todo el historial".
+- **La línea "arma favorita / arma que más usa / fuego amigo" pasa a vivir
+  dentro de una card** (`rounded-xl border border-slate-800 bg-panel`), igual
+  que el resto de la página — antes era texto suelto flotando entre dos
+  bloques de tarjetas, lo que contribuía a la sensación de desorden.
+- **`weapon-modal` ("ver todas las armas") ensanchado de `max-w-md` a
+  `max-w-lg`** — mismo ancho que los otros modales de 3+ columnas
+  (`map-stats-modal`, `match-history-modal`), evitando que las columnas
+  Kills/Headshots quedaran apretadas.
+- **Descartado tras feedback en vivo:** se probó reagrupar la grilla de 7 stats
+  de arriba (Kills→Win rate) en dos filas separadas ("Combate" 5 stats +
+  "Actividad" 2 stats) para reducir la sensación de una fila plana de 7
+  columnas — el dueño lo vio desplegado y pidió volver a la fila única
+  original explícitamente ("no me gusta así"). Revertido antes de dejar el
+  cambio, documentado acá para no repetir la misma prueba sin necesidad si se
+  retoma el pulido visual más adelante.
+- Cambio puramente de vista (`players/show.blade.php`), sin tocar
+  `PlayerController` ni tests — no había lógica nueva que cubrir con TDD.
+  Verificado en producción con `curl`: links de Resultado/Marcador presentes
+  (80 ocurrencias en la página real), `weapon-modal` con `max-w-lg`, grilla de
+  stats de vuelta a `md:grid-cols-7`.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
