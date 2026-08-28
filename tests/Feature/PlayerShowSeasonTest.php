@@ -275,7 +275,13 @@ class PlayerShowSeasonTest extends TestCase
         $this->assertTrue($mapStats->contains(fn($s) => $s->kills === 1));
     }
 
-    public function test_profile_recent_kills_are_scoped_to_the_season(): void
+    /**
+     * weaponBreakdown (2026-08-29, reemplaza "Últimas bajas") tiene que respetar
+     * el mismo scope de temporada que ya tenía esa lista -- si contara las 2
+     * kills (vieja+nueva temporada) en vez de solo 1, el desglose de armas
+     * mentiría sobre lo que pasó en la temporada activa.
+     */
+    public function test_weapon_breakdown_is_scoped_to_the_season(): void
     {
         $oldSeason = Season::current();
         $this->realMatchWithKill($oldSeason->id);
@@ -286,7 +292,9 @@ class PlayerShowSeasonTest extends TestCase
 
         $response = $this->get(route('players.show', $this->attacker->guid));
 
-        $this->assertSame(1, $response->viewData('recentKills')->count());
+        $weaponBreakdown = $response->viewData('weaponBreakdown');
+        $this->assertSame(1, $weaponBreakdown->count());
+        $this->assertSame(1, $weaponBreakdown->first()->kills);
     }
 
     public function test_favorite_weapon_excludes_old_season_kills(): void
@@ -326,7 +334,12 @@ class PlayerShowSeasonTest extends TestCase
         $this->assertSame(0, $teamkillCount);
     }
 
-    public function test_recent_deaths_excludes_old_season_deaths(): void
+    /**
+     * topNemesis (2026-08-29, reemplaza "Últimas muertes") tiene que respetar el
+     * mismo scope de temporada -- una muerte de una temporada vieja, ya cerrada,
+     * no puede seguir marcando a alguien como el verdugo actual del jugador.
+     */
+    public function test_top_nemesis_excludes_old_season_deaths(): void
     {
         $oldSeason = Season::current();
         // Create a death (where attacker is the victim) in old season
@@ -339,9 +352,8 @@ class PlayerShowSeasonTest extends TestCase
 
         $response = $this->get(route('players.show', $this->attacker->guid));
 
-        $recentDeaths = $response->viewData('recentDeaths');
-        // Should be empty because no deaths in the active season
-        $this->assertSame(0, $recentDeaths->count());
+        // Should be null because the only death happened in the old, inactive season
+        $this->assertNull($response->viewData('topNemesis'));
     }
 
     public function test_map_stats_excludes_same_map_from_old_season(): void

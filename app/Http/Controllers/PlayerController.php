@@ -9,6 +9,8 @@ use App\Models\PlayerWeaponPick;
 use App\Models\Season;
 use App\Support\KillAggregator;
 use App\Support\MapCatalog;
+use App\Support\PlaytimeCalculator;
+use App\Support\WinRateCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -51,10 +53,59 @@ class PlayerController extends Controller
             ->filter(fn ($s) => $s->kills > 0 || $s->deaths > 0);
         $player->setRelation('mapStats', MapCatalog::mergeVariants($mapStats));
 
-        $recentKills = $player->kills()->where('is_suicide', false)->whereIn('match_id', $matchIds)
-            ->with('round', 'victim')->latest('id')->limit(15)->get();
-        $recentDeaths = $player->deaths()->whereIn('match_id', $matchIds)
-            ->with('round', 'attacker')->latest('id')->limit(15)->get();
+        // Horas jugadas (2026-08-29, a pedido del dueño -- reemplaza "dias jugados"
+        // del ranking en todos lados, mismo PlaytimeCalculator). Sin scopear por
+        // server: el perfil de jugador es global (players no son por server, ver
+        // "Multi-servidor" en el CLAUDE.md del repo), a diferencia de /ranking.
+        $secondsPlayed = PlaytimeCalculator::secondsByPlayer(null, $matchIds);
+        $hoursPlayed = round(($secondsPlayed[$player->id] ?? 0) / 3600, 1);
+
+        // Win rate general (2026-08-29, a pedido del dueño -- reemplaza la idea
+        // original de una columna de winrate por mapa en "Mejores mapas" por un
+        // solo numero agregado, mas simple de leer de un vistazo).
+        $winRate = WinRateCalculator::forPlayer($player, $matchIds);
+
+        // Reemplaza "Últimas bajas"/"Últimas muertes" (2026-08-29, a pedido del
+        // dueño relayando feedback real de un jugador: esa lista cronologica era
+        // "poco relevante", pedia algo mas util). Desglose COMPLETO de armas (no
+        // solo la favorita de mas arriba) y un snapshot de rivalidad -- mismo dato
+        // que ya calcula /rivalidades (SpecialtyController::rivalries()), acotado
+        // a este jugador en vez de a todos los pares del server.
+        $weaponBreakdown = $baseKillQuery()
+            ->where('kills.attacker_player_id', $player->id)
+            ->where('kills.is_suicide', false)
+            ->selectRaw('kills.weapon, count(*) as kills, sum(kills.is_headshot) as headshots')
+            ->groupBy('kills.weapon')
+            ->orderByDesc('kills')
+            ->get();
+
+        $topNemesisRow = $baseKillQuery()
+            ->where('kills.victim_player_id', $player->id)
+            ->whereNotNull('kills.attacker_player_id')
+            ->where('kills.is_teamkill', false)
+            ->selectRaw('kills.attacker_player_id, count(*) as count')
+            ->groupBy('kills.attacker_player_id')
+            ->orderByDesc('count')
+            ->first();
+
+        $topVictimRow = $baseKillQuery()
+            ->where('kills.attacker_player_id', $player->id)
+            ->whereNotNull('kills.victim_player_id')
+            ->where('kills.is_suicide', false)->where('kills.is_teamkill', false)
+            ->selectRaw('kills.victim_player_id, count(*) as count')
+            ->groupBy('kills.victim_player_id')
+            ->orderByDesc('count')
+            ->first();
+
+        $rivalIds = collect([$topNemesisRow?->attacker_player_id, $topVictimRow?->victim_player_id])->filter();
+        $rivalPlayers = Player::whereIn('id', $rivalIds)->get()->keyBy('id');
+
+        $topNemesis = $topNemesisRow && $rivalPlayers->has($topNemesisRow->attacker_player_id)
+            ? (object) ['player' => $rivalPlayers[$topNemesisRow->attacker_player_id], 'count' => $topNemesisRow->count]
+            : null;
+        $topVictim = $topVictimRow && $rivalPlayers->has($topVictimRow->victim_player_id)
+            ? (object) ['player' => $rivalPlayers[$topVictimRow->victim_player_id], 'count' => $topVictimRow->count]
+            : null;
 
         // Scoped to SD like the rest of the ranking (kills_total etc.) — a DM/HQ/CTF
         // kill shouldn't skew "favorite weapon" or the team-kill count.
@@ -78,6 +129,6 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'recentKills', 'recentDeaths', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'weaponBreakdown', 'topNemesis', 'topVictim', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
     }
 }

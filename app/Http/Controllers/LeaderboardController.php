@@ -9,6 +9,7 @@ use App\Models\Season;
 use App\Models\Server;
 use App\Support\KillAggregator;
 use App\Support\MapCatalog;
+use App\Support\PlaytimeCalculator;
 use App\Support\TeamSideAnalyzer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -73,6 +74,22 @@ class LeaderboardController extends Controller
         }
 
         $rows = $server ? $this->aggregateFromKills($server->id, $mapCodes, $tableMatchIds) : collect();
+
+        // Horas jugadas / kills por hora (reemplaza "dias jugados", 2026-08-29, a
+        // pedido del dueño: "mas preciso"). Mismo calculo que /horas-jugadas
+        // (PlaytimeCalculator, extraido de ahi el mismo dia para no duplicarlo),
+        // scopeado igual que el resto de esta tabla (server+matchIds+mapCodes).
+        if ($server) {
+            $secondsByPlayer = PlaytimeCalculator::secondsByPlayer($server->id, $tableMatchIds, $mapCodes);
+
+            $rows = $rows->map(function ($row) use ($secondsByPlayer) {
+                $hours = round(($secondsByPlayer[$row->player->id] ?? 0) / 3600, 1);
+                $row->hours_played = $hours;
+                $row->kills_per_hour = $hours > 0 ? round($row->kills / $hours, 1) : 0.0;
+
+                return $row;
+            });
+        }
 
         // Any map tab normally corresponds to exactly one played match (or, for a
         // multi-session map, one specific session once the date default above kicks

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Win Rate por Mapa')
+@section('title', 'Win Rate General')
 
 @section('content')
 <div class="space-y-6">
@@ -15,11 +15,11 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>📈</span> Win Rate por Mapa
+                <span>📈</span> Win Rate General
             </h1>
             <p class="text-xs text-slate-500 mt-0.5">
-                Mapas ganados / mapas jugados (Search and Destroy) — mínimo {{ $minMaps }} mapas jugados para entrar.
-                "Jugados" es aproximado: cuenta partidas donde el jugador tuvo al menos una baja o muerte registrada.
+                Partidas ganadas / partidas jugadas (Search and Destroy) — mínimo {{ $minMaps }} partidas jugadas para entrar.
+                "Jugadas" es aproximado: cuenta partidas donde el jugador tuvo al menos una baja o muerte registrada.
             </p>
         </div>
 

@@ -119,8 +119,8 @@
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
                     <th class="px-4 py-2 font-medium text-right">Granadas</th>
-                    <th class="px-4 py-2 font-medium text-right" title="Días distintos con al menos un kill o muerte — no cuenta reconexiones el mismo día">Días</th>
-                    <th class="px-4 py-2 font-medium text-right" title="Kills ÷ días jugados">Kills/día</th>
+                    <th class="px-4 py-2 font-medium text-right" title="Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)">Horas</th>
+                    <th class="px-4 py-2 font-medium text-right" title="Kills ÷ horas jugadas">Kills/h</th>
                 </tr>
             </thead>
             <tbody>
@@ -156,8 +156,8 @@
                         <td class="px-4 py-2 text-right tabular-nums">
                             <button type="button" data-grenades-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->grenade_kills }}</button>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->days_played }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_day }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->hours_played }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_hour }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Sin datos para esta temporada.</td></tr>

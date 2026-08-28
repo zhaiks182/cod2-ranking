@@ -15,6 +15,7 @@ use App\Models\Server;
 use App\Services\GeoIp;
 use App\Support\KillAggregator;
 use App\Support\PlayerRankCalculator;
+use App\Support\PlaytimeCalculator;
 use App\Support\TeamSideAnalyzer;
 use Illuminate\Http\Request;
 
@@ -488,42 +489,10 @@ class SpecialtyController extends Controller
 
         $rows = collect();
         $totalSeconds = 0;
+        $totalPlayers = 0;
 
         if ($server) {
-            $rounds = Round::where('server_id', $server->id)
-                ->where('gametype', 'sd')
-                ->whereNotNull('ended_at')
-                ->whereIn('match_id', $matchIds)
-                ->get(['id', 'started_at', 'ended_at'])
-                ->keyBy('id');
-
-            $kills = Kill::whereIn('round_id', $rounds->keys())
-                ->where(function ($q) {
-                    $q->whereNotNull('attacker_player_id')->orWhereNotNull('victim_player_id');
-                })
-                ->get(['attacker_player_id', 'victim_player_id', 'round_id']);
-
-            $roundPlayers = [];
-            foreach ($kills as $kill) {
-                if ($kill->attacker_player_id) {
-                    $roundPlayers[$kill->round_id][$kill->attacker_player_id] = true;
-                }
-                if ($kill->victim_player_id) {
-                    $roundPlayers[$kill->round_id][$kill->victim_player_id] = true;
-                }
-            }
-
-            $seconds = [];
-            foreach ($roundPlayers as $roundId => $playerIds) {
-                $round = $rounds->get($roundId);
-                if (! $round) {
-                    continue;
-                }
-                $duration = $round->started_at->diffInSeconds($round->ended_at);
-                foreach (array_keys($playerIds) as $playerId) {
-                    $seconds[$playerId] = ($seconds[$playerId] ?? 0) + $duration;
-                }
-            }
+            $seconds = PlaytimeCalculator::secondsByPlayer($server->id, $matchIds);
 
             arsort($seconds);
             $totalSeconds = array_sum($seconds);
@@ -538,7 +507,7 @@ class SpecialtyController extends Controller
                     return null;
                 }
 
-                return (object) ['player' => $player, 'value' => $this->formatDuration($sec), 'share' => null];
+                return (object) ['player' => $player, 'value' => PlaytimeCalculator::formatDuration($sec), 'share' => null];
             })->filter()->values();
         }
 
@@ -549,7 +518,7 @@ class SpecialtyController extends Controller
             'valueLabel' => 'tiempo', 'valueColor' => 'text-sky-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Tiempo total registrado', 'value' => $this->formatDuration($totalSeconds), 'color' => 'text-sky-400'],
+                ['label' => 'Tiempo total registrado', 'value' => PlaytimeCalculator::formatDuration($totalSeconds), 'color' => 'text-sky-400'],
                 ['label' => 'Jugadores con tiempo registrado', 'value' => $totalPlayers],
             ],
         ]);
@@ -1307,19 +1276,6 @@ class SpecialtyController extends Controller
             'shareLabel' => null,
             'statCards' => [],
         ]);
-    }
-
-    private function formatDuration(int $seconds): string
-    {
-        $minutes = intdiv($seconds, 60);
-        if ($minutes < 60) {
-            return "{$minutes} min";
-        }
-
-        $hours = intdiv($minutes, 60);
-        $remaining = $minutes % 60;
-
-        return "{$hours}h {$remaining}min";
     }
 
     /** @return array{0: \Illuminate\Support\Collection, 1: ?Server} */

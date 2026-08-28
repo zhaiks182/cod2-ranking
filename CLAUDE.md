@@ -2647,6 +2647,69 @@ implementar, 4 se construyeron esta misma sesión:
   siempre, solo que ahora también des-oculta `#cod2-rounds-modal` primero.
   Sin cambios de controller en ninguna de las dos iteraciones, solo vista.
 
+## Horas jugadas (reemplaza días), nav "Tabla de clasificación", y perfil de jugador ampliado (2026-08-29)
+
+Batch de pedidos del dueño relayando feedback de jugadores.
+
+- **`/ranking` cambia "Días"/"Kills por día" por "Horas"/"Kills por hora"** — pedido
+  explícito: horas es "más preciso" que contar días distintos conectado. Nuevo
+  `app/Support/PlaytimeCalculator.php`, extraído de `SpecialtyController::playtime()`
+  (ya calculaba "segundos jugados" para `/horas-jugadas`) para reusar el mismo cálculo
+  en `LeaderboardController` sin duplicar lógica — mismo proxy de siempre (duración de
+  rondas SD donde el jugador tuvo al menos un kill o muerte), ahora sumando segundos en
+  vez de contar días distintos. `days_played`/`kills_per_day` se sacaron por completo de
+  `KillAggregator::aggregate()` (nadie más los consumía).
+- **El dropdown del nav "RANKING" pasa a llamarse "TABLA DE CLASIFICACIÓN"** — pedido
+  explícito, sin cambiar ninguna ruta (`route('leaderboard')` etc. sin tocar, solo el
+  texto del botón).
+- **Perfil de jugador (`/jugadores/{guid}`) gana 3 secciones nuevas:**
+  - **Horas jugadas** — nueva card en la grilla de stats de arriba (ahora
+    `md:grid-cols-7`), mismo `PlaytimeCalculator` de arriba pero sin scopear por
+    server (`secondsByPlayer(null, $matchIds)` — el perfil es global, a diferencia de
+    `/ranking`).
+  - **Reemplaza "Últimas bajas"/"Últimas muertes"** (esa lista cronológica era "poco
+    relevante" según el feedback real de un jugador) por dos columnas nuevas: **Armas**
+    (desglose completo arma por arma con kills+headshots, no solo la "arma favorita" de
+    arriba) y **Rivalidad** (verdugo 😈/presa favorita 🎯 — mismo par nemesis/victim que
+    ya calcula `/rivalidades`, acotado a este jugador). `PlayerController::show()`
+    perdió las queries de `$recentKills`/`$recentDeaths` — reemplazadas por
+    `$weaponBreakdown`/`$topNemesis`/`$topVictim`.
+  - **Win rate general** — 7ma card de la grilla de arriba. `app/Support/WinRateCalculator.php`
+    (nuevo): para cada partida SD donde el jugador tuvo al menos un kill o muerte,
+    reusa `TeamSideAnalyzer::winningRosterGuids()` (el mismo clustering por overlap de
+    guids que ya calcula `final_score`) para decidir si el guid del jugador estaba en
+    el roster ganador; partidas sin ganador determinable (empate/rondas insuficientes)
+    no cuentan ni como jugadas ni como ganadas. **Arrancó como idea de agregar una
+    columna de winrate POR MAPA en "Mejores mapas"** (pedido original del dueño) pero
+    se cambió a un solo número agregado ("cambiar win rate por mapa por win rate
+    general", mismo día) antes de implementarla — nunca se llegó a construir la
+    versión por mapa.
+  - **De paso se encontró que ya existía una página separada, `/win-rate`
+    (`SpecialtyController::winRate()`, nav "Mapas y partidas"), con un cálculo de win
+    rate YA general** (partidas ganadas/jugadas del server completo, no por mapa) **pero
+    mal titulada "Win Rate por Mapa" en todos lados** (título de pestaña, `<h1>`, link
+    del nav) desde que se creó — un mislabel preexistente, no introducido esta sesión.
+    Corregido a "Win Rate General" (`resources/views/specialties/win-rate.blade.php`,
+    el link del nav en `layouts/app.blade.php`) — cambio de texto puro, la lógica de
+    `winRate()` no se tocó porque ya calculaba lo correcto. Este page-level "win rate
+    general" (ranking de TODOS los jugadores del server, mínimo 3 partidas, sin scope
+    de temporada propio más allá del selector que ya tenía) y el nuevo
+    `WinRateCalculator` del perfil (temporada-scopeado como el resto del perfil, sin
+    mínimo de partidas) son cálculos independientes que pueden diferir un poco entre sí
+    (distinto criterio de "temporada" y de piso mínimo) — no se unificaron esta sesión,
+    ver "Pendientes" si en algún momento hace falta.
+- TDD: `tests/Feature/PlayerShowSeasonTest.php` — 2 tests que asertaban sobre las
+  `recentKills`/`recentDeaths` removidas se reescribieron para probar el scope de
+  temporada de `weaponBreakdown`/`topNemesis` en su lugar (mismos 8 casos totales del
+  archivo, solo 2 reemplazados). `tests/Feature/Support/WinRateCalculatorTest.php`
+  (nuevo, 5 casos: victoria cuenta, derrota cuenta como jugada pero no como ganada,
+  promedio correcto entre varias partidas, partida sin ganador determinable se
+  excluye, partidas sin participación del jugador se ignoran). Verificado en un clone
+  descartable del VPS: 166/168 tests, mismos 2 fallos preexistentes sin relación
+  (`ExampleTest`, `CountriesSeasonTest`). Desplegado a producción, verificado con
+  `curl` contra un jugador real (`/jugadores/-1106466662`): card de Win rate muestra
+  "45.7% (16/35)".
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

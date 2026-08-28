@@ -17,7 +17,7 @@
         ])
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Kills</div>
             <div class="mt-1 text-lg font-semibold text-cyan-300">
@@ -42,6 +42,14 @@
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Kills con granada</div>
             <div class="mt-1 text-lg font-semibold">{{ $player->grenade_kills_total }}</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
+            <div class="text-[11px] uppercase tracking-wide text-slate-500">Horas jugadas</div>
+            <div class="mt-1 text-lg font-semibold">{{ $hoursPlayed }}</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3" title="{{ $winRate['wins'] }} de {{ $winRate['played'] }} partidas ganadas">
+            <div class="text-[11px] uppercase tracking-wide text-slate-500">Win rate</div>
+            <div class="mt-1 text-lg font-semibold">{{ $winRate['rate'] }}% <span class="text-xs text-slate-500">({{ $winRate['wins'] }}/{{ $winRate['played'] }})</span></div>
         </div>
     </div>
 
@@ -123,38 +131,65 @@
 
     <div class="grid md:grid-cols-2 gap-6">
         <section>
-            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Últimas bajas</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
-                @forelse($recentKills as $kill)
-                    <div class="px-4 py-2 text-sm flex items-center justify-between gap-2">
-                        <span class="truncate flex items-center gap-2">
-                            {!! \App\Support\Cod2Colors::toHtml($kill->victim_name) !!}
-                            @if($kill->is_teamkill)
-                                <span class="shrink-0 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-900" title="Fuego amigo — mismo equipo">Fuego amigo</span>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Armas</h2>
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Arma</th>
+                            <th class="px-4 py-2 font-medium text-right">Kills</th>
+                            <th class="px-4 py-2 font-medium text-right">Headshots</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($weaponBreakdown as $w)
+                            @if($iconUrl = \App\Support\WeaponCatalog::iconUrl($w->weapon))
+                                @php $weaponIcon = $iconUrl; @endphp
+                            @else
+                                @php $weaponIcon = null; @endphp
                             @endif
-                        </span>
-                        <span class="text-xs text-slate-500 shrink-0">{{ \App\Support\WeaponCatalog::label($kill->weapon) }}</span>
-                    </div>
-                @empty
-                    <div class="px-4 py-4 text-center text-slate-500 text-sm">Sin registros.</div>
-                @endforelse
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2 flex items-center gap-1.5">
+                                    @if($weaponIcon)<img src="{{ $weaponIcon }}" alt="" class="w-4 h-4 object-contain shrink-0">@endif
+                                    {{ \App\Support\WeaponCatalog::label($w->weapon) }}
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">{{ $w->kills }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums">{{ $w->headshots }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                </div>
             </div>
         </section>
 
         <section>
-            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Últimas muertes</h2>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Rivalidad</h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
-                @forelse($recentDeaths as $death)
-                    <div class="px-4 py-2 text-sm flex items-center justify-between gap-2">
-                        <span class="truncate">
-                            @if($death->is_suicide) suicidio
-                            @else {!! \App\Support\Cod2Colors::toHtml($death->attacker_name) !!} @endif
-                        </span>
-                        <span class="text-xs text-slate-500 shrink-0">{{ \App\Support\WeaponCatalog::label($death->weapon) }}</span>
+                @if($topNemesis)
+                    <div class="px-4 py-3 flex items-center justify-between gap-2">
+                        <span class="text-sm text-slate-400">😈 Verdugo <span class="text-slate-600">(quién te mata más)</span></span>
+                        <a href="{{ route('players.show', $topNemesis->player->guid) }}" class="text-sm font-medium hover:text-cyan-400 flex items-center gap-1.5">
+                            {!! \App\Support\Cod2Colors::toHtml($topNemesis->player->last_name) !!}
+                            <span class="text-red-400 tabular-nums">{{ $topNemesis->count }}</span>
+                        </a>
                     </div>
-                @empty
-                    <div class="px-4 py-4 text-center text-slate-500 text-sm">Sin registros.</div>
-                @endforelse
+                @endif
+                @if($topVictim)
+                    <div class="px-4 py-3 flex items-center justify-between gap-2">
+                        <span class="text-sm text-slate-400">🎯 Presa favorita <span class="text-slate-600">(a quién más matás)</span></span>
+                        <a href="{{ route('players.show', $topVictim->player->guid) }}" class="text-sm font-medium hover:text-cyan-400 flex items-center gap-1.5">
+                            {!! \App\Support\Cod2Colors::toHtml($topVictim->player->last_name) !!}
+                            <span class="text-cyan-400 tabular-nums">{{ $topVictim->count }}</span>
+                        </a>
+                    </div>
+                @endif
+                @if(! $topNemesis && ! $topVictim)
+                    <div class="px-4 py-4 text-center text-slate-500 text-sm">Todavía no hay suficientes enfrentamientos repetidos.</div>
+                @endif
             </div>
         </section>
     </div>
