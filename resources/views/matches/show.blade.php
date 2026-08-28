@@ -259,7 +259,100 @@
             </div>
         </div>
     @endif
+
+    @if($roundDetails->isNotEmpty())
+        <div>
+            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Rondas</h2>
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <div class="flex flex-wrap gap-2 p-3 border-b border-slate-800">
+                    @foreach($roundDetails as $rd)
+                        <button type="button" data-round-toggle="round-detail-{{ $rd->round->id }}"
+                            class="round-toggle-btn px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400 flex items-center gap-1">
+                            Ronda {{ $rd->number }}
+                            @if($rd->clutchGuid)
+                                <span title="Clutch 1vX">🥶</span>
+                            @endif
+                        </button>
+                    @endforeach
+                </div>
+
+                @foreach($roundDetails as $rd)
+                    <div id="round-detail-{{ $rd->round->id }}" class="round-detail hidden border-b border-slate-800/60 last:border-0">
+                        @if($rd->kills->isEmpty())
+                            <div class="px-4 py-4 text-center text-sm text-slate-500">Sin kills registradas en esta ronda.</div>
+                        @else
+                            <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800/60">
+                                        <th class="px-4 py-2 font-medium">Hora</th>
+                                        <th class="px-4 py-2 font-medium">Atacante</th>
+                                        <th class="px-4 py-2 font-medium"></th>
+                                        <th class="px-4 py-2 font-medium">Víctima</th>
+                                        <th class="px-4 py-2 font-medium">Arma</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($rd->kills as $kill)
+                                        @php
+                                            $survivorGuid = $rd->clutchGuid;
+                                            $isClutchKill = $survivorGuid && $kill->attacker_guid === $survivorGuid;
+                                        @endphp
+                                        <tr class="border-b border-slate-800/40 last:border-0 {{ $isClutchKill ? 'bg-cyan-950/20' : '' }}">
+                                            <td class="px-4 py-2 text-slate-500 text-xs tabular-nums">{{ $kill->occurred_at->format('H:i:s') }}</td>
+                                            <td class="px-4 py-2 font-medium">
+                                                @if($kill->attacker)
+                                                    <a href="{{ route('players.show', $kill->attacker->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($kill->attacker_name) !!}</a>
+                                                @else
+                                                    <span class="text-slate-500">{{ \App\Support\Cod2Colors::stripColors($kill->attacker_name) }}</span>
+                                                @endif
+                                                @if($isClutchKill)<span title="Clutch 1vX">🥶</span>@endif
+                                            </td>
+                                            <td class="px-4 py-2 text-slate-600">{{ $kill->is_suicide ? '☠️' : '→' }}</td>
+                                            <td class="px-4 py-2">
+                                                @if($kill->victim)
+                                                    <a href="{{ route('players.show', $kill->victim->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($kill->victim_name) !!}</a>
+                                                @else
+                                                    <span class="text-slate-500">{{ \App\Support\Cod2Colors::stripColors($kill->victim_name) }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-2 text-slate-400 flex items-center gap-1.5">
+                                                @if($iconUrl = \App\Support\WeaponCatalog::iconUrl($kill->weapon))
+                                                    <img src="{{ $iconUrl }}" alt="" class="w-4 h-4 object-contain shrink-0">
+                                                @endif
+                                                {{ \App\Support\WeaponCatalog::label($kill->weapon) }}
+                                                @if($kill->is_headshot)<span title="Headshot">🎯</span>@endif
+                                                @if($kill->is_teamkill)<span class="text-red-500 text-xs" title="Fuego amigo">FF</span>@endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 </div>
+
+<script>
+    document.querySelectorAll('[data-round-toggle]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const target = document.getElementById(button.dataset.roundToggle);
+            const wasOpen = !target.classList.contains('hidden');
+
+            document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
+            document.querySelectorAll('.round-toggle-btn').forEach((b) => b.classList.remove('border-cyan-500', 'text-cyan-400'));
+
+            if (!wasOpen) {
+                target.classList.remove('hidden');
+                button.classList.add('border-cyan-500', 'text-cyan-400');
+            }
+        });
+    });
+</script>
 
 @if($chatMessages->isNotEmpty())
     <div id="cod2-chat-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">

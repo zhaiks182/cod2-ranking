@@ -2522,6 +2522,79 @@ Verificado en un clone descartable del VPS: suite completa 149 tests/552
 assertions, mismos 2 fallos preexistentes sin relación. Desplegado, corrida
 manual de `cod2:parse-log` sin errores nuevos en `laravel.log`.
 
+## Batch de feedback de jugadores (2026-08-28) — 4 features en una sesión
+
+El dueño compartió 9 puntos de feedback recibidos de jugadores. Triage
+completo hecho antes de tocar código (algunos ya estaban resueltos, otros
+necesitaban más contexto del dueño) — de los que se aprobaron para
+implementar, 4 se construyeron esta misma sesión:
+
+- **`/bombas` gana un tab "Desactivadas"** (`?stat=defuses`) — antes el
+  ranking de esa página solo rankeaba a quien planta; quien desactiva solo
+  aparecía como número total arriba (`statCards`), sin ranking de jugadores
+  propio. `specialties.ranking` (la vista genérica que ya usan ~10 páginas de
+  specialties) ganó un bloque `@isset($tabs)` opcional, reusable por
+  cualquier otra página futura que necesite el mismo patrón de toggle.
+- **`/rivalidades` gana un tab "Con granadas"** (`?type=grenades`) — misma
+  lógica de emparejamiento (`attacker_player_id`/`victim_player_id`
+  agrupados, roster deduplicado por par sin importar dirección), filtrando
+  `is_grenade=true` con el piso bajado de 3 a 2 bajas (mucho más raras que
+  las bajas en general). El cálculo de "arma favorita" del cara a cara se
+  saltea para este tab (siempre diría "granada", no aporta nada).
+- **`/ranking` gana columnas "Días" y "Kills/día"** — pedido explícito:
+  contar días distintos conectado (no reconexiones) para promediar con las
+  kills y dar un ranking más justo. Se decidió derivarlo de
+  `kills.occurred_at` (días con al menos un kill O una muerte) en vez de
+  armar un tracker de conexiones nuevo — no existe ninguna tabla que guarde
+  cada `Connected;` como evento propio (`upsertPlayer()` solo actualiza
+  `last_seen_at` al vuelo), así que un tracker nuevo solo tendría datos
+  desde el día que se agregara; esto en cambio funciona retroactivo con
+  todo el historial ya cargado. Implementado en `KillAggregator::aggregate()`
+  (afecta a TODOS sus consumidores: `/ranking`, el perfil de jugador, la
+  tabla axis/allies de cada partida — todos ganan `days_played`/
+  `kills_per_day` en cada row, aunque por ahora solo `/ranking` los muestra).
+  **Bug real encontrado y corregido en el camino:** `Eloquent\Collection::merge()`
+  dedupea por primary key, no concatena como lista — con `selectRaw()` sin
+  seleccionar `id`, cada fila es un modelo con `getKey()===null`, así que
+  `merge()` de dos colecciones de 1 fila cada una colapsaba a **0 filas**
+  (confirmado con un `DebugTest` temporal antes de encontrar la causa).
+  `concat()` es el método correcto para "juntar dos listas", que es lo que
+  se necesitaba acá.
+- **Grid por ronda en `/partidas/{id}`** — el pedido más grande: "quién mató
+  a quién, con qué arma, o si hubo un clutch", para revisar jugadas raras o
+  sacar clips. Antes la página de partida solo mostraba el resumen total
+  (kills/deaths por jugador para el match entero), nunca desglosado por
+  ronda. Nuevo: fila de botones "Ronda 1, 2, 3..." que abren/cierran un
+  panel con la tabla de kills de esa ronda (hora, atacante → víctima, arma
+  con ícono, headshot, fuego amigo) — un solo panel abierto a la vez, mismo
+  patrón de listener delegado que los dropdowns del nav admin (2026-08-28,
+  más arriba). **Reusa exactamente la misma definición de clutch que
+  `SpecialtyController::clutches()`** (roster completo de
+  `round.winner_guids` menos quien murió ESA ronda, un solo sobreviviente
+  en un roster de 3+), aplicada ronda por ronda dentro de una sola partida
+  en vez de por-jugador-y-temporada — mismo cálculo, alcance distinto, sin
+  duplicar la lógica. La kill que dio el clutch se resalta en la tabla.
+- TDD en los 4: `ExtrasSeasonTest` (+2 casos, tab de defuses),
+  `RivalriesGrenadesTest` (2 casos), `KillAggregatorDaysPlayedTest` (4
+  casos), `MatchRoundDetailsTest` (3 casos). Cada uno verificado en su
+  propio clone descartable del VPS antes de desplegar (suites completas
+  153/157/160 tests en distintos momentos de la sesión, mismos 2 fallos
+  preexistentes sin relación en todas). El grid por ronda además verificado
+  contra una partida real de producción (`match_id=109`, 36 rondas, 24
+  clutches detectados) antes de dar el feature por cerrado.
+- **Puntos del feedback NO implementados esta sesión** (decisión del dueño
+  o pendientes de más contexto — ver conversación del 2026-08-28 para el
+  detalle completo de los 9 puntos originales): mínimo de partidas del
+  rango (10→9, es una decisión del dueño, no de los jugadores, no se tocó
+  sin su confirmación explícita); "sistema de conteo más justo para el
+  rango" (el dueño pidió explícitamente no tocar esto); "las kills cambian
+  en el ranking" (confirmado por el dueño que ya quedó resuelto con el fix
+  de DM del mismo día, ver arriba); el perfil de jugador ya mostraba "arma
+  favorita"/"arma que más usa" desde antes de este batch — no quedó claro
+  si el jugador que lo pidió no lo vio o si la queja era específicamente
+  sobre la sección de "últimas kills/muertes" de abajo, sin tocar hasta
+  tener más claridad.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

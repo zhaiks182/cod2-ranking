@@ -99,6 +99,8 @@ class MatchController extends Controller
             $sideScores['winning'] = null;
         }
 
+        $roundDetails = $this->buildRoundDetails($match, $rounds);
+
         $chatMessages = ChatMessage::where('match_id', $match->id)->where('channel', 'public')->orderBy('occurred_at')->get();
 
         // Team chat ("sayteam;") carries no side of its own — bucketed here by each
@@ -111,6 +113,41 @@ class MatchController extends Controller
         $axisChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'axis')->values();
         $alliesChat = $teamChat->filter(fn ($msg) => $msg->player_id && ($sideByPlayerId[$msg->player_id] ?? null) === 'allies')->values();
 
-        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents', 'topBash', 'topHeadshots', 'topGrenades'));
+        return view('matches.show', compact('match', 'leaderboard', 'rounds', 'roundDetails', 'finalScore', 'matchStartKill', 'halftimeKill', 'axisRows', 'alliesRows', 'sideScores', 'chatMessages', 'axisChat', 'alliesChat', 'overtimeEvent', 'timeoutEvents', 'topBash', 'topHeadshots', 'topGrenades'));
+    }
+
+    /**
+     * Grid por ronda (pedido de un jugador, 2026-08-28: "quien mato a quien y con
+     * que arma, o si hubo un clutch" para poder revisar jugadas raras o sacar
+     * clips). Reusa la MISMA definicion de clutch que
+     * SpecialtyController::clutches() (roster completo del round.winner_guids
+     * menos quien murio ESE round, un solo sobreviviente en un roster de 3+) --
+     * ahi ya vive por-jugador-y-temporada; aca se aplica ronda por ronda, dentro
+     * de una sola partida, sin duplicar la logica en otro lado (mismo calculo,
+     * dos alcances distintos).
+     */
+    private function buildRoundDetails($match, $rounds)
+    {
+        $killsByRound = Kill::where('match_id', $match->id)
+            ->with(['attacker', 'victim'])
+            ->orderBy('occurred_at')
+            ->get()
+            ->groupBy('round_id');
+
+        return $rounds->values()->map(function ($round, $i) use ($killsByRound) {
+            $kills = $killsByRound->get($round->id, collect());
+
+            $roster = collect($round->winner_guids ?? []);
+            $deaths = $kills->pluck('victim_guid')->filter()->unique();
+            $survivors = $roster->diff($deaths);
+            $clutchGuid = ($roster->count() >= 3 && $survivors->count() === 1) ? $survivors->first() : null;
+
+            return (object) [
+                'number' => $i + 1,
+                'round' => $round,
+                'kills' => $kills,
+                'clutchGuid' => $clutchGuid,
+            ];
+        });
     }
 }
