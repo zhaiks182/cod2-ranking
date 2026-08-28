@@ -308,7 +308,7 @@
 
 @if($roundDetails->isNotEmpty())
     <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-3xl max-h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+        <div class="w-full max-w-3xl h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2">
                     <button type="button" id="cod2-round-prev" onclick="cod2StepRound(-1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda anterior">‹</button>
@@ -317,7 +317,7 @@
                 </div>
                 <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-            <div class="overflow-y-auto">
+            <div class="overflow-y-auto flex-1 min-h-0">
                 @foreach($roundDetails as $rd)
                     <div id="round-detail-{{ $rd->round->id }}" class="round-detail hidden border-b border-slate-800/60 last:border-0">
                         @if($rd->kills->isEmpty())
