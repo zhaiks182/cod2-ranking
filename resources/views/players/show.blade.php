@@ -7,7 +7,7 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
-            <div class="text-xs font-mono text-cyan-400 mt-0.5" title="Identificador único derivado del HWID del jugador">guid {{ $player->guid }}</div>
+            <div class="text-xs font-mono text-cyan-400 mt-0.5" title="Identificador único derivado del HWID del jugador">Guid: {{ $player->guid }}</div>
         </div>
 
         @include('partials.season-selector', [
@@ -74,7 +74,7 @@
         </div>
     @endif
 
-    <div class="grid md:grid-cols-2 gap-6">
+    <div class="grid lg:grid-cols-2 gap-6">
         <section>
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Desempeño general por mapa</h2>
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -82,20 +82,20 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                            <th class="px-4 py-2 font-medium">Mapa</th>
-                            <th class="px-4 py-2 font-medium text-right">Kills</th>
-                            <th class="px-4 py-2 font-medium text-right">Muertes</th>
-                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
+                            <th class="px-2 py-2 pl-4 font-medium">Mapa</th>
+                            <th class="px-2 py-2 font-medium text-right">Kills</th>
+                            <th class="px-2 py-2 font-medium text-right">Muertes</th>
+                            <th class="px-2 py-2 font-medium text-right" title="Jugadas">Jug.</th>
+                            <th class="px-2 py-2 font-medium text-right" title="Ganadas">Gan.</th>
+                            <th class="px-2 py-2 pr-4 font-medium text-right" title="Win rate">WR</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($mapPerformance->take(4) as $stat)
                             @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
-                                <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                <td class="px-2 py-2 pl-4 whitespace-nowrap">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-cyan-300">
                                     <span class="relative inline-block">
                                         <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $stat->kills }}</button>
                                         @if($stat->teamkills > 0)
@@ -103,10 +103,10 @@
                                         @endif
                                     </span>
                                 </td>
-                                <td class="px-4 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
+                                <td class="px-2 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
+                                <td class="px-2 py-2 pr-4 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
@@ -123,6 +123,52 @@
             @endif
         </section>
 
+        <section>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-3 py-2 pl-4 font-medium">Mapa</th>
+                            <th class="px-3 py-2 font-medium text-right">Resultado</th>
+                            <th class="px-3 py-2 font-medium text-right">Marcador</th>
+                            <th class="px-3 py-2 pr-4 font-medium text-right">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($matchHistory->take(4) as $h)
+                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                                <td class="px-3 py-2 pl-4 whitespace-nowrap">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
+                                </td>
+                                <td class="px-3 py-2 text-right">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:opacity-80">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                    </a>
+                                </td>
+                                <td class="px-3 py-2 text-right tabular-nums text-cyan-300 font-medium">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-200">{{ $h->match->final_score ?? '—' }}</a>
+                                </td>
+                                <td class="px-3 py-2 pr-4 text-right tabular-nums text-slate-400 whitespace-nowrap">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            @if($matchHistory->count() > 4)
+                <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
+                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    Ver todo el historial ({{ $matchHistory->count() }}) →
+                </button>
+            @endif
+        </section>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-6">
         <section>
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Alias usados</h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
@@ -142,90 +188,46 @@
                 </button>
             @endif
         </section>
+
+        <section>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Armas</h2>
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Arma</th>
+                            <th class="px-4 py-2 font-medium text-right">Kills</th>
+                            <th class="px-4 py-2 font-medium text-right">Headshots</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($weaponBreakdown->take(5) as $w)
+                            @php $weaponParams = http_build_query(['season' => $seasonId, 'weapon' => $w->weapon]); @endphp
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                    <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->kills }}</button>
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums">
+                                    <button type="button" data-headshots-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->headshots }}</button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                </div>
+            </div>
+            @if($weaponBreakdown->count() > 5)
+                <button type="button" onclick="document.getElementById('weapon-modal').classList.remove('hidden')"
+                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    Ver todas las armas ({{ $weaponBreakdown->count() }}) →
+                </button>
+            @endif
+        </section>
     </div>
-
-    <section>
-        <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
-        <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-            <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                        <th class="px-4 py-2 font-medium">Mapa</th>
-                        <th class="px-4 py-2 font-medium text-right">Resultado</th>
-                        <th class="px-4 py-2 font-medium text-right">Marcador</th>
-                        <th class="px-4 py-2 font-medium text-right">Fecha</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($matchHistory->take(5) as $h)
-                        <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                            <td class="px-4 py-2">
-                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
-                            </td>
-                            <td class="px-4 py-2 text-right">
-                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:opacity-80">
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
-                                </a>
-                            </td>
-                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">
-                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-200">{{ $h->match->final_score ?? '—' }}</a>
-                            </td>
-                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-            </div>
-        </div>
-        @if($matchHistory->count() > 5)
-            <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
-                class="mt-2 text-xs text-cyan-400 hover:underline">
-                Ver todo el historial ({{ $matchHistory->count() }}) →
-            </button>
-        @endif
-    </section>
-
-    <section>
-        <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Armas</h2>
-        <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-            <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead>
-                    <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                        <th class="px-4 py-2 font-medium">Arma</th>
-                        <th class="px-4 py-2 font-medium text-right">Kills</th>
-                        <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($weaponBreakdown->take(5) as $w)
-                        @php $weaponParams = http_build_query(['season' => $seasonId, 'weapon' => $w->weapon]); @endphp
-                        <tr class="border-b border-slate-800/60 last:border-0">
-                            <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
-                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
-                                <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->kills }}</button>
-                            </td>
-                            <td class="px-4 py-2 text-right tabular-nums">
-                                <button type="button" data-headshots-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->headshots }}</button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-            </div>
-        </div>
-        @if($weaponBreakdown->count() > 5)
-            <button type="button" onclick="document.getElementById('weapon-modal').classList.remove('hidden')"
-                class="mt-2 text-xs text-cyan-400 hover:underline">
-                Ver todas las armas ({{ $weaponBreakdown->count() }}) →
-            </button>
-        @endif
-    </section>
 </div>
 
 @if($mapPerformance->count() > 4)
@@ -294,7 +296,7 @@
     </div>
 @endif
 
-@if($matchHistory->count() > 5)
+@if($matchHistory->count() > 4)
     <div id="match-history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
         onclick="if(event.target === this) this.classList.add('hidden')">
         <div class="w-full max-w-lg max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
