@@ -265,26 +265,39 @@
             <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold">Rondas</h2>
                 <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Axis ganó</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-slate-600 inline-block"></span> Allies ganó</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Axis ganó</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> Allies ganó</span>
                 </div>
             </div>
 
             {{-- Linea de tiempo (pedido de un jugador, 2026-08-28): un cuadrado por
-            ronda, en orden, verde si gano axis esa ronda especifica, gris si gano
-            allies -- el lado real DENTRO de esa ronda, no el lado "actual" de nadie
-            (ver comentario de roundWinningSide() en el controller: los lados
-            cambian de bando en el entretiempo). --}}
-            <div class="flex flex-wrap gap-1 mb-3">
+            ronda, en orden, rojo si gano axis esa ronda especifica, azul si gano
+            allies (mismos colores que los paneles Axis/Allies de mas abajo) -- el
+            lado real DENTRO de esa ronda, no el lado "actual" de nadie (ver
+            comentario de roundWinningSide() en el controller: los lados cambian de
+            bando en el entretiempo). Termina con el ganador/perdedor del match
+            entero (mismo $sideScores que ya usan los paneles de abajo). --}}
+            <div class="flex flex-wrap items-center gap-1 mb-3">
                 @foreach($roundDetails as $rd)
                     <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}"
                         title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
                         class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
-                            {{ match($rd->winningSide) { 'axis' => 'bg-emerald-500 text-emerald-950', 'allies' => 'bg-slate-600 text-slate-200', default => 'bg-slate-800 text-slate-500' } }}
+                            {{ match($rd->winningSide) { 'axis' => 'bg-red-500 text-red-950', 'allies' => 'bg-blue-500 text-blue-950', default => 'bg-slate-800 text-slate-500' } }}
                             hover:ring-2 hover:ring-cyan-400 cursor-pointer">
                         {{ $rd->number }}
                     </a>
                 @endforeach
+                @if($sideScores['winning'])
+                    @php $loser = $sideScores['winning'] === 'axis' ? 'allies' : 'axis'; @endphp
+                    <span class="ml-2 flex items-center gap-1.5 text-[11px]">
+                        <span class="px-2 py-1 rounded-md {{ $sideScores['winning'] === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }} font-medium">
+                            🏆 {{ ucfirst($sideScores['winning']) }} ({{ $sideScores[$sideScores['winning']] }})
+                        </span>
+                        <span class="px-2 py-1 rounded-md bg-slate-800/60 border border-slate-700 text-slate-500">
+                            {{ ucfirst($loser) }} ({{ $sideScores[$loser] }})
+                        </span>
+                    </span>
+                @endif
             </div>
 
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
