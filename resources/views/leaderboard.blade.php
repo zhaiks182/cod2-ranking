@@ -131,6 +131,11 @@
                             <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             @if($i < 3)
                                 <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
+                                {{-- Chiste a pedido del dueño (2026-08-28), solo de prueba -- burro al lado de la
+                                medalla de dtN.harek (guid 1127155189) cuando entra al top 3. --}}
+                                @if($row->player->guid == 1127155189)
+                                    <span class="ml-0.5 align-text-bottom" title="🐴">🫏</span>
+                                @endif
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
