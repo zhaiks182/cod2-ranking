@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Player extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'guid', 'last_name', 'last_name_plain', 'ip',
+        'guid', 'last_name', 'last_name_plain', 'ip', 'icon_path',
         'kills_total', 'deaths_total', 'headshots_total', 'grenade_kills_total', 'suicides_total',
         'first_seen_at', 'last_seen_at',
     ];
@@ -58,5 +59,15 @@ class Player extends Model
         return $this->kills_total > 0
             ? round(($this->headshots_total / $this->kills_total) * 100, 1)
             : 0.0;
+    }
+
+    /**
+     * Icono personalizado subido desde /adm_cod2/jugadores/iconos (2026-08-28),
+     * ya normalizado a un cuadrado chico por PlayerIcon::store() -- null si el
+     * jugador nunca tuvo uno.
+     */
+    public function getIconUrlAttribute(): ?string
+    {
+        return $this->icon_path ? Storage::disk('public')->url($this->icon_path) : null;
     }
 }

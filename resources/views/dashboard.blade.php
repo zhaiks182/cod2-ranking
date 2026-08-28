@@ -120,10 +120,10 @@
                             <a href="{{ route('players.show', $stat->player->guid) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($stat->player->last_name) !!}</a>
                             @if($i < 3)
                                 <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
-                                {{-- Chiste a pedido del dueño (2026-08-28), solo de prueba -- burro al lado de la
-                                medalla de dtN.harek (guid 1127155189) cuando entra al top 3. --}}
-                                @if($stat->player->guid == 1127155189)
-                                    <img src="{{ asset('burro.png') }}" alt="🐴" title="🐴" class="inline-block align-text-bottom ml-0.5" style="width:11px;height:auto">
+                                {{-- Ícono personalizado (2026-08-28, /adm_cod2/jugadores/iconos) -- reemplaza
+                                el burro hardcodeado de dtN.harek, ahora cualquier jugador puede tener uno. --}}
+                                @if($stat->player->icon_url)
+                                    <img src="{{ $stat->player->icon_url }}" alt="" class="inline-block align-text-bottom ml-0.5" style="width:11px;height:auto">
                                 @endif
                             @endif
                         </td>

@@ -3019,6 +3019,62 @@ general, no un match de la base de datos del skill).
   `curl` contra partidas reales: badges "Axis"/"Allies" correctos junto al
   marcador real (`19-17`, `13-7`, etc.).
 
+## Módulo de íconos personalizados por jugador (2026-08-28)
+
+Generaliza el chiste hardcodeado de dtN.harek (guid `1127155189`, un burro al
+lado de su medalla en el top 3 de `/ranking` y del dashboard — ver entrada del
+batch de feedback de jugadores más arriba) a cualquier jugador, subido desde
+un módulo de admin nuevo en vez de vivir pegado al código de cada view.
+
+- **`players.icon_path`** (columna nueva, nullable) + `Player::getIconUrlAttribute()`
+  (`$player->icon_url`, null si nunca subió uno).
+- **`App\Support\PlayerIcon::store()`** — "el ícono siempre debe ajustarse"
+  (pedido explícito del dueño): cualquier imagen que suba un admin se
+  re-escala con GD **antes** de guardarse, nunca se confía en el archivo
+  original tal cual. Fit-within (nunca upscale, nunca crop a cuadrado) a un
+  máximo de 128px en el lado más largo, preservando la relación de
+  aspecto — el burro real (294×512, no cuadrado) se muestra con
+  `width:11px;height:auto`, así que forzar un cuadrado hubiera sido
+  distinto del comportamiento ya validado en producción. Siempre se
+  re-codifica a PNG con canal alpha preservado (`imagesavealpha`), guardado
+  en `storage/app/public/player-icons/{player_id}.png` — mismo id fijo
+  siempre, así que subir uno nuevo pisa el anterior sin dejar huérfanos.
+  `PlayerIcon::destroy()` borra el archivo y limpia la columna.
+- **`Admin\PlayerIconController`** (`/adm_cod2/jugadores/iconos`, nav bajo
+  Moderación) — mismo patrón que `/jugadores/borrar`: listado completo de
+  jugadores con buscador client-side, sin depender de buscar primero. Cada
+  fila tiene su propio `<form multipart>` con file input + botón "Subir",
+  más un botón "Quitar" si ya tiene ícono. Auditado vía `AdminAction`
+  (`players.icon-upload`/`players.icon-remove`).
+- **`leaderboard.blade.php`/`dashboard.blade.php`**: el `@if($row->player->guid == 1127155189)`
+  hardcodeado se reemplazó por `@if($row->player->icon_url)` — mismo lugar
+  exacto (al lado de la medalla, solo top 3), ahora dirigido por datos en
+  vez de un guid quemado en el código.
+- **El burro real de harek se migró al sistema nuevo**, no quedó como caso
+  especial: `PlayerIcon::store()` corrido una vez por `tinker` en
+  producción contra el `public/burro.png` original — quedó re-escalado a
+  74×128 (mismo aspecto 0.58, dentro del límite de 128px) en
+  `storage/player-icons/4.png`. `public/burro.png` (el archivo hardcodeado
+  original) se borró del repo y del VPS — confirmado sin referencias
+  restantes en ningún `.blade.php` antes de borrarlo.
+- TDD: `tests/Feature/Support/PlayerIconTest.php` (5 casos — resize
+  correcto preservando aspecto con tolerancia por redondeo de píxeles,
+  nunca upscalea una imagen chica, reemplaza el ícono anterior en el mismo
+  path, destroy borra archivo+columna, accessor null sin ícono) +
+  `tests/Feature/Admin/PlayerIconControllerTest.php` (5 casos — guest
+  redirigido en las 3 rutas, index lista jugadores, store sube+redimensiona+audita,
+  store rechaza un archivo que no es imagen, destroy borra+audita).
+  Verificado en un clone descartable del VPS: 10/10 tests nuevos en verde,
+  suite completa 188/190, mismos 2 fallos preexistentes sin relación.
+  **Backup de la base (`php artisan backup:run`) tomado antes de correr la
+  migración en producción** — cambio de esquema real, mismo criterio que
+  cualquier otra migración de esta sesión. Migración corrida, migración de
+  harek verificada con `curl` contra `/ranking` real (el ícono aparece al
+  lado de su medalla de plata), módulo admin verificado end-to-end vía los
+  tests del controller (ejercitan el mismo código que el form real) más
+  confirmación de que la ruta está protegida y registrada
+  (`route:list`, redirect 302 sin sesión).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

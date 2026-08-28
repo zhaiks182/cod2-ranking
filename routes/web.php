@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PlayerController as AdminPlayerController;
 use App\Http\Controllers\Admin\PlayerDeleteController;
+use App\Http\Controllers\Admin\PlayerIconController;
 use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
@@ -149,6 +150,10 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
         Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
         Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
+
+        Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');
+        Route::post('/jugadores/iconos/{player}', [PlayerIconController::class, 'store'])->name('players.icons.store');
+        Route::delete('/jugadores/iconos/{player}', [PlayerIconController::class, 'destroy'])->name('players.icons.destroy');
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
