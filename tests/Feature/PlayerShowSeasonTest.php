@@ -180,53 +180,6 @@ class PlayerShowSeasonTest extends TestCase
         ]);
     }
 
-    private function createDeath(int $seasonId, Player $attacker, Player $victim, string $map = 'mp_toujane_fix'): Kill
-    {
-        // This creates a kill where the second player is the victim (not the attacker in the profile view)
-        $match = GameMatch::create([
-            'server_id' => $this->server->id,
-            'season_id' => $seasonId,
-            'map' => $map,
-            'gametype' => 'sd',
-            'started_at' => now(),
-            'ended_at' => now(),
-        ]);
-
-        for ($i = 1; $i <= 13; $i++) {
-            Round::create([
-                'server_id' => $this->server->id,
-                'match_id' => $match->id,
-                'map' => $map,
-                'gametype' => 'sd',
-                'started_at' => now(),
-                'ended_at' => now(),
-            ]);
-        }
-
-        $round = $match->rounds()->first();
-
-        return Kill::create([
-            'round_id' => $round->id,
-            'match_id' => $match->id,
-            'attacker_player_id' => $attacker->id,
-            'attacker_guid' => $attacker->guid,
-            'attacker_name' => $attacker->last_name,
-            'attacker_team' => 'axis',
-            'victim_player_id' => $victim->id,
-            'victim_guid' => $victim->guid,
-            'victim_name' => $victim->last_name,
-            'victim_team' => 'allies',
-            'weapon' => 'weapon_ak74',
-            'mod' => 'MOD_RIFLE_BULLET',
-            'damage' => 50,
-            'is_headshot' => false,
-            'is_grenade' => false,
-            'is_suicide' => false,
-            'is_teamkill' => false,
-            'occurred_at' => now(),
-        ]);
-    }
-
     public function test_profile_without_season_param_shows_only_the_active_season(): void
     {
         $oldSeason = Season::current();
@@ -332,28 +285,6 @@ class PlayerShowSeasonTest extends TestCase
         $teamkillCount = $response->viewData('teamkillCount');
         // Should be 0 because no teamkills in the active season
         $this->assertSame(0, $teamkillCount);
-    }
-
-    /**
-     * topNemesis (2026-08-29, reemplaza "Últimas muertes") tiene que respetar el
-     * mismo scope de temporada -- una muerte de una temporada vieja, ya cerrada,
-     * no puede seguir marcando a alguien como el verdugo actual del jugador.
-     */
-    public function test_top_nemesis_excludes_old_season_deaths(): void
-    {
-        $oldSeason = Season::current();
-        // Create a death (where attacker is the victim) in old season
-        $this->createDeath($oldSeason->id, $this->victim, $this->attacker);
-
-        $oldSeason->update(['ended_at' => now()]);
-        $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
-        // Create a regular kill in new season
-        $this->realMatchWithKill($newSeason->id);
-
-        $response = $this->get(route('players.show', $this->attacker->guid));
-
-        // Should be null because the only death happened in the old, inactive season
-        $this->assertNull($response->viewData('topNemesis'));
     }
 
     public function test_map_stats_excludes_same_map_from_old_season(): void

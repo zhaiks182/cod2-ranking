@@ -78,9 +78,7 @@ class PlayerController extends Controller
         // Reemplaza "Últimas bajas"/"Últimas muertes" (2026-08-29, a pedido del
         // dueño relayando feedback real de un jugador: esa lista cronologica era
         // "poco relevante", pedia algo mas util). Desglose COMPLETO de armas (no
-        // solo la favorita de mas arriba) y un snapshot de rivalidad -- mismo dato
-        // que ya calcula /rivalidades (SpecialtyController::rivalries()), acotado
-        // a este jugador en vez de a todos los pares del server.
+        // solo la favorita de mas arriba).
         $weaponBreakdown = $baseKillQuery()
             ->where('kills.attacker_player_id', $player->id)
             ->where('kills.is_suicide', false)
@@ -88,34 +86,6 @@ class PlayerController extends Controller
             ->groupBy('kills.weapon')
             ->orderByDesc('kills')
             ->get();
-
-        $topNemesisRow = $baseKillQuery()
-            ->where('kills.victim_player_id', $player->id)
-            ->whereNotNull('kills.attacker_player_id')
-            ->where('kills.is_teamkill', false)
-            ->selectRaw('kills.attacker_player_id, count(*) as count')
-            ->groupBy('kills.attacker_player_id')
-            ->orderByDesc('count')
-            ->first();
-
-        $topVictimRow = $baseKillQuery()
-            ->where('kills.attacker_player_id', $player->id)
-            ->whereNotNull('kills.victim_player_id')
-            ->where('kills.is_suicide', false)->where('kills.is_teamkill', false)
-            ->selectRaw('kills.victim_player_id, count(*) as count')
-            ->groupBy('kills.victim_player_id')
-            ->orderByDesc('count')
-            ->first();
-
-        $rivalIds = collect([$topNemesisRow?->attacker_player_id, $topVictimRow?->victim_player_id])->filter();
-        $rivalPlayers = Player::whereIn('id', $rivalIds)->get()->keyBy('id');
-
-        $topNemesis = $topNemesisRow && $rivalPlayers->has($topNemesisRow->attacker_player_id)
-            ? (object) ['player' => $rivalPlayers[$topNemesisRow->attacker_player_id], 'count' => $topNemesisRow->count]
-            : null;
-        $topVictim = $topVictimRow && $rivalPlayers->has($topVictimRow->victim_player_id)
-            ? (object) ['player' => $rivalPlayers[$topVictimRow->victim_player_id], 'count' => $topVictimRow->count]
-            : null;
 
         // Scoped to SD like the rest of the ranking (kills_total etc.) — a DM/HQ/CTF
         // kill shouldn't skew "favorite weapon" or the team-kill count.
@@ -139,6 +109,6 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapsWon', 'matchHistory', 'weaponBreakdown', 'topNemesis', 'topVictim', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapsWon', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
     }
 }
