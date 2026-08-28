@@ -455,6 +455,20 @@
                 helpDropdown.classList.add('hidden');
             }
         });
+
+        // ESC cierra cualquier popup abierto (2026-08-29, a pedido del dueño) --
+        // hasta ahora solo se podia cerrar clickeando afuera o el boton "X". Global
+        // porque este layout es la base de toda pagina publica y los modales de cada
+        // una (perfil de jugador, partida, ranking, etc.) siguen la misma convencion
+        // de id "*-modal" -- un solo listener cubre todos sin tener que repetirlo en
+        // cada vista. `[id*="-modal"]` (contiene, no "termina en") porque algunos ids
+        // llevan un sufijo dinamico (ej. "dates-modal-2026-08" en leaderboard.blade.php).
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+
+            document.getElementById('teamkill-popover')?.classList.add('hidden');
+            document.querySelectorAll('[id*="-modal"]').forEach((m) => m.classList.add('hidden'));
+        });
     </script>
 </body>
 </html>
