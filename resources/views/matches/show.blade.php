@@ -116,13 +116,7 @@
 
     @if($roundDetails->isNotEmpty())
         <div>
-            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold">Línea de tiempo</h2>
-                <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Axis ganó</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> Allies ganó</span>
-                </div>
-            </div>
+            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Línea de tiempo</h2>
 
             {{-- Un cuadrado por ronda, en orden, rojo si gano axis esa ronda especifica,
             azul si gano allies (mismos colores que los paneles Axis/Allies de mas
