@@ -123,7 +123,7 @@
                                 {{-- Chiste a pedido del dueño (2026-08-28), solo de prueba -- burro al lado de la
                                 medalla de dtN.harek (guid 1127155189) cuando entra al top 3. --}}
                                 @if($stat->player->guid == 1127155189)
-                                    <img src="{{ asset('burro.png') }}" alt="🐴" title="🐴" class="inline-block align-text-bottom ml-0.5" style="width:16px;height:auto">
+                                    <img src="{{ asset('burro.png') }}" alt="🐴" title="🐴" class="inline-block align-text-bottom ml-0.5" style="width:11px;height:auto">
                                 @endif
                             @endif
                         </td>
