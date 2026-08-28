@@ -127,6 +127,53 @@ class ExtrasSeasonTest extends TestCase
         $this->assertSame(10, $rowAll->value); // 'all' lee PlayerServerStat, no 3+5
     }
 
+    /**
+     * Bug real reportado por un jugador (2026-08-28): "quien planta" ya tenía
+     * ranking, "quien desactiva" solo aparecía como número total arriba
+     * (statCards), sin ranking de jugadores -- ?stat=defuses agrega ese
+     * ranking que faltaba, reusando la misma vista/estructura.
+     */
+    public function test_bombs_defuses_tab_ranks_by_defuses_not_plants(): void
+    {
+        $planter = Player::create(['guid' => 111, 'last_name' => 'Planter', 'last_name_plain' => 'Planter']);
+        $defuser = Player::create(['guid' => 112, 'last_name' => 'Defuser', 'last_name_plain' => 'Defuser']);
+        $victim = Player::create(['guid' => 113, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
+        $match = $this->match(Season::current()->id);
+        PlayerMatchExtra::create(['player_id' => $planter->id, 'match_id' => $match->id, 'bomb_plants' => 5, 'bomb_defuses' => 0]);
+        PlayerMatchExtra::create(['player_id' => $defuser->id, 'match_id' => $match->id, 'bomb_plants' => 0, 'bomb_defuses' => 4]);
+        $this->killInMatch($match, $planter, $victim);
+
+        $response = $this->get(route('specialties.bombs', ['server' => $this->server->slug, 'stat' => 'defuses']));
+        $response->assertOk();
+
+        $rows = collect($response->viewData('rows'));
+        $this->assertNull($rows->first(fn ($r) => $r->player->id === $planter->id), 'A pure planter with 0 defuses must not appear in the defuses ranking.');
+        $defuserRow = $rows->first(fn ($r) => $r->player->id === $defuser->id);
+        $this->assertNotNull($defuserRow);
+        $this->assertSame(4, $defuserRow->value);
+
+        $tabs = collect($response->viewData('tabs'));
+        $this->assertTrue($tabs->firstWhere('label', '✂️ Desactivadas')['active']);
+        $this->assertFalse($tabs->firstWhere('label', '💣 Plantadas')['active']);
+    }
+
+    public function test_bombs_plants_tab_is_the_default_and_unaffected_by_the_defuses_toggle(): void
+    {
+        $planter = Player::create(['guid' => 111, 'last_name' => 'Planter', 'last_name_plain' => 'Planter']);
+        $victim = Player::create(['guid' => 113, 'last_name' => 'V', 'last_name_plain' => 'V']);
+
+        $match = $this->match(Season::current()->id);
+        PlayerMatchExtra::create(['player_id' => $planter->id, 'match_id' => $match->id, 'bomb_plants' => 5, 'bomb_defuses' => 0]);
+        $this->killInMatch($match, $planter, $victim);
+
+        $response = $this->get(route('specialties.bombs', ['server' => $this->server->slug]));
+        $response->assertOk();
+
+        $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->id === $planter->id);
+        $this->assertSame(5, $row->value);
+    }
+
     public function test_damage_excludes_old_season_and_all_falls_back_to_the_lifetime_total(): void
     {
         $oldSeason = Season::current();

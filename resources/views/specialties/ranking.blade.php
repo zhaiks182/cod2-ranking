@@ -7,10 +7,18 @@
     @if($servers->count() > 1)
         <div class="flex items-center gap-2 text-sm">
             @foreach($servers as $s)
-                <a href="{{ route($routeName, ['server' => $s->slug]) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
+                <a href="{{ route($routeName, array_filter(['server' => $s->slug, 'stat' => $stat ?? null])) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
             @endforeach
         </div>
     @endif
+
+    @isset($tabs)
+        <div class="flex gap-2 text-sm">
+            @foreach($tabs as $tab)
+                <a href="{{ $tab['url'] }}" class="px-3 py-1.5 rounded-lg border {{ $tab['active'] ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $tab['label'] }}</a>
+            @endforeach
+        </div>
+    @endisset
 
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -24,7 +32,7 @@
             @include('partials.season-selector', [
                 'seasonDropdownId' => 'specialty-season-dropdown',
                 'seasonBaseRoute' => $routeName,
-                'seasonBaseParams' => ['server' => $server?->slug],
+                'seasonBaseParams' => array_filter(['server' => $server?->slug, 'stat' => $stat ?? null]),
             ])
         @endisset
     </div>

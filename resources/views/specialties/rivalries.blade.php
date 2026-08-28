@@ -7,23 +7,38 @@
     @if($servers->count() > 1)
         <div class="flex items-center gap-2 text-sm">
             @foreach($servers as $s)
-                <a href="{{ route('specialties.rivalries', ['server' => $s->slug]) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
+                <a href="{{ route('specialties.rivalries', array_filter(['server' => $s->slug, 'type' => ($type ?? 'all') === 'grenades' ? 'grenades' : null])) }}" class="px-3 py-1.5 rounded-lg border {{ $server?->id === $s->id ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $s->name }}</a>
             @endforeach
         </div>
     @endif
 
+    @isset($tabs)
+        <div class="flex gap-2 text-sm">
+            @foreach($tabs as $tab)
+                <a href="{{ $tab['url'] }}" class="px-3 py-1.5 rounded-lg border {{ $tab['active'] ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ $tab['label'] }}</a>
+            @endforeach
+        </div>
+    @endisset
+
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>😈</span> Rivalidades
+                <span>😈</span> Rivalidades{{ ($type ?? 'all') === 'grenades' ? ' con granadas' : '' }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima). Click en una fila para ver el cara a cara completo.</p>
+            <p class="text-xs text-slate-500 mt-0.5">
+                @if(($type ?? 'all') === 'grenades')
+                    El "verdugo" de cada jugador con granadas — quién lo mató más veces que nadie con este tipo de arma (mínimo 2 bajas contra esa víctima).
+                @else
+                    El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima).
+                @endif
+                Click en una fila para ver el cara a cara completo.
+            </p>
         </div>
 
         @include('partials.season-selector', [
             'seasonDropdownId' => 'specialty-season-dropdown',
             'seasonBaseRoute' => 'specialties.rivalries',
-            'seasonBaseParams' => ['server' => $server?->slug],
+            'seasonBaseParams' => array_filter(['server' => $server?->slug, 'type' => ($type ?? 'all') === 'grenades' ? 'grenades' : null]),
         ])
     </div>
 

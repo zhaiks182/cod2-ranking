@@ -379,19 +379,30 @@ class SpecialtyController extends Controller
         return view('specialties.weapons', compact('servers', 'server', 'seasons', 'seasonId', 'weapons'));
     }
 
+    /**
+     * $type=grenades (2026-08-28, a pedido de un jugador -- "una vista de quien
+     * mato a quien con granada") reusa toda la misma logica de emparejamiento,
+     * solo filtrando is_grenade=true y bajando el piso de 3 a 2 bajas -- las
+     * granadas son mucho mas raras que las bajas en general, 3 entre el mismo
+     * par hubiera dejado la vista casi vacia.
+     */
     public function rivalries(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
         [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
+
+        $type = $request->query('type') === 'grenades' ? 'grenades' : 'all';
+        $minCount = $type === 'grenades' ? 2 : 3;
 
         $rivalries = collect();
 
         if ($server) {
             $pairs = $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
+                ->when($type === 'grenades', fn ($q) => $q->where('kills.is_grenade', true))
                 ->selectRaw('kills.attacker_player_id, kills.victim_player_id, count(*) as kills_count')
                 ->groupBy('kills.attacker_player_id', 'kills.victim_player_id')
-                ->having('kills_count', '>=', 3)
+                ->having('kills_count', '>=', $minCount)
                 ->get();
 
             // A vs B and B vs A are the same matchup — group by the *unordered* pair
@@ -420,7 +431,8 @@ class SpecialtyController extends Controller
 
             // Favorite weapon in each dominant matchup — a different cut of the same
             // kills already queried above, grouped one level finer (by weapon too).
-            $topWeaponByPair = $this->sdKills($server->id, $matchIds)
+            // Skipped for $type=grenades: it'd always just say "grenade", not useful.
+            $topWeaponByPair = $type === 'grenades' ? collect() : $this->sdKills($server->id, $matchIds)
                 ->whereNotNull('kills.attacker_player_id')->whereNotNull('kills.victim_player_id')
                 ->selectRaw('kills.attacker_player_id, kills.victim_player_id, kills.weapon, count(*) as c')
                 ->groupBy('kills.attacker_player_id', 'kills.victim_player_id', 'kills.weapon')
@@ -441,7 +453,13 @@ class SpecialtyController extends Controller
             })->filter(fn ($r) => $r->nemesis && $r->victim)->values();
         }
 
-        return view('specialties.rivalries', compact('servers', 'server', 'seasons', 'seasonId', 'rivalries'));
+        $tabParams = array_filter(['server' => $server?->slug, 'season' => $seasonId]);
+        $tabs = [
+            ['label' => '😈 General', 'url' => route('specialties.rivalries', $tabParams), 'active' => $type === 'all'],
+            ['label' => '💣 Con granadas', 'url' => route('specialties.rivalries', array_merge($tabParams, ['type' => 'grenades'])), 'active' => $type === 'grenades'],
+        ];
+
+        return view('specialties.rivalries', compact('servers', 'server', 'seasons', 'seasonId', 'rivalries', 'type', 'tabs'));
     }
 
     public function mapKings(Request $request)
@@ -1082,10 +1100,19 @@ class SpecialtyController extends Controller
         ]);
     }
 
+    /**
+     * Ranking de plantadas por default, con un toggle a desactivadas -- antes
+     * "desactivadas" solo aparecía como número total arriba (statCards), sin
+     * ranking de jugadores; reportado por un jugador (2026-08-28) como "solo
+     * 1 de los 2 aparece registrado en la página".
+     */
     public function bombs(Request $request)
     {
         [$servers, $server] = $this->resolveServer($request);
         [$seasons, $seasonId, $matchIds] = $this->resolveSeason($request);
+
+        $stat = $request->query('stat') === 'defuses' ? 'defuses' : 'plants';
+        $column = $stat === 'defuses' ? 'bomb_defuses' : 'bomb_plants';
 
         $rows = collect();
         $totalPlants = 0;
@@ -1095,13 +1122,13 @@ class SpecialtyController extends Controller
             if ($seasonId === 'all') {
                 $rows = PlayerServerStat::with('player')
                     ->where('server_id', $server->id)
-                    ->where('bomb_plants', '>', 0)
+                    ->where($column, '>', 0)
                     ->whereHas('player')
-                    ->orderByDesc('bomb_plants')
+                    ->orderByDesc($column)
                     ->limit(50)
                     ->get()
-                    ->map(function ($row) {
-                        $row->value = $row->bomb_plants;
+                    ->map(function ($row) use ($column) {
+                        $row->value = $row->$column;
                         $row->share = null;
 
                         return $row;
@@ -1115,10 +1142,10 @@ class SpecialtyController extends Controller
                 $serverMatchIds = GameMatch::where('server_id', $server->id)->whereIn('id', $matchIds)->pluck('id');
 
                 $tally = PlayerMatchExtra::whereIn('match_id', $serverMatchIds)
-                    ->where('bomb_plants', '>', 0)
-                    ->selectRaw('player_id, sum(bomb_plants) as bomb_plants')
+                    ->where($column, '>', 0)
+                    ->selectRaw("player_id, sum({$column}) as value")
                     ->groupBy('player_id')
-                    ->orderByDesc('bomb_plants')
+                    ->orderByDesc('value')
                     ->limit(50)
                     ->get();
 
@@ -1129,7 +1156,7 @@ class SpecialtyController extends Controller
                     $player = $players[$row->player_id] ?? null;
 
                     return $player ? (object) [
-                        'player' => $player, 'value' => (int) $row->bomb_plants, 'share' => null,
+                        'player' => $player, 'value' => (int) $row->value, 'share' => null,
                         'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
                     ] : null;
                 })->filter()->values();
@@ -1139,12 +1166,21 @@ class SpecialtyController extends Controller
             }
         }
 
+        $tabParams = array_filter(['server' => $server?->slug, 'season' => $seasonId]);
+
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.bombs', 'icon' => '💣', 'title' => 'Especialistas en Bombas',
-            'subtitle' => 'Más bombas plantadas (Search and Destroy)',
-            'valueLabel' => 'plantadas', 'valueColor' => 'text-red-400',
+            'routeName' => 'specialties.bombs', 'icon' => '💣',
+            'title' => $stat === 'defuses' ? 'Especialistas en Desactivar Bombas' : 'Especialistas en Bombas',
+            'subtitle' => ($stat === 'defuses' ? 'Más bombas desactivadas' : 'Más bombas plantadas').' (Search and Destroy)',
+            'valueLabel' => $stat === 'defuses' ? 'desactivadas' : 'plantadas',
+            'valueColor' => $stat === 'defuses' ? 'text-emerald-400' : 'text-red-400',
             'shareLabel' => null,
+            'stat' => $stat,
+            'tabs' => [
+                ['label' => '💣 Plantadas', 'url' => route('specialties.bombs', $tabParams), 'active' => $stat === 'plants'],
+                ['label' => '✂️ Desactivadas', 'url' => route('specialties.bombs', array_merge($tabParams, ['stat' => 'defuses'])), 'active' => $stat === 'defuses'],
+            ],
             'statCards' => [
                 ['label' => 'Bombas plantadas', 'value' => $totalPlants, 'color' => 'text-red-400'],
                 ['label' => 'Bombas desactivadas', 'value' => $totalDefuses, 'color' => 'text-emerald-400'],
