@@ -74,28 +74,28 @@
         </div>
     @endif
 
-    <div class="grid lg:grid-cols-5 gap-6">
-        <section class="lg:col-span-3">
+    <div class="grid md:grid-cols-2 gap-6 items-stretch">
+        <section class="flex flex-col">
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Desempeño general por mapa</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                <div class="overflow-x-auto">
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden flex-1 flex flex-col">
+                <div class="overflow-x-auto flex-1">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                            <th class="px-4 py-2 font-medium">Mapa</th>
-                            <th class="px-4 py-2 font-medium text-right">Kills</th>
-                            <th class="px-4 py-2 font-medium text-right">Muertes</th>
-                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
+                            <th class="px-2 py-2 pl-4 font-medium">Mapa</th>
+                            <th class="px-2 py-2 font-medium text-right">Kills</th>
+                            <th class="px-2 py-2 font-medium text-right">Muertes</th>
+                            <th class="px-2 py-2 font-medium text-right" title="Jugadas">Jug.</th>
+                            <th class="px-2 py-2 font-medium text-right" title="Ganadas">Gan.</th>
+                            <th class="px-2 py-2 pr-4 font-medium text-right" title="Win rate">WR</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($mapPerformance->take(4) as $stat)
                             @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
-                                <td class="px-4 py-2 whitespace-nowrap">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                <td class="px-2 py-2 pl-4 whitespace-nowrap">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-cyan-300">
                                     <span class="relative inline-block">
                                         <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $stat->kills }}</button>
                                         @if($stat->teamkills > 0)
@@ -103,10 +103,10 @@
                                         @endif
                                     </span>
                                 </td>
-                                <td class="px-4 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
+                                <td class="px-2 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
+                                <td class="px-2 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
+                                <td class="px-2 py-2 pr-4 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
@@ -123,10 +123,10 @@
             @endif
         </section>
 
-        <section class="lg:col-span-2">
+        <section class="flex flex-col">
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                <div class="overflow-x-auto">
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden flex-1 flex flex-col">
+                <div class="overflow-x-auto flex-1">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
