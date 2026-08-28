@@ -2448,6 +2448,79 @@ pero no limpió retroactivamente las que ya existían).
   los demás. Reemplazado por un listener delegado (`data-dropdown-toggle`
   unificado + clase `.admin-dropdown` compartida) que cierra todos antes de
   abrir el tocado, y cierra todo al hacer click afuera.
+- **Chiste a pedido del dueño:** ícono de burro (`public/burro.png`, subido por
+  el dueño desde `icon-icons.com` — bloqueaba la descarga directa por curl sin
+  un header `Referer`, se resolvió agregándolo) al lado de la medalla de
+  dtN.harek (guid `1127155189`) cuando entra al top 3 en `/ranking` y en el
+  dashboard — hardcodeado por guid, no un sistema nuevo. 11px, ajustado a pedido
+  para que combine con el tamaño de la medalla. Se evaluó un ícono de Che
+  Guevara para "hardoso" con un link de `pngegg.com`, pero ese sitio está
+  detrás de un challenge anti-bot de Cloudflare que `curl` no puede resolver
+  (a diferencia de `icon-icons.com`, que solo pedía el header) — descartado,
+  el dueño lo sube directo cuando esté el módulo de admin para esto.
+
+## Bug real y serio: kills/deaths de DM (y potencialmente HQ/CTF) contaban para el ranking de SD (2026-08-28)
+
+Reportado por jugadores en vivo: "cuando he jugado DM/HQ/CTF/etc las muertes
+se registran en el ranking, esto está mal, solo debe funcionar para SD".
+
+**Causa raíz, en `ParseCod2Log::recordKill()`:** SD manda `RoundStart;` al
+empezar cada ronda, así que un cambio de gametype siempre pasa por
+`openRound()` (que ya compara `$currentMatch->gametype !== $gametype` y abre
+partida nueva si corresponde) — pero **DM nunca manda `RoundStart;` en
+absoluto** (documentado desde antes en "Cuándo se crea una partida"). El único
+código que manejaba esto abría una ronda nueva solo si `$currentRound` era
+`null` — si en cambio quedaba una ronda de SD ya *terminada* (`ended_at`
+puesto, de la partida jugada justo antes) todavía en memoria, el chequeo viejo
+`$currentRound->ended_at && $pendingGametype !== 'dm'` dejaba pasar un
+fallthrough silencioso: cualquier `Kill;` de la sesión de DM que viniera
+después seguía atribuyéndose a esa ronda vieja de SD, con
+`$countsTowardRanking = $currentRound->gametype === 'sd'` evaluando `true`
+para kills que en realidad eran de DM.
+
+**Confirmado en producción antes de tocar nada:** `round_id=1555`
+(`match_id=107`, tag `sd`, partida real jugada 2026-08-26 23:44 → 2026-08-27
+00:30) tenía **86 kills con `occurred_at` entre 2026-08-27 20:05 y 20:30 —
+casi 20 horas después** de que la partida terminara. Los nombres involucrados
+(`hardoso` vs `^^55h€ll^^66~fíŠh¦^^55Shyne™`, arma `kar98k_mp` en las 86, 1v1
+constante) coinciden exactamente con el patrón de una sesión de DM real, no
+con SD.
+
+**Fix:** la condición pasó de comparar `$pendingGametype !== 'dm'` (hardcodeado
+a un solo gametype) a comparar `$pendingGametype === $currentRound->gametype`
+— si coinciden, sigue siendo el mismo hueco de ready-up de la propia partida
+(se descarta, comportamiento sin cambios); si NO coinciden, el gametype
+realmente cambió y hace falta abrir una ronda nueva de verdad (mismo
+`openRound()` que ya usa el camino de `RoundStart;`), sin importar si el modo
+nuevo es `dm` específicamente o cualquier otro que tampoco mande
+`RoundStart;`. Más general y más correcto que el hardcode original, cubre
+`HQ`/`CTF`/etc. también si alguno resulta tener el mismo comportamiento.
+
+**Corrección retroactiva de los datos ya afectados** (respaldo tomado antes
+con `php artisan backup:run`,
+`backups/cod2_stats_2026-08-28_121900.sql.gz`): las 86 kills de `round_id=1555`
+se movieron a un match/round nuevo creados a mano (`match_id=110`, `round_id=1630`,
+`gametype='dm'`, timestamps tomados de los propios `occurred_at` de esas
+kills) en vez de dejarlas mal tagueadas dentro del match 107 (que sigue
+siendo una partida real de SD, con sus otras rondas intactas). Después,
+`php artisan cod2:recalculate-stats` (el comando ya existente, `StatsRecalculator`
+— reconstruye `kills_total`/`deaths_total`/etc. desde cero a partir de
+`kills`+`rounds` filtrando `gametype='sd'`) recalculó todo el server de una,
+sin aritmética manual propensa a error. Efecto medido: `hardoso` kills_total
+1137→1097 (-40), deaths_total 818→773 (-45); `Shyne` (guid `-499334653`, el
+que estaba activo en esas fechas) kills_total 84→39 (-45), deaths_total
+94→53 (-41) — los números cruzan entre sí (kills de uno ≈ deaths del otro)
+como corresponde a un 1v1.
+
+TDD: `tests/Feature/ParseCod2LogDmAfterSdTest.php` (2 casos) — RED confirmado
+contra el código viejo reproduciendo el bug exacto (una ronda de SD que
+termina, seguida de un `InitGame:` a `dm` sin `RoundStart;`, seguida de una
+`Kill;`: el código viejo la contaba como SD); GREEN con el fix; guardia de
+regresión para el caso legítimo que el fix no debe romper (una kill perdida
+en el propio hueco de ready-up de SD, mismo gametype, sigue descartándose).
+Verificado en un clone descartable del VPS: suite completa 149 tests/552
+assertions, mismos 2 fallos preexistentes sin relación. Desplegado, corrida
+manual de `cod2:parse-log` sin errores nuevos en `laravel.log`.
 
 ## Pendientes / conocido-roto
 

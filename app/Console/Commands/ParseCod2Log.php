@@ -329,13 +329,27 @@ class ParseCod2Log extends Command
             // allows kills before a formal RoundStart;, like DM) — open one from
             // whatever map info is known rather than dropping the kill.
             $currentRound = $this->openRound($server, $pendingMap ?? 'unknown', $pendingGametype, $currentRound, $currentMatch);
-        } elseif ($currentRound->ended_at && $pendingGametype !== 'dm') {
-            // SD between a round ending and the next RoundStart; (ready-up lobby,
-            // zPAM's aim-trainer warmup) generates real Kill; lines that aren't part of
-            // any actual match — discard them instead of misattributing them to the
-            // round that just ended. DM has no RoundStart; at all, so its "round" stays
-            // open the whole session and this branch doesn't apply to it.
-            return;
+        } elseif ($currentRound->ended_at) {
+            if ($pendingGametype === $currentRound->gametype) {
+                // Same match's ready-up gap (or SD's aim-trainer warmup) between a round
+                // ending and the next RoundStart; — a real Kill; line, but not part of any
+                // actual match. Discard it instead of misattributing it to the round that
+                // just ended.
+                return;
+            }
+
+            // Bug found live 2026-08-28 (reported by players: DM kills counting toward
+            // the SD ranking): the pendingGametype !== 'dm' check this used to have let a
+            // real gametype switch fall through here silently. DM (and possibly other
+            // modes) never send RoundStart; at all, so a Kill; is the ONLY signal that a
+            // new session started — reusing the old, ended SD round attributed hours of
+            // later DM kills to it (round_id=1555, match_id=107 in production: 86 DM
+            // kills from a session 20 hours after the SD match's own started_at/ended_at
+            // got counted as SD kills/deaths for hardoso and Shyne, confirmed against
+            // games_mp.log). Opening a fresh round here — same call the RoundStart;
+            // path already uses — makes openRound() create a new match with the actual
+            // pending gametype instead.
+            $currentRound = $this->openRound($server, $pendingMap ?? 'unknown', $pendingGametype, $currentRound, $currentMatch);
         }
 
         $isSuicide = $mod === 'MOD_SUICIDE' || ($aGuid === $vGuid && $aName === $vName);
