@@ -98,6 +98,7 @@
                                     'items' => [
                                         ['route' => 'specialties.headshots', 'icon' => '🎯', 'label' => 'Headshots'],
                                         ['route' => 'specialties.grenades', 'icon' => '💣', 'label' => 'Granadas'],
+                                        ['route' => 'specialties.rivalries', 'icon' => '😈', 'label' => 'Rivalidades'],
                                         ['route' => 'specialties.weapons', 'icon' => '🔫', 'label' => 'Ranking por arma'],
                                         ['route' => 'specialties.efficiency', 'icon' => '⚔️', 'label' => 'Eficiencia (K/D)'],
                                         ['route' => 'specialties.bombs', 'icon' => '💣', 'label' => 'Especialistas en bombas'],
@@ -142,7 +143,6 @@
                                     ],
                                 ],
                             ];
-                            // Rivalidades: oculto a pedido, la pagina sigue viva en /rivalidades
                         @endphp
                         @foreach($specialtyGroups as $groupName => $group)
                             <div class="{{ !$loop->first ? 'border-t border-slate-800' : '' }}">
