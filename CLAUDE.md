@@ -2171,6 +2171,63 @@ subieron a 10 (mismas proporciones de kills/muertes, mismos K/D esperados).
 Suite completa: 127 tests/475 assertions, 1 fallo preexistente conocido, sin
 regresiones.
 
+## Bug real: filas fantasma en `players` por guid corrupto en tránsito (2026-08-28)
+
+Reporte del dueño: jugadores "MOKOS" (`CHILEAN.'.MQZ`, `MOKOS`, `MOKOS RELOAD`)
+se repetían en el ranking pese a la identidad por HWID/guid. Investigado con la
+BD real: ese caso puntual **no es un bug** — son 3 `guid` genuinamente distintos
+con kills reales bajo cada uno (confirmado desde `Kill;` del log, no solo RCON),
+timeline de alias continuo sin huecos, mismo rango de IP — la misma persona
+cambió de HWID real 3 veces en 3 semanas (reinstalación, spoofing, u otra causa
+de hardware; no hay forma de que el modelo de identidad por guid lo evite ni de
+fusionarlo automáticamente).
+
+Buscando "más casos así" se encontró un bug real y separado, más grande:
+**27 de 69 filas de `players` (39%) eran fantasmas** con `kills_total=0` y
+`deaths_total=0`, cada una con el mismo `last_name_plain` que un jugador real y
+activo, vista minutos aparte, y un `guid` a 1-2 caracteres de distancia
+(Levenshtein) del guid real — ej. jugador real `GenuineF` (guid `-2119631637`,
+1156 kills) con 4 fantasmas (`-211963163`, `-211931637`, `-211961637`,
+`-211631637`) en menos de 2 horas la misma sesión.
+
+**No es una segunda identidad real:** `guid` es FNV-1a de 32 bits del HWID2
+(`HwidHasher.php`) — el efecto avalancha de un hash garantiza que un hardware
+genuinamente distinto produce un número irreconocible, nunca "el mismo número
+menos un dígito". Validado contra el código fuente real de CoD2x
+(`github.com/callofduty2x/CoD2x`): el comando `status` no está reimplementado
+por CoD2x, delega en el binario original de Activision vía `ASM_CALL` a una
+dirección fija — el punto exacto de la corrupción queda fuera del código legible
+(closed-source), pero es la misma familia de bug que los 3 guards que ya existían
+en `upsertPlayer()` para RCON "status" corrupto (guid fuera de rango 2026-08-14,
+ping ausente 2026-08-19, pérdida de color 2026-08-22) — un caso más que ninguno
+cubría: un guid truncado que sigue siendo un int32 válido.
+
+**Importante, corregido en el diseño del fix a partir de una observación del
+dueño:** IP compartida NO es señal de nada (CGNAT, VPN, o dos personas reales
+en la misma casa — caso real confirmado: `Ekkaia`/`dianaaaaaaaaaaa`, pareja,
+mismo IP, ambos con cientos de kills reales cada uno). El fix nunca mira la IP.
+
+**Fix** en `ParseCod2Log::upsertPlayer()`: antes de crear una fila `players`
+nueva, si ya existe un jugador con el mismo `last_name_plain` visto en los
+últimos 5 minutos cuyo guid está a distancia de edición ≤2 del guid entrante,
+se usa el guid conocido en vez de crear uno nuevo — no hace falta que el
+jugador esté conectado desde la misma IP.
+
+TDD: `tests/Feature/ParseCod2LogPhantomGuidTest.php` (3 casos) — guid casi
+idéntico + mismo nombre + segundos después no crea fila nueva (RED confirmado
+sin el fix); guid genuinamente distinto para el mismo nombre sigue creando fila
+nueva (guardia de regresión para el caso MOKOS real); guid casi idéntico pero
+con nombre distinto también sigue creando fila nueva. Verificado en un clone
+descartable en el VPS antes de desplegar: RED sin el fix, GREEN con el fix,
+suite completa 132 tests/492 assertions, mismos 2 fallos preexistentes sin
+relación (`ExampleTest`, `CountriesSeasonTest` — confirmado que fallan igual
+contra el baseline sin este cambio).
+
+**Pendiente, no resuelto todavía:** las 27 filas fantasma que ya existían en
+producción antes de este fix no se limpiaron (0 kills/deaths, no hay estadística
+real que perder al borrarlas) — el dueño pidió arreglar la causa raíz primero,
+la limpieza queda para una próxima sesión si la pide.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

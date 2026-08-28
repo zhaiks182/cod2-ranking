@@ -712,6 +712,32 @@ class ParseCod2Log extends Command
         $name = $this->toUtf8($name);
         $plain = Cod2Colors::stripColors($name);
 
+        // Same bug family as the guards above (2026-08-14 out-of-range, 2026-08-19
+        // ping-missing, 2026-08-22 color-loss) -- one more digit of the guid lost or
+        // altered in transit, but still landing inside the valid int32 range so
+        // those guards miss it. Confirmed 2026-08-28: ~27 phantom zero-kill `players`
+        // rows in production, each guid a 1-2 character edit away from a real,
+        // currently-active player's guid, same stripped name, seen minutes apart.
+        // guid is FNV-1a of the HWID2 string (see HwidHasher) -- a genuinely
+        // different piece of hardware produces an avalanche-scrambled, unrelated
+        // 32-bit number, never "the same digits minus one". Two different real
+        // players coincidentally sharing both a name AND a near-identical guid
+        // within minutes of each other isn't realistic -- treat the reading as the
+        // known player instead of minting a junk row for it. Deliberately not
+        // filtered by IP: shared/CGNAT/VPN connections make the same IP normal for
+        // two different real people, so IP can't be used to narrow this down.
+        if ($plain !== '') {
+            $recent = Player::where('last_name_plain', $plain)
+                ->where('guid', '!=', $guid)
+                ->where('last_seen_at', '>=', now()->subMinutes(5))
+                ->get()
+                ->first(fn (Player $p) => levenshtein((string) $p->guid, (string) $guid) <= 2);
+
+            if ($recent) {
+                $guid = $recent->guid;
+            }
+        }
+
         $player = Player::firstOrNew(['guid' => $guid]);
         $isNew = ! $player->exists;
 
