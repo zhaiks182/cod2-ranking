@@ -41,6 +41,23 @@ class MatchController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // Quien gano (axis/allies) de cada partida de la pagina (2026-08-30, a
+        // pedido del dueño -- /partidas solo mostraba el marcador numerico "19-17",
+        // sin decir a que lado corresponde cada numero). Una sola query batcheada
+        // para las 20 partidas de la pagina, no una por fila -- ver
+        // TeamSideAnalyzer::winningSideForMatch() para el detalle de por que no
+        // hace falta construir el leaderboard completo de cada partida solo para
+        // esto.
+        $killsByMatch = Kill::whereIn('match_id', $matches->getCollection()->pluck('id'))
+            ->whereNotNull('attacker_team')
+            ->orderBy('id')
+            ->get(['match_id', 'attacker_guid', 'attacker_team', 'victim_guid', 'victim_team'])
+            ->groupBy('match_id');
+
+        $matches->getCollection()->each(function ($match) use ($killsByMatch) {
+            $match->winning_side = TeamSideAnalyzer::winningSideForMatch($match->rounds, $killsByMatch->get($match->id, collect()));
+        });
+
         $grouped = $matches->getCollection()->groupBy(fn ($m) => $m->started_at->toDateString());
 
         return view('matches.index', compact('servers', 'server', 'matches', 'grouped', 'backfilled', 'from', 'to'));

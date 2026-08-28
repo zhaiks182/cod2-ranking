@@ -2971,6 +2971,54 @@ completo).
   correctamente en la tabla comprimida (`Toujane, Tunisia · 195 kills`, etc.),
   "Guid: -1106466662" presente.
 
+## Popup de rondas anclado arriba + quien ganó cada ronda; /partidas muestra Axis/Allies (2026-08-30)
+
+Dos seguimientos del mismo día, ambos vía `ui-ux-pro-max` (búsqueda local del
+skill de UI/UX no encontró match especifico para "list row gap" — se avisó
+explícitamente al dueño que la recomendación de layout era razonamiento
+general, no un match de la base de datos del skill).
+
+- **Popup de rondas de `/partidas/{id}`:** el fix anterior (mismo día,
+  `h-[85vh]` fijo) evitaba que las flechas ‹/› se movieran al cambiar de
+  ronda, pero dejaba un área vacía grande en rondas con pocos kills — el
+  dueño lo reportó como "un fondón azul sin sentido". Causa: forzar una
+  altura fija resuelve el problema de raíz equivocada (centrado vertical);
+  el fix correcto es anclar el popup **arriba** (`items-start` + `pt-16` en
+  vez de `items-center`) con `max-h-[calc(100vh-8rem)]` en vez de altura
+  fija — el header nunca se mueve (siempre al mismo offset desde arriba) Y
+  el popup se ajusta al contenido real de cada ronda, sin área vacía.
+- **De paso, quién ganó cada ronda** (antes solo visible como color en los
+  cuadraditos de la línea de tiempo) se agregó como badge de texto junto a
+  "Ronda N" dentro del popup — mismo dato (`data-round-winner` en el link de
+  la línea de tiempo), sin pedir nada nuevo al servidor.
+- **`/partidas` (listado): el marcador ("19-17") no decía a qué lado
+  correspondía cada número** — el dueño lo pidió agregado. Nuevo
+  `TeamSideAnalyzer::winningSideForMatch()` — versión liviana de
+  `sideScores()` para listados con muchas partidas: vota
+  `winningRosterGuids()` contra el último lado observado de cada guid
+  directamente desde una query chica de kills (`attacker_guid`/
+  `attacker_team`/`victim_guid`/`victim_team`), **sin construir el
+  leaderboard completo de cada partida** (que sí hace falta en
+  `MatchController::show()` vía `splitByCurrentSide()`, pero sería
+  desproporcionado para 20 filas de un listado). `MatchController::index()`
+  hace **una sola query batcheada** para las 20 partidas de la página
+  (`whereIn('match_id', ...)`), no una por fila — mismo patrón de batching
+  que ya usan `KillDetailController`/`TeamkillController`. Badge rojo
+  "Axis"/azul "Allies" junto al marcador en `/partidas`.
+- TDD: `tests/Feature/TeamSideAnalyzerWinningSideForMatchTest.php` (5 casos
+  — axis gana, allies gana, sin ganador determinable, guids bot en el
+  roster ganador no cuentan como voto, se usa el último lado observado por
+  guid). El caso de "roster ganador solo con bots" necesitó dos intentos:
+  el primero (13 rondas de bots seguidas de 5 rondas reales) asumía mal el
+  orden de clustering y dio `axis` en vez de `null` — corregido construyendo
+  el escenario en el orden real que dispara la regla "ronda ganada
+  íntegramente por bots se clasifica al roster opuesto del último
+  clasificado" (ver bitácora de bugs, entrada 17). Verificado junto a la
+  suite completa en un clone descartable del VPS: 178/180 tests, mismos 2
+  fallos preexistentes sin relación. Desplegado a producción, verificado con
+  `curl` contra partidas reales: badges "Axis"/"Allies" correctos junto al
+  marcador real (`19-17`, `13-7`, etc.).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

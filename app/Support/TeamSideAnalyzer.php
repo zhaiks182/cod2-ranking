@@ -250,4 +250,56 @@ class TeamSideAnalyzer
 
         return ['axis' => $scores['axis'], 'allies' => $scores['allies'], 'winning' => $winning];
     }
+
+    /**
+     * Lightweight "who won, axis or allies" for a listing of many matches (ej.
+     * /partidas, 2026-08-30) — a cheaper sibling of sideScores() that skips
+     * building a full leaderboard per match. Votes winningRosterGuids() against
+     * each guid's most-recently-observed side straight from a small kills subset
+     * (attacker_guid/attacker_team, victim_guid/victim_team), no Player lookup
+     * needed since Kill rows already carry the guid directly.
+     *
+     * @param  Collection  $rounds  This match's rounds (must have winner_guids).
+     * @param  Collection  $matchKills  This match's kills, in chronological order
+     *      (ascending id/occurred_at) — later entries intentionally overwrite
+     *      earlier ones per guid, so the last write wins (mismo criterio que
+     *      splitByCurrentSide() para "el lado actual").
+     */
+    public static function winningSideForMatch(Collection $rounds, Collection $matchKills): ?string
+    {
+        $winningGuids = self::winningRosterGuids($rounds);
+
+        if (! $winningGuids) {
+            return null;
+        }
+
+        $sideByGuid = [];
+        foreach ($matchKills as $kill) {
+            if ($kill->attacker_guid && in_array($kill->attacker_team, ['axis', 'allies'], true)) {
+                $sideByGuid[$kill->attacker_guid] = $kill->attacker_team;
+            }
+            if ($kill->victim_guid && in_array($kill->victim_team, ['axis', 'allies'], true)) {
+                $sideByGuid[$kill->victim_guid] = $kill->victim_team;
+            }
+        }
+
+        $votes = ['axis' => 0, 'allies' => 0];
+        foreach ($winningGuids as $guid) {
+            // Bots (guid 0) never carry a reliable side vote — same guardrail as
+            // the human-vs-bots clustering fix in clusterRoundWinners().
+            if ($guid == 0) {
+                continue;
+            }
+            $side = $sideByGuid[$guid] ?? null;
+            if (isset($votes[$side])) {
+                $votes[$side]++;
+            }
+        }
+
+        if ($votes['axis'] === $votes['allies']) {
+            return null;
+        }
+
+        return $votes['axis'] > $votes['allies'] ? 'axis' : 'allies';
+    }
 }

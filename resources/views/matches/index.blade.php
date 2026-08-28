@@ -82,7 +82,12 @@
                         </div>
                         <div class="flex items-center gap-3 text-sm shrink-0">
                             @if($match->final_score)
-                                <span class="text-slate-300 font-medium tabular-nums">{{ $match->final_score }}</span>
+                                <span class="flex items-center gap-1.5">
+                                    @if($match->winning_side)
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $match->winning_side === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }}">{{ ucfirst($match->winning_side) }}</span>
+                                    @endif
+                                    <span class="text-slate-300 font-medium tabular-nums">{{ $match->final_score }}</span>
+                                </span>
                             @endif
                             <span class="flex items-center gap-1.5">
                                 <span class="text-cyan-300 font-medium tabular-nums">{{ $match->kills_count }}</span>
