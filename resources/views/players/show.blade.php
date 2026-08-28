@@ -117,7 +117,7 @@
             </div>
             @if($mapPerformance->count() > 4)
                 <button type="button" onclick="document.getElementById('map-stats-modal').classList.remove('hidden')"
-                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    class="self-start mt-2 text-xs text-cyan-400 hover:underline">
                     Ver todos los mapas ({{ $mapPerformance->count() }}) →
                 </button>
             @endif
@@ -161,7 +161,7 @@
             </div>
             @if($matchHistory->count() > 4)
                 <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
-                    class="mt-2 text-xs text-cyan-400 hover:underline">
+                    class="self-start mt-2 text-xs text-cyan-400 hover:underline">
                     Ver todo el historial ({{ $matchHistory->count() }}) →
                 </button>
             @endif
