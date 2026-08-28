@@ -23,6 +23,9 @@
             No hay jugadores registrados.
         </div>
     @else
+        <input type="text" id="player-delete-search" placeholder="Buscar por nombre, alias o guid…"
+            class="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:border-gsaccent">
+
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
             <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -30,26 +33,23 @@
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-3 py-2 font-medium">Jugador</th>
                         <th class="px-3 py-2 font-medium">guid</th>
-                        <th class="px-3 py-2 font-medium">Alias usados</th>
                         <th class="px-3 py-2 font-medium text-right">Kills</th>
                         <th class="px-3 py-2 font-medium text-right">Deaths</th>
                         <th class="px-3 py-2 font-medium text-right">Visto</th>
                         <th class="px-3 py-2 font-medium text-right">Acción</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="player-delete-rows">
                     @foreach($players as $player)
-                        <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                        @php
+                            $aliasNames = $player->aliases->pluck('name_plain')->unique();
+                        @endphp
+                        <tr class="player-delete-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30"
+                            data-search="{{ mb_strtolower($player->last_name_plain.' '.$player->guid.' '.$aliasNames->implode(' ')) }}">
                             <td class="px-3 py-2 font-medium">
                                 <a href="{{ route('players.show', $player->guid) }}" target="_blank" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</a>
                             </td>
                             <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ $player->guid }}</td>
-                            <td class="px-3 py-2 text-xs text-slate-400">
-                                {{ $player->aliases->pluck('name_plain')->unique()->take(6)->implode(', ') }}
-                                @if($player->aliases->pluck('name_plain')->unique()->count() > 6)
-                                    …
-                                @endif
-                            </td>
                             <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ $player->kills_total }}</td>
                             <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ $player->deaths_total }}</td>
                             <td class="px-3 py-2 text-right text-slate-500 text-xs">
@@ -72,6 +72,9 @@
             </table>
             </div>
         </div>
+        <p id="player-delete-empty" class="hidden text-center text-sm text-slate-500 py-6">
+            Ningún jugador coincide con esa búsqueda.
+        </p>
     @endif
 </div>
 
@@ -93,5 +96,26 @@
             if (!second) { e.preventDefault(); }
         });
     });
+
+    (function () {
+        const input = document.getElementById('player-delete-search');
+        if (!input) return;
+
+        const rows = document.querySelectorAll('.player-delete-row');
+        const empty = document.getElementById('player-delete-empty');
+
+        input.addEventListener('input', () => {
+            const term = input.value.trim().toLowerCase();
+            let visible = 0;
+
+            rows.forEach((row) => {
+                const matches = term === '' || row.dataset.search.includes(term);
+                row.classList.toggle('hidden', !matches);
+                if (matches) visible++;
+            });
+
+            empty.classList.toggle('hidden', visible > 0);
+        });
+    })();
 </script>
 @endsection
