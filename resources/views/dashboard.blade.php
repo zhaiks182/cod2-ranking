@@ -137,8 +137,12 @@
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums text-slate-400">{{ $stat->deaths }}</td>
                         <td class="px-4 py-3 text-right tabular-nums text-slate-400">{{ $stat->kd_ratio }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums text-slate-400">{{ $stat->headshots }}</td>
-                        <td class="px-4 py-3 text-right tabular-nums text-slate-400">{{ $stat->grenade_kills }}</td>
+                        <td class="px-4 py-3 text-right tabular-nums text-slate-400">
+                            <button type="button" data-headshots-trigger data-player="{{ $stat->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $stat->headshots }}</button>
+                        </td>
+                        <td class="px-4 py-3 text-right tabular-nums text-slate-400">
+                            <button type="button" data-grenades-trigger data-player="{{ $stat->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $stat->grenade_kills }}</button>
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="7" class="px-4 py-8 text-center text-slate-600">Todavía no hay estadísticas registradas.</td></tr>

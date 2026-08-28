@@ -289,8 +289,12 @@
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums">{{ $row->deaths }}</td>
                             <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
-                            <td class="px-4 py-2 text-right tabular-nums">{{ $row->headshots }}</td>
-                            <td class="px-4 py-2 text-right tabular-nums">{{ $row->grenade_kills }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums">
+                                <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
+                            </td>
+                            <td class="px-4 py-2 text-right tabular-nums">
+                                <button type="button" data-grenades-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->grenade_kills }}</button>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin bajas registradas en esta partida.</td></tr>
