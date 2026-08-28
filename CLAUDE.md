@@ -2786,6 +2786,26 @@ totales agregados por mapa. No lo hacía; se agregó.
   contra un jugador real — filas reales con badge/mapa/fecha correctos,
   linkeando a la partida real (`/partidas/107`, etc.).
 
+## Reorden del perfil de jugador y Rivalidad eliminada (2026-08-29)
+
+El emparejamiento de la entrada anterior (Armas+Historial, Mapas ganados+Rivalidad)
+se veía "descuadrado" según el dueño — reordenado explícitamente: **Mejores
+mapas/Alias usados** (sin cambios), **Historial de partidas/Mapas ganados**, y
+**Armas sola** (ancho completo, ya no emparejada con nada).
+
+**Rivalidad (verdugo 😈/presa favorita 🎯) se sacó del todo** — a pedido
+explícito del dueño ("no es relevante"), pese a haber sido la idea original de
+"la otra columna" de la entrada del 2026-08-29 sobre horas/armas/rivalidad. Se
+quitó tanto la sección de la vista como el cálculo entero en
+`PlayerController::show()` (`$topNemesisRow`/`$topVictimRow`/`$rivalIds`/
+`$rivalPlayers`/`$topNemesis`/`$topVictim` — nadie más los consumía, no quedó
+código muerto). El test que cubría su scope de temporada
+(`test_top_nemesis_excludes_old_season_deaths`) y el helper `createDeath()` que
+solo ese test usaba se borraron de `PlayerShowSeasonTest.php` en vez de dejarlos
+huérfanos. Verificado en un clone descartable del VPS: 168/170 tests, mismos 2
+fallos preexistentes sin relación. Desplegado, orden de secciones confirmado con
+`curl` contra un jugador real.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
