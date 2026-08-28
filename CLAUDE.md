@@ -2228,6 +2228,68 @@ producción antes de este fix no se limpiaron (0 kills/deaths, no hay estadísti
 real que perder al borrarlas) — el dueño pidió arreglar la causa raíz primero,
 la limpieza queda para una próxima sesión si la pide.
 
+## Fusionar jugadores (admin) + guid visible en el perfil (2026-08-28)
+
+Seguimiento directo de la investigación de MOKOS/Dav1Ds (ver más arriba): el
+dueño pidió una forma de fusionar a mano los perfiles de un mismo jugador real
+con varios `guid` (HWID inestable entre sesiones — reinstalación de CoD2x,
+formateo, etc., confirmado real con al menos 2 casos), sin tener que tocar SQL
+directo cada vez.
+
+- **`app/Support/PlayerMerger.php`** — el merge de verdad. Mueve `kills`
+  (`attacker_player_id`/`victim_player_id`), `demos`, `bans`, `chat_messages`
+  (sin unique constraint, solo repunta la FK), y **suma** en vez de repuntar en
+  las 4 tablas con `unique(player_id, X)` — `player_map_stats` (ojo: el unique
+  real es `(player_id, server_id, map)` desde el multi-server del 2026-08-10, NO
+  `(player_id, map)` como en la migración original de la tabla — un descuido
+  fácil si se lee solo esa primera migración), `player_server_stats`,
+  `player_weapon_picks`, `player_match_extras` — porque el destino casi siempre
+  ya tiene su propia fila para el mismo mapa/server/arma/partida. `player_aliases`
+  se dedupea por `name` exacto (el unique real), quedándose con el
+  `last_seen_at` más reciente entre las dos filas si colisiona. Los acumuladores
+  de `players` (`kills_total`, etc.) se suman; `first_seen_at`/`last_seen_at` se
+  amplían al rango combinado. **El guid/nombre histórico en `kills`/
+  `chat_messages`/`bans` no se reescribe** — es el registro fiel de lo que el
+  log dijo en su momento, no la identidad "actual". Todo en una sola
+  `DB::transaction()` con `lockForUpdate()`; los jugadores fuente se borran al
+  final.
+- **`/adm_cod2/jugadores/fusionar`** (`PlayerMergeController`, nuevo, bajo
+  Moderación en el nav admin) — busca por nombre actual **o por cualquier alias
+  histórico** (`orWhereHas('aliases', ...)`), porque el nombre visible actual de
+  un jugador casi nunca es el que tenía cuando compartía identidad con otro
+  perfil — confirmado en vivo: buscar "MOKOS" solo encuentra 2 de las 3 filas
+  reales de ese jugador, porque la tercera (`CHILEAN.'.MQZ`, guid `1055257276`)
+  usó el alias real **"MOCOS"** (con C, no con K) — la herramienta ayuda a
+  encontrar candidatos por texto, pero no reemplaza el juicio del admin
+  (chat/IP/timeline) para casos así.
+- UI: checkbox por fila para marcar "es esta persona" + radio para elegir cuál
+  queda como destino (server-side se exige que el destino esté entre los
+  marcados, si no `back()->withErrors(...)`), contador en vivo de
+  kills/deaths combinados (JS liviano, sin dependencias), confirm() antes de
+  enviar. Auditado vía `AdminAction::record('players.merge', ...)` (mismo
+  patrón que el resto del panel admin).
+- **guid visible en el perfil público** (`/jugadores/{guid}`, chico y en gris
+  bajo el nombre) y en cada fila de la tabla de fusión — es lo único que el
+  sitio realmente guarda de la identidad del jugador (ver sección "Identidad
+  del jugador" más arriba): el HWID2 crudo nunca se persiste en `players`, solo
+  se usa de paso en la subida de demos (`HwidHasher::hwidToGuid()`) para
+  resolver a qué guid pertenece.
+- TDD: `tests/Feature/Support/PlayerMergerTest.php` (5 casos: suma de totales
+  de por vida, fusión de 3 perfiles a la vez —caso real de MOKOS—, kills
+  repuntados sin reescribir guid/nombre histórico, suma correcta de
+  `player_map_stats` sin violar el unique real, dedupe de alias) +
+  `tests/Feature/Admin/PlayerMergeControllerTest.php` (4 casos: guest
+  redirigido a login, búsqueda por alias encuentra el perfil aunque el nombre
+  actual sea otro, merge real mueve datos y audita, destino fuera de los
+  seleccionados rechazado). Verificado en un clone descartable del VPS: 9/9
+  tests nuevos, suite completa 141 tests/517 assertions, mismos 2 fallos
+  preexistentes sin relación.
+- Desplegado a producción, rutas confirmadas con `route:list`, ruta protegida
+  por `auth` confirmada con `curl` (redirige a login sin sesión), búsqueda real
+  contra "MOKOS" probada por tinker (sin ejecutar ningún merge real todavía —
+  la fusión de los perfiles reales de MOKOS/Dav1Ds queda para cuando el dueño
+  la dispare desde el panel).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

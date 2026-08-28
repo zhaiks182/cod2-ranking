@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
 use App\Http\Controllers\Admin\PlayerController as AdminPlayerController;
+use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
 use App\Http\Controllers\Admin\SettingController;
@@ -140,6 +141,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::get('/paises', [AdminPlayerController::class, 'index'])->name('players.index');
         Route::delete('/paises/{player}', [AdminPlayerController::class, 'clearIp'])->name('players.clear-ip');
+
+        Route::get('/jugadores/fusionar', [PlayerMergeController::class, 'index'])->name('players.merge.index');
+        Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
         Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');

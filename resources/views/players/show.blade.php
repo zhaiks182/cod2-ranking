@@ -5,7 +5,10 @@
 @section('content')
 <div class="space-y-6">
     <div class="flex items-center justify-between flex-wrap gap-3">
-        <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
+        <div>
+            <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
+            <div class="text-[11px] font-mono text-slate-600 mt-0.5" title="Identificador único derivado del HWID del jugador">guid {{ $player->guid }}</div>
+        </div>
 
         @include('partials.season-selector', [
             'seasonDropdownId' => 'player-season-dropdown',
