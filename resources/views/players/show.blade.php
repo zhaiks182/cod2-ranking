@@ -60,17 +60,19 @@
         </div>
     </div>
 
-    <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
-        @if($favoriteWeapon)
-            <p>Arma favorita: <span class="text-slate-200 font-medium">{{ \App\Support\WeaponCatalog::label($favoriteWeapon->weapon) }}</span> ({{ $favoriteWeapon->uses }} bajas)</p>
-        @endif
-        @if($mostEquippedWeapon)
-            <p>Arma que más usa: <span class="text-slate-200 font-medium">{{ \App\Support\WeaponCatalog::label($mostEquippedWeapon->weapon) }}</span> ({{ $mostEquippedWeapon->picks }} veces equipada)</p>
-        @endif
-        @if($teamkillCount > 0)
-            <p>Fuego amigo: <span class="text-amber-400 font-medium">{{ $teamkillCount }}</span> de sus bajas fueron contra su propio equipo <span class="text-slate-600">(igual cuentan en el total, como en el marcador del juego)</span></p>
-        @endif
-    </div>
+    @if($favoriteWeapon || $mostEquippedWeapon || $teamkillCount > 0)
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-400">
+            @if($favoriteWeapon)
+                <p>Arma favorita: <span class="text-slate-200 font-medium">{{ \App\Support\WeaponCatalog::label($favoriteWeapon->weapon) }}</span> ({{ $favoriteWeapon->uses }} bajas)</p>
+            @endif
+            @if($mostEquippedWeapon)
+                <p>Arma que más usa: <span class="text-slate-200 font-medium">{{ \App\Support\WeaponCatalog::label($mostEquippedWeapon->weapon) }}</span> ({{ $mostEquippedWeapon->picks }} veces equipada)</p>
+            @endif
+            @if($teamkillCount > 0)
+                <p>Fuego amigo: <span class="text-amber-400 font-medium">{{ $teamkillCount }}</span> de sus bajas fueron contra su propio equipo <span class="text-slate-600">(igual cuentan en el total, como en el marcador del juego)</span></p>
+            @endif
+        </div>
+    @endif
 
     <div class="grid md:grid-cols-2 gap-6">
         <section>
@@ -162,9 +164,13 @@
                                 <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
                             </td>
                             <td class="px-4 py-2 text-right">
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:opacity-80">
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                </a>
                             </td>
-                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">
+                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-200">{{ $h->match->final_score ?? '—' }}</a>
+                            </td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
                         </tr>
                     @empty
@@ -313,9 +319,13 @@
                                     <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
                                 </td>
                                 <td class="px-4 py-2 text-right">
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:opacity-80">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                                    </a>
                                 </td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">
+                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-200">{{ $h->match->final_score ?? '—' }}</a>
+                                </td>
                                 <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
                             </tr>
                         @endforeach
@@ -329,7 +339,7 @@
 @if($weaponBreakdown->count() > 5)
     <div id="weapon-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
         onclick="if(event.target === this) this.classList.add('hidden')">
-        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+        <div class="w-full max-w-lg max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <span class="text-sm font-semibold">Todas las armas ({{ $weaponBreakdown->count() }})</span>
                 <button type="button" onclick="document.getElementById('weapon-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
