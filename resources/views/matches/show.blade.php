@@ -114,6 +114,49 @@
         </div>
     @endif
 
+    @if($roundDetails->isNotEmpty())
+        <div>
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold">Línea de tiempo</h2>
+                <div class="flex items-center gap-3 text-[11px] text-slate-500">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Axis ganó</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> Allies ganó</span>
+                </div>
+            </div>
+
+            {{-- Un cuadrado por ronda, en orden, rojo si gano axis esa ronda especifica,
+            azul si gano allies (mismos colores que los paneles Axis/Allies de mas
+            abajo) -- el lado real DENTRO de esa ronda, no el lado "actual" de nadie
+            (ver comentario de roundWinningSide() en el controller: los lados cambian
+            de bando en el entretiempo). Termina con el ganador/perdedor del match
+            entero (mismo $sideScores que ya usan los paneles de abajo). Cada
+            cuadrado abre el popup de rondas (mas abajo en la pagina) directo en esa
+            ronda -- ver data-round-jump en el script al final del archivo. --}}
+            <div class="flex flex-wrap items-center gap-1">
+                @foreach($roundDetails as $rd)
+                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}"
+                        title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
+                        class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
+                            {{ match($rd->winningSide) { 'axis' => 'bg-red-500 text-red-950', 'allies' => 'bg-blue-500 text-blue-950', default => 'bg-slate-800 text-slate-500' } }}
+                            hover:ring-2 hover:ring-cyan-400 cursor-pointer">
+                        {{ $rd->number }}
+                    </a>
+                @endforeach
+                @if($sideScores['winning'])
+                    @php $loser = $sideScores['winning'] === 'axis' ? 'allies' : 'axis'; @endphp
+                    <span class="ml-2 flex items-center gap-1.5 text-[11px]">
+                        <span class="px-2 py-1 rounded-md {{ $sideScores['winning'] === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }} font-medium">
+                            🏆 {{ ucfirst($sideScores['winning']) }} ({{ $sideScores[$sideScores['winning']] }})
+                        </span>
+                        <span class="px-2 py-1 rounded-md bg-slate-800/60 border border-slate-700 text-slate-500">
+                            {{ ucfirst($loser) }} ({{ $sideScores[$loser] }})
+                        </span>
+                    </span>
+                @endif
+            </div>
+        </div>
+    @endif
+
     @php $tkParams = http_build_query(['match' => $match->id]); @endphp
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="overflow-x-auto">
@@ -262,45 +305,22 @@
 
     @if($roundDetails->isNotEmpty())
         <div>
-            <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold">Rondas</h2>
-                <div class="flex items-center gap-3 text-[11px] text-slate-500">
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Axis ganó</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> Allies ganó</span>
-                </div>
-            </div>
+            <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.remove('hidden')"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400">
+                🎞️ Ver rondas <span class="text-slate-500">({{ $roundDetails->count() }})</span>
+            </button>
+        </div>
+    @endif
+</div>
 
-            {{-- Linea de tiempo (pedido de un jugador, 2026-08-28): un cuadrado por
-            ronda, en orden, rojo si gano axis esa ronda especifica, azul si gano
-            allies (mismos colores que los paneles Axis/Allies de mas abajo) -- el
-            lado real DENTRO de esa ronda, no el lado "actual" de nadie (ver
-            comentario de roundWinningSide() en el controller: los lados cambian de
-            bando en el entretiempo). Termina con el ganador/perdedor del match
-            entero (mismo $sideScores que ya usan los paneles de abajo). --}}
-            <div class="flex flex-wrap items-center gap-1 mb-3">
-                @foreach($roundDetails as $rd)
-                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}"
-                        title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
-                        class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
-                            {{ match($rd->winningSide) { 'axis' => 'bg-red-500 text-red-950', 'allies' => 'bg-blue-500 text-blue-950', default => 'bg-slate-800 text-slate-500' } }}
-                            hover:ring-2 hover:ring-cyan-400 cursor-pointer">
-                        {{ $rd->number }}
-                    </a>
-                @endforeach
-                @if($sideScores['winning'])
-                    @php $loser = $sideScores['winning'] === 'axis' ? 'allies' : 'axis'; @endphp
-                    <span class="ml-2 flex items-center gap-1.5 text-[11px]">
-                        <span class="px-2 py-1 rounded-md {{ $sideScores['winning'] === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }} font-medium">
-                            🏆 {{ ucfirst($sideScores['winning']) }} ({{ $sideScores[$sideScores['winning']] }})
-                        </span>
-                        <span class="px-2 py-1 rounded-md bg-slate-800/60 border border-slate-700 text-slate-500">
-                            {{ ucfirst($loser) }} ({{ $sideScores[$loser] }})
-                        </span>
-                    </span>
-                @endif
+@if($roundDetails->isNotEmpty())
+    <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="w-full max-w-3xl max-h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-sm font-semibold">🎞️ Rondas</span>
+                <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-
-            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+            <div class="overflow-y-auto">
                 <div class="flex flex-wrap gap-2 p-3 border-b border-slate-800">
                     @foreach($roundDetails as $rd)
                         <button type="button" data-round-toggle="round-detail-{{ $rd->round->id }}"
@@ -371,8 +391,8 @@
                 @endforeach
             </div>
         </div>
-    @endif
-</div>
+    </div>
+@endif
 
 <script>
     function openRoundDetail(id, { forceOpen = false, scroll = false } = {}) {
@@ -395,12 +415,14 @@
         button.addEventListener('click', () => openRoundDetail(button.dataset.roundToggle));
     });
 
-    // Cuadraditos de la linea de tiempo -- saltan directo a la ronda y la abren
-    // (a diferencia de los botones "Ronda N" de abajo, siempre fuerzan que quede
-    // abierta en vez de cerrarla si ya lo estaba, porque el punto es ir a verla).
+    // Cuadraditos de la linea de tiempo (ahora arriba de todo, ver mas abajo) --
+    // abren el popup de rondas y saltan directo a la ronda clickeada, forzando que
+    // quede abierta (a diferencia de los botones "Ronda N" de adentro del popup,
+    // que solo togglean).
     document.querySelectorAll('[data-round-jump]').forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+            document.getElementById('cod2-rounds-modal')?.classList.remove('hidden');
             openRoundDetail(link.dataset.roundJump, { forceOpen: true, scroll: true });
         });
     });
