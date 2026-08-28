@@ -2634,6 +2634,18 @@ implementar, 4 se construyeron esta misma sesión:
   167 tests/603 assertions, mismos 2 fallos preexistentes) y contra la
   partida real `match_id=109` (36 rondas, las 36 con lado determinado —
   17 axis, 19 allies — cero `null`).
+- **Iteraciones el mismo día, a pedido del dueño:** colores de la línea de
+  tiempo cambiados de verde/gris a axis=rojo/allies=azul (mismos tonos que
+  ya usaban los paneles Axis/Allies), y agregado un badge de
+  ganador/perdedor al final de la fila (reusa `$sideScores`, sin cálculo
+  nuevo). Después, reorden completo de `/partidas/{id}`: badges (sin
+  tocar) → línea de tiempo → tabla general → Tabla de Posiciones (axis/
+  allies) → botón "Ver rondas" que abre el grid por ronda en un **popup**
+  (antes vivía inline debajo de todo). Los cuadraditos de la línea de
+  tiempo ahora abren el popup directo en la ronda clickeada en vez de
+  hacer scroll a una sección inline — mismo `openRoundDetail()` de
+  siempre, solo que ahora también des-oculta `#cod2-rounds-modal` primero.
+  Sin cambios de controller en ninguna de las dos iteraciones, solo vista.
 
 ## Pendientes / conocido-roto
 
