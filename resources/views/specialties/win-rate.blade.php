@@ -53,6 +53,7 @@
                             <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                <x-player-icon :player="$row->player" />
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $row->won }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->played }}</td>

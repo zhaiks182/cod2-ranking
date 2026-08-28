@@ -62,6 +62,7 @@
                                 @if($w->topPlayer)
                                     @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                     <a href="{{ route('players.show', $w->topPlayer->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($w->topPlayer->last_name) !!}</a>
+                                    <x-player-icon :player="$w->topPlayer" />
                                 @else
                                     <span class="text-slate-600">—</span>
                                 @endif

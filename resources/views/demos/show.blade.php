@@ -40,6 +40,7 @@
                         <td class="px-4 py-2 font-medium">
                             @if($demo->player)
                                 <a href="{{ route('players.show', $demo->player->guid) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($demo->player->last_name) !!}</a>
+                                <x-player-icon :player="$demo->player" />
                             @else
                                 <span class="text-slate-400">Desconocido</span>
                             @endif

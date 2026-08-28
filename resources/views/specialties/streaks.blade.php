@@ -31,7 +31,7 @@
         <div class="grid grid-cols-2 gap-3">
             <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Racha más larga registrada</div>
-                <div class="mt-1 text-lg font-semibold text-orange-400">{{ $longestEver->best }} mapas — {!! \App\Support\Cod2Colors::toHtml($longestEver->player->last_name) !!}</div>
+                <div class="mt-1 text-lg font-semibold text-orange-400">{{ $longestEver->best }} mapas — {!! \App\Support\Cod2Colors::toHtml($longestEver->player->last_name) !!}<x-player-icon :player="$longestEver->player" /></div>
             </div>
             <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Jugadores con racha activa (2+)</div>
@@ -64,6 +64,7 @@
                             <td class="px-4 py-2 font-medium">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $r->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($r->player->last_name) !!}</a>
+                                <x-player-icon :player="$r->player" />
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums text-orange-400 font-medium">{{ $r->best }}</td>
                             <td class="px-4 py-2 text-right tabular-nums {{ $r->current >= 2 ? 'text-lime-400' : 'text-slate-500' }}">{{ $r->current }}{{ $r->current >= 2 ? ' 🔥' : '' }}</td>

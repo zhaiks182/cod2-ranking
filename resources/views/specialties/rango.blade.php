@@ -69,6 +69,7 @@
                             <td class="px-4 py-2 font-medium">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                <x-player-icon :player="$row->player" />
                             </td>
                             <td class="px-4 py-2 text-center">
                                 <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg border font-bold {{ $tierStyle }}">{{ $row->rango }}</span>

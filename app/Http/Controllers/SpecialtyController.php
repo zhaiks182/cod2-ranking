@@ -657,7 +657,7 @@ class SpecialtyController extends Controller
             ->unique();
 
         $players = Player::whereNotNull('ip')->whereIn('id', $activePlayerIds)
-            ->get(['id', 'guid', 'last_name', 'last_name_plain', 'ip', 'kills_total']);
+            ->get(['id', 'guid', 'last_name', 'last_name_plain', 'ip', 'kills_total', 'icon_path']);
 
         $grouped = [];
         foreach ($players as $player) {

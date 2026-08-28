@@ -80,6 +80,7 @@
                 <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
                     🎯 Más headshots ·
                     {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
+                    <x-player-icon :player="$topHeadshots->player" />
                     ({{ $topHeadshots->headshots }})
                 </span>
             @endif
@@ -87,6 +88,7 @@
                 <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
                     💣 Más granadas ·
                     {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
+                    <x-player-icon :player="$topGrenades->player" />
                     ({{ $topGrenades->grenade_kills }})
                 </span>
             @endif
@@ -94,6 +96,7 @@
                 <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
                     👊 Más bash ·
                     {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
+                    <x-player-icon :player="$topBash->player" />
                     ({{ $topBash->bash }})
                 </span>
             @endif
@@ -184,6 +187,7 @@
                                     <td class="px-4 py-2 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                         <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                        <x-player-icon :player="$row->player" />
                                     </td>
                                     <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">
@@ -231,6 +235,7 @@
                                     <td class="px-4 py-2 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                         <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                        <x-player-icon :player="$row->player" />
                                     </td>
                                     <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">
@@ -278,6 +283,7 @@
                             <td class="px-4 py-2 font-medium">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                <x-player-icon :player="$row->player" />
                             </td>
                             <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
                                 <span class="relative inline-block">
@@ -346,6 +352,7 @@
                                             <td class="px-4 py-2 font-medium">
                                                 @if($kill->attacker)
                                                     <a href="{{ route('players.show', $kill->attacker->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($kill->attacker_name) !!}</a>
+                                                    <x-player-icon :player="$kill->attacker" />
                                                 @else
                                                     <span class="text-slate-500">{{ \App\Support\Cod2Colors::stripColors($kill->attacker_name) }}</span>
                                                 @endif
@@ -355,6 +362,7 @@
                                             <td class="px-4 py-2">
                                                 @if($kill->victim)
                                                     <a href="{{ route('players.show', $kill->victim->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($kill->victim_name) !!}</a>
+                                                    <x-player-icon :player="$kill->victim" />
                                                 @else
                                                     <span class="text-slate-500">{{ \App\Support\Cod2Colors::stripColors($kill->victim_name) }}</span>
                                                 @endif
@@ -449,6 +457,7 @@
                                 {{-- The say; log line's name field has no color codes (unlike Kill;/RCON status) —
                                      use the player's stored colored name instead of the plain one from the chat line. --}}
                                 <a href="{{ route('players.show', $msg->player->guid) }}" class="font-medium hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($msg->player->last_name) !!}</a>
+                                <x-player-icon :player="$msg->player" />
                             @else
                                 <span class="font-medium">{!! \App\Support\Cod2Colors::toHtml($msg->name) !!}</span>
                             @endif
@@ -476,6 +485,7 @@
                         <span>
                             @if($msg->player)
                                 <a href="{{ route('players.show', $msg->player->guid) }}" class="font-medium hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($msg->player->last_name) !!}</a>
+                                <x-player-icon :player="$msg->player" />
                             @else
                                 <span class="font-medium">{!! \App\Support\Cod2Colors::toHtml($msg->name) !!}</span>
                             @endif
@@ -503,6 +513,7 @@
                         <span>
                             @if($msg->player)
                                 <a href="{{ route('players.show', $msg->player->guid) }}" class="font-medium hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($msg->player->last_name) !!}</a>
+                                <x-player-icon :player="$msg->player" />
                             @else
                                 <span class="font-medium">{!! \App\Support\Cod2Colors::toHtml($msg->name) !!}</span>
                             @endif

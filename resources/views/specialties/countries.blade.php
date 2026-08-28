@@ -46,7 +46,7 @@
                     </div>
                     <div class="px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5">
                         @foreach($c->players as $p)
-                            <a href="{{ route('players.show', $p->guid) }}" class="text-sm text-slate-300 hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->last_name) !!}</a>
+                            <a href="{{ route('players.show', $p->guid) }}" class="text-sm text-slate-300 hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->last_name) !!}<x-player-icon :player="$p" /></a>
                         @endforeach
                     </div>
                 </div>

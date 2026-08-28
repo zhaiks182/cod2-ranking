@@ -21,6 +21,14 @@
             @if($teamBalance->bots)
                 <p class="text-xs text-slate-500 mb-3">{{ $teamBalance->bots }} bot(s) conectado(s) — no se incluyen en el balanceo.</p>
             @endif
+            @php
+                // Iconos personalizados (2026-08-28), batcheado una sola vez para
+                // los dos equipos en vez de una query por jugador.
+                $balanceGuids = $teamBalance->teamA->pluck('guid')->merge($teamBalance->teamB->pluck('guid'))->filter()->values();
+                $balanceIconByGuid = $balanceGuids->isNotEmpty()
+                    ? \App\Models\Player::whereIn('guid', $balanceGuids)->whereNotNull('icon_path')->get(['guid', 'icon_path'])->keyBy('guid')
+                    : collect();
+            @endphp
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 @foreach(['A' => $teamBalance->teamA, 'B' => $teamBalance->teamB] as $label => $team)
                     <div class="rounded-lg border border-slate-800">
@@ -41,7 +49,7 @@
                                     };
                                 @endphp
                                 <li class="px-3 py-2 flex items-center justify-between gap-2 text-sm">
-                                    <span class="min-w-0 truncate">{!! \App\Support\Cod2Colors::toHtml($p->name) !!}</span>
+                                    <span class="min-w-0 truncate">{!! \App\Support\Cod2Colors::toHtml($p->name) !!} <x-player-icon :player="$balanceIconByGuid[$p->guid] ?? null" /></span>
                                     <span class="inline-flex items-center justify-center w-6 h-6 shrink-0 rounded border text-[11px] font-bold {{ $tierStyle }}" title="{{ $p->rango ? 'Rango '.$p->rango : 'Sin rango suficiente' }}">{{ $p->rango ?? '?' }}</span>
                                 </li>
                             @endforeach

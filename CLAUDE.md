@@ -3136,6 +3136,82 @@ el bug.
   touch` (permiso de escritura confirmado) y `curl` contra `/ranking`
   (el ícono roto de GenuineuPP. ya no aparece).
 
+## Ícono de jugador visible en todo el sitio, no solo el top 3 (2026-08-28)
+
+Seguimiento directo de la entrada anterior — el dueño le subió el ícono a
+GenuineuPP. (puesto #6 del ranking) y no se veía en ningún lado. No era un
+bug: el sistema original solo mostraba el ícono al lado de la medalla del
+top 3 (mismo alcance que tenía el burro hardcodeado de harek que reemplazó).
+Preguntado explícitamente el alcance deseado, eligió la opción más amplia:
+mostrarlo siempre, en cualquier lugar del sitio donde aparece el nombre de
+un jugador.
+
+- **`<x-player-icon :player="$player" />`** (componente Blade nuevo,
+  `resources/views/components/player-icon.blade.php`) — reemplaza el bloque
+  condicional que antes vivía duplicado dentro de `@if($i < 3)` en
+  leaderboard/dashboard. Silencioso (`$player?->icon_url`) si el jugador es
+  null o no tiene ícono, para poder usarlo sin envolver cada llamado en su
+  propio `@if`.
+- Insertado en **16 vistas públicas** en los ~25 lugares donde aparece el
+  nombre de un jugador: `leaderboard.blade.php` (tabla general + paneles
+  Axis/Allies), `dashboard.blade.php` (top jugadores), `players/show.blade.php`
+  (header del propio perfil), `matches/show.blade.php` (leaderboard general/
+  Axis/Allies, badges de más headshots/granadas/bash, grid de kills por
+  ronda —atacante y víctima—, las 3 secciones de chat), `demos/show.blade.php`,
+  `partials/live-status.blade.php` (jugadores conectados en vivo),
+  `partials/team-balance.blade.php` (sugerencia de equipos), y las páginas
+  de especialidades `countries`, `map-kings`, `rango`, `ranking` (plantilla
+  compartida por ~10 páginas — podio + tabla), `rivalries` (verdugo y
+  presa), `streaks`, `weapons`, `win-rate`. **Fuera de alcance a propósito:**
+  paneles solo-admin (`/adm_cod2/jugadores/*`, consola admin) y los
+  popovers renderizados por JS desde JSON (`/kills/{guid}`, el popover de
+  "quién mató con esta arma" en `/armas`) — mostrar el nombre coloreado ya
+  funciona ahí, agregar el ícono hubiera requerido tocar además el JSON de
+  esos endpoints y el JS que arma cada fila, marginal para el valor que
+  aporta.
+- **Gotcha real encontrado al verificar en producción, no en el código
+  nuevo:** `SpecialtyController::countries()` (`/paises`) seguía sin
+  mostrar el ícono después del cambio — trae los jugadores con una lista
+  explícita de columnas (`Player::...->get(['id', 'guid', 'last_name', ...])`)
+  que nunca incluyó `icon_path`, así que el modelo nunca tenía el dato en
+  memoria aunque la fila de la base sí lo tuviera. Único lugar de todo el
+  código con este patrón (confirmado con un grep de cualquier
+  `Player::...->get([...])`/`->select([...])` con columnas explícitas) —
+  el resto de las páginas ya usaban `Player::...->get()` sin restricción
+  (`KillAggregator`, los controllers de especialidades, las relaciones
+  Eloquent `belongsTo`), así que no hacía falta tocar nada más ahí. Se
+  agregó `icon_path` a esa lista.
+- **Cuidado al insertar el componente dentro de contenedores `flex`:**
+  en `specialties/countries.blade.php` los nombres viven sueltos dentro de
+  un `<div class="flex flex-wrap">` (cada `<a>` es su propio ítem flex) —
+  poner `<x-player-icon>` como hermano del `<a>` en vez de anidado adentro
+  lo hubiera vuelto un ítem flex propio, pudiendo saltar de línea por
+  separado del nombre al que pertenece. Se anidó dentro del `<a>` en ese
+  caso puntual (y en los podios de `specialties/ranking.blade.php`, que
+  usan `truncate` y necesitan el ícono dentro del mismo elemento para
+  participar del recorte de texto correctamente) — en el resto de los
+  casos (dentro de una `<td>` de tabla) da igual adentro o afuera del
+  `<a>`, no hay riesgo de salto de línea independiente.
+- TDD: `tests/Feature/PlayerIconDisplayTest.php` (2 casos — el ícono
+  aparece en el ranking general aunque el jugador esté en el puesto #6, no
+  solo top 3; la query exacta de `countries()` con sus columnas explícitas
+  incluye `icon_path`) + `tests/Feature/Support/PlayerIconComponentTest.php`
+  (3 casos — nada se renderiza sin ícono, nada se renderiza con jugador
+  null, el `<img>` aparece con la URL correcta cuando sí hay ícono). El
+  caso de `/paises` se probó contra la query directamente, no vía HTTP
+  contra la ruta real — esa página depende de la base GeoIP real
+  (`storage/app/geoip/country.mmdb`, no versionada en el repo, ver
+  "GeoIP y banderas de país" más arriba), así que en un clone descartable
+  sin ese archivo `GeoIp::countryFor()` siempre da null y el jugador ni
+  aparece en la página, sin importar si el fix es correcto — mismo motivo
+  exacto por el que `CountriesSeasonTest` ya es una de las 2 fallas
+  preexistentes conocidas de la suite. Verificado junto a la suite
+  completa en un clone descartable del VPS: 195/197 tests, mismos 2
+  fallos preexistentes sin relación. Desplegado a producción, verificado
+  con `curl` contra `/ranking`, `/paises`, `/jugadores/{guid}` y
+  `/partidas/{id}` reales: el ícono de GenuineuPP. (puesto #6) aparece en
+  los cuatro.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

@@ -62,7 +62,7 @@
                     <div class="rounded-xl border border-slate-700 bg-panel px-3 py-4 text-center">
                         <div class="text-2xl">🥈</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}</a>
+                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
                         <div class="mt-1 text-xl font-bold {{ $valueColor }}">{{ $p->value }}</div>
                         <div class="text-[10px] text-slate-500 uppercase tracking-wide">{{ $valueLabel }}</div>
                     </div>
@@ -75,7 +75,7 @@
                     <div class="rounded-xl border-2 border-amber-500 bg-gradient-to-b from-amber-950/40 to-panel px-3 py-6 text-center shadow-lg shadow-amber-950/50">
                         <div class="text-3xl">🥇</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-semibold truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}</a>
+                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-semibold truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
                         <div class="mt-1 text-3xl font-bold {{ $valueColor }}">{{ $p->value }}</div>
                         <div class="text-[10px] text-slate-500 uppercase tracking-wide">{{ $valueLabel }}</div>
                         @if($shareLabel && $p->share !== null)
@@ -91,7 +91,7 @@
                     <div class="rounded-xl border border-slate-700 bg-panel px-3 py-3 text-center">
                         <div class="text-xl">🥉</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
-                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}</a>
+                        <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
                         <div class="mt-1 text-lg font-bold {{ $valueColor }}">{{ $p->value }}</div>
                         <div class="text-[10px] text-slate-500 uppercase tracking-wide">{{ $valueLabel }}</div>
                     </div>
@@ -122,6 +122,7 @@
                                 <td class="px-4 py-2 font-medium">
                                     @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                     <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
+                                    <x-player-icon :player="$row->player" />
                                 </td>
                                 <td class="px-4 py-2 text-right tabular-nums {{ $valueColor }} font-medium">{{ $row->value }}</td>
                                 @if($shareLabel)

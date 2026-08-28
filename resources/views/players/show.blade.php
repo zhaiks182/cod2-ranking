@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
-            <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
+            <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!} <x-player-icon :player="$player" /></h1>
             <div class="text-xs font-mono text-cyan-400 mt-0.5" title="Identificador único derivado del HWID del jugador">Guid: {{ $player->guid }}</div>
         </div>
 

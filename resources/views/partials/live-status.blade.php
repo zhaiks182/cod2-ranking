@@ -30,6 +30,11 @@
     // when its map actually matches what's live right now.
     $statsByGuid = [];
     $guids = collect($players)->pluck('guid')->filter(fn ($g) => $g !== 0)->values();
+    // Iconos personalizados (2026-08-28) de los jugadores conectados ahora mismo --
+    // batcheado igual que $statsByGuid, no una query por fila.
+    $iconUrlByGuid = $guids->isNotEmpty()
+        ? \App\Models\Player::whereIn('guid', $guids)->whereNotNull('icon_path')->get(['guid', 'icon_path'])->keyBy('guid')
+        : collect();
     $latestMatchIsCurrentMap = $latestMatch && $mapCode
         && \App\Support\MapCatalog::normalize($latestMatch->map) === \App\Support\MapCatalog::normalize($mapCode);
     if ($guids->isNotEmpty()) {
@@ -156,6 +161,7 @@
                                         @endif
                                         @if($p['guid'] !== 0)
                                             <a href="{{ route('players.show', $p['guid']) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: '(sin nombre)') !!}</a>
+                                            <x-player-icon :player="$iconUrlByGuid[$p['guid']] ?? null" />
                                         @else
                                             <span class="text-slate-500">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: 'bot') !!}</span>
                                         @endif
