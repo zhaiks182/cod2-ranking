@@ -119,6 +119,8 @@
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
                     <th class="px-4 py-2 font-medium text-right">Granadas</th>
+                    <th class="px-4 py-2 font-medium text-right" title="Días distintos con al menos un kill o muerte — no cuenta reconexiones el mismo día">Días</th>
+                    <th class="px-4 py-2 font-medium text-right" title="Kills ÷ días jugados">Kills/día</th>
                 </tr>
             </thead>
             <tbody>
@@ -150,9 +152,11 @@
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->headshots }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $row->grenade_kills }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->days_played }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_day }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin datos para esta temporada.</td></tr>
+                    <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Sin datos para esta temporada.</td></tr>
                 @endforelse
             </tbody>
         </table>

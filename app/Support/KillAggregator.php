@@ -29,21 +29,54 @@ class KillAggregator
             ->groupBy('kills.victim_player_id')
             ->get()->keyBy('player_id');
 
+        // "Días jugados" para el ranking (pedido de un jugador, 2026-08-28: "un
+        // apartado con el numero de veces que se conecto, 1 por dia, para
+        // promediar con las kills y dar un ranking mas justo"). Se calcula desde
+        // kills.occurred_at (dias con al menos un kill O una muerte) en vez de
+        // llevar un registro nuevo de conexiones: no hay ninguna tabla que guarde
+        // cada Connected; como evento propio (solo se usa para actualizar
+        // last_seen_at al vuelo), asi que un tracker nuevo solo tendria datos
+        // desde que se agregara -- esto en cambio funciona retroactivo con todo
+        // el historial ya cargado, y de paso ya excluye reconexiones solas (un
+        // dia sin ningun kill/muerte no suma, pero eso tampoco cambiaria el
+        // promedio de kills/dia de nadie). attacker/victim se piden por separado
+        // (DATE() no es lo mismo en una UNION de SQL portable entre SQLite/MySQL)
+        // y se mergean en PHP con un Set para no contar dos veces un dia en el
+        // que el jugador mato Y murio.
+        $attackerDays = $baseQuery()->whereNotNull('kills.attacker_player_id')
+            ->selectRaw('kills.attacker_player_id as player_id, DATE(kills.occurred_at) as day')
+            ->groupBy('kills.attacker_player_id', 'day')->get();
+        $victimDays = $baseQuery()->whereNotNull('kills.victim_player_id')
+            ->selectRaw('kills.victim_player_id as player_id, DATE(kills.occurred_at) as day')
+            ->groupBy('kills.victim_player_id', 'day')->get();
+        // concat(), not merge(): these come from selectRaw() without an `id` column, so
+        // every row is an Eloquent model with getKey()===null -- Eloquent\Collection's
+        // merge() dedupes BY PRIMARY KEY, and with every row sharing the same (null)
+        // key, it collapses the two lists down to a single row instead of combining
+        // them. concat() just appends both lists, which is what's actually wanted here.
+        $daysPlayed = $attackerDays->concat($victimDays)
+            ->groupBy('player_id')
+            ->map(fn ($rows) => $rows->pluck('day')->unique()->count());
+
         $ids = $kills->keys()->merge($deaths->keys())->unique();
         $players = Player::whereIn('id', $ids)->get()->keyBy('id');
 
-        return $ids->map(function ($id) use ($kills, $deaths, $players) {
+        return $ids->map(function ($id) use ($kills, $deaths, $daysPlayed, $players) {
             $k = $kills->get($id);
             $d = $deaths->get($id);
+            $days = (int) ($daysPlayed->get($id) ?? 0);
+            $killsCount = (int) ($k->kills ?? 0);
 
             return (object) [
                 'player' => $players[$id],
-                'kills' => (int) ($k->kills ?? 0),
+                'kills' => $killsCount,
                 'headshots' => (int) ($k->headshots ?? 0),
                 'grenade_kills' => (int) ($k->grenade_kills ?? 0),
                 'teamkills' => (int) ($k->teamkills ?? 0),
                 'bash' => (int) ($k->bash ?? 0),
                 'deaths' => (int) ($d->deaths ?? 0),
+                'days_played' => $days,
+                'kills_per_day' => $days > 0 ? round($killsCount / $days, 1) : 0.0,
             ];
         })->sortByDesc('kills')->values();
     }
