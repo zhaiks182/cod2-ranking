@@ -148,7 +148,9 @@
                                 @endif
                             </span>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums">{{ $row->deaths }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums">
+                            <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
+                        </td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">
                             <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
@@ -207,7 +209,9 @@
                                             @endif
                                         </span>
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">{{ $row->deaths }}</td>
+                                    <td class="px-4 py-2 text-right tabular-nums">
+                            <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
+                        </td>
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
@@ -254,7 +258,9 @@
                                             @endif
                                         </span>
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">{{ $row->deaths }}</td>
+                                    <td class="px-4 py-2 text-right tabular-nums">
+                            <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
+                        </td>
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty

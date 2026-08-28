@@ -2806,6 +2806,60 @@ huérfanos. Verificado en un clone descartable del VPS: 168/170 tests, mismos 2
 fallos preexistentes sin relación. Desplegado, orden de secciones confirmado con
 `curl` contra un jugador real.
 
+## Muertes, Headshots y Kills con granada clickeables en el perfil + Armas por arma + Muertes en /ranking (2026-08-29)
+
+El dueño reportó que en el perfil de jugador, a diferencia de Kills, las cards
+"Muertes"/"Headshots"/"Kills con granada" no tenían ningún detalle al hacer
+click — y que en la tabla "Armas", clickear el número de Kills o Headshots de
+una fila tampoco mostraba nada (a diferencia del resto del sitio, donde
+Headshots/Granadas ya eran clickeables desde el 2026-08-28). Después pidió que
+lo mismo aplicara también a la columna Muertes de `/ranking`.
+
+- **`KillDetailController::index()`** (el endpoint compartido `/kills/{guid}`
+  que ya alimentaba Kills/Headshots/Granadas/Fuego amigo) ganó dos filtros
+  nuevos, sin volverse un endpoint aparte:
+  - **`?weapon=`** — acota el resultado a bajas con esa arma puntual. Usado
+    por las columnas Kills/Headshots de la tabla "Armas" del perfil (y su
+    modal "ver todas").
+  - **`?direction=deaths`** — invierte atacante/víctima en la misma query:
+    en vez de "a quién mató $player" (kills, comportamiento de siempre),
+    "quién mató a $player" (deaths). La "cara a cara" (reverse count) se
+    invierte junto con el resto — para `direction=deaths`, el reverse pasa a
+    significar "cuántas veces `$player` mató de vuelta a esa persona" (antes
+    era al revés). El código se generalizó con `$playerCol`/`$otherIdCol`/
+    `$otherNameCol` en vez de tener las columnas `attacker_*`/`victim_*`
+    hardcodeadas dos veces — la fórmula del reverse-count resultó ser
+    simétrica entre las dos direcciones (swap de las mismas dos columnas),
+    así que no hizo falta duplicar esa lógica tampoco.
+- **`openDetailsPopover()`** (`layouts/app.blade.php`) gana el `kind`
+  `'deaths'` — manda `&direction=deaths` al mismo endpoint, título "Muertes
+  (N)" en rojo (a diferencia de Kills/Headshots/Granadas, en cian), el
+  contador principal de cada fila también en rojo, y la etiqueta de la fila
+  "cara a cara" cambia de "Te mató" (para kills/headshots/grenades) a "Lo
+  mataste" en cian (para deaths) — mismo componente compartido, solo la
+  semántica de qué color va en qué lado se invierte según la dirección.
+- **Perfil de jugador**: las cards Muertes/Headshots/Kills con granada de la
+  grilla de arriba ganan `data-deaths-trigger`/`data-headshots-trigger`/
+  `data-grenades-trigger` (mismo patrón que Kills, que ya los tenía). La
+  tabla "Armas" (y su modal "ver todas") gana `data-kills-trigger`/
+  `data-headshots-trigger` con `weapon={{ $w->weapon }}` en `data-params`.
+- **`/ranking`**: las 3 tablas de la página (general + paneles Axis/Allies)
+  ganan `data-deaths-trigger` en la columna Muertes, mismo `$tkParams` que ya
+  usaban Kills/Headshots/Granadas en esas mismas tablas.
+- TDD: `tests/Feature/KillDetailControllerTypeFilterTest.php` ganó 3 casos
+  (`direction=deaths` devuelve quién mató al jugador con el reverse
+  invertido correctamente; sin el parámetro se comporta igual que antes —
+  guardia de regresión; `weapon=` filtra solo las bajas con esa arma).
+  Verificado junto a `KillDetailControllerSeasonTest` (sin cambios, sigue
+  pasando — confirma que la generalización de columnas no rompió el
+  comportamiento scopeado por temporada) y la suite completa en un clone
+  descartable del VPS: 171/173 tests, mismos 2 fallos preexistentes sin
+  relación. Desplegado a producción, verificado con `curl` contra datos
+  reales: `/kills/{guid}?direction=deaths` devuelve "quién te mató más" con
+  conteos reales, `/kills/{guid}?weapon=kar98k_mp` filtra correctamente, y
+  las 3 páginas (perfil, `/ranking`, tabla Armas) muestran los botones
+  nuevos con los parámetros correctos en el HTML real.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

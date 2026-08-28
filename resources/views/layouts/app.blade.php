@@ -332,9 +332,13 @@
                 // igual que las kills") reusan el mismo endpoint /kills/{guid} que
                 // 'kills', solo con &type=headshot|grenade para acotar el popover a
                 // ese subconjunto -- no es un endpoint nuevo, ver KillDetailController.
+                // 'deaths' (2026-08-29, misma logica: la card "Muertes" no tenia detalle
+                // al hacer click) manda &direction=deaths -- mismo endpoint, atacante/
+                // victima invertidos server-side.
                 const typeParam = kind === 'headshots' ? '&type=headshot' : kind === 'grenades' ? '&type=grenade' : '';
+                const directionParam = kind === 'deaths' ? '&direction=deaths' : '';
                 const url = kind === 'teamkill' ? `/teamkills/${guid}` : `/kills/${guid}`;
-                const res = await fetch(`${url}?${params}${typeParam}`);
+                const res = await fetch(`${url}?${params}${typeParam}${directionParam}`);
                 const data = await res.json();
 
                 // A slower, earlier fetch can land after the user already opened a
@@ -349,14 +353,19 @@
                 const title = kind === 'teamkill' ? `Fuego amigo (${data.length})`
                     : kind === 'headshots' ? `Headshots (${data.reduce((s, k) => s + (k.count || 1), 0)})`
                     : kind === 'grenades' ? `Bajas con granada (${data.reduce((s, k) => s + (k.count || 1), 0)})`
+                    : kind === 'deaths' ? `Muertes (${data.reduce((s, k) => s + (k.count || 1), 0)})`
                     : `Bajas (${data.reduce((s, k) => s + (k.count || 1), 0)})`;
-                const titleColor = kind === 'teamkill' ? 'text-red-400' : 'text-cyan-400';
+                const titleColor = kind === 'teamkill' || kind === 'deaths' ? 'text-red-400' : 'text-cyan-400';
+                const countColor = kind === 'deaths' ? 'text-red-400' : 'text-cyan-400';
+                const reverseLabel = kind === 'deaths' ? 'Lo mataste' : 'Te mató';
+                const reverseColor = kind === 'deaths' ? 'text-cyan-400' : 'text-red-400';
 
-                // En "kills" (no en teamkill), cada fila con victima real (k.reverse !=
-                // null -- los bots no tienen player_id, asi que no hay "cara a cara"
-                // posible con ellos) se puede clickear para revelar cuantas veces esa
-                // misma victima mato de vuelta al jugador, sin pedir nada al server de
-                // nuevo -- ya vino en la misma respuesta (ver KillDetailController).
+                // En "kills"/"headshots"/"grenades"/"deaths" (no en teamkill), cada fila
+                // con jugador real (k.reverse != null -- los bots no tienen player_id,
+                // asi que no hay "cara a cara" posible con ellos) se puede clickear para
+                // revelar el mismo enfrentamiento en la direccion contraria, sin pedir
+                // nada al server de nuevo -- ya vino en la misma respuesta (ver
+                // KillDetailController).
                 const rows = data.map(k => {
                     if (kind === 'teamkill') {
                         return `
@@ -374,12 +383,12 @@
                     }>
                         <div class="flex items-center justify-between gap-3 py-1">
                             <span class="text-slate-300 truncate">${escapeHtml(k.victim)}</span>
-                            <span class="text-cyan-400 shrink-0 text-right">+${k.count}</span>
+                            <span class="${countColor} shrink-0 text-right">+${k.count}</span>
                         </div>
                         ${clickable ? `
                         <div data-reverse-row class="hidden flex items-center justify-between gap-3 pb-1.5 -mt-0.5">
-                            <span class="text-slate-500 text-[11px]">Te mató</span>
-                            <span class="text-red-400 shrink-0 text-[11px] font-medium">${k.reverse}</span>
+                            <span class="text-slate-500 text-[11px]">${reverseLabel}</span>
+                            <span class="${reverseColor} shrink-0 text-[11px] font-medium">${k.reverse}</span>
                         </div>` : ''}
                     </li>`;
                 }).join('');
@@ -414,6 +423,11 @@
             const grenadesTrigger = e.target.closest('[data-grenades-trigger]');
             if (grenadesTrigger) {
                 openDetailsPopover(grenadesTrigger, 'grenades');
+                return;
+            }
+            const deathsTrigger = e.target.closest('[data-deaths-trigger]');
+            if (deathsTrigger) {
+                openDetailsPopover(deathsTrigger, 'deaths');
                 return;
             }
             // Other pages (e.g. rivalidades) populate the same shared popover directly

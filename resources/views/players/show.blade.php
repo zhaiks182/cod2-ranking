@@ -29,7 +29,9 @@
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Muertes</div>
-            <div class="mt-1 text-lg font-semibold">{{ $player->deaths_total }}</div>
+            <div class="mt-1 text-lg font-semibold">
+                <button type="button" data-deaths-trigger data-player="{{ $player->guid }}" data-params="{{ http_build_query(['season' => $seasonId]) }}" class="px-1 py-1 -mx-1 hover:underline hover:text-cyan-200">{{ $player->deaths_total }}</button>
+            </div>
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">K/D</div>
@@ -37,11 +39,16 @@
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Headshots</div>
-            <div class="mt-1 text-lg font-semibold">{{ $player->headshots_total }} <span class="text-xs text-slate-500">({{ $player->headshot_rate }}%)</span></div>
+            <div class="mt-1 text-lg font-semibold">
+                <button type="button" data-headshots-trigger data-player="{{ $player->guid }}" data-params="{{ http_build_query(['season' => $seasonId]) }}" class="px-1 py-1 -mx-1 hover:underline hover:text-cyan-200">{{ $player->headshots_total }}</button>
+                <span class="text-xs text-slate-500">({{ $player->headshot_rate }}%)</span>
+            </div>
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Kills con granada</div>
-            <div class="mt-1 text-lg font-semibold">{{ $player->grenade_kills_total }}</div>
+            <div class="mt-1 text-lg font-semibold">
+                <button type="button" data-grenades-trigger data-player="{{ $player->guid }}" data-params="{{ http_build_query(['season' => $seasonId]) }}" class="px-1 py-1 -mx-1 hover:underline hover:text-cyan-200">{{ $player->grenade_kills_total }}</button>
+            </div>
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
             <div class="text-[11px] uppercase tracking-wide text-slate-500">Horas jugadas</div>
@@ -221,10 +228,15 @@
                 </thead>
                 <tbody>
                     @forelse($weaponBreakdown->take(5) as $w)
+                        @php $weaponParams = http_build_query(['season' => $seasonId, 'weapon' => $w->weapon]); @endphp
                         <tr class="border-b border-slate-800/60 last:border-0">
                             <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
-                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300">{{ $w->kills }}</td>
-                            <td class="px-4 py-2 text-right tabular-nums">{{ $w->headshots }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->kills }}</button>
+                            </td>
+                            <td class="px-4 py-2 text-right tabular-nums">
+                                <button type="button" data-headshots-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->headshots }}</button>
+                            </td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
@@ -393,10 +405,15 @@
                     </thead>
                     <tbody>
                         @foreach($weaponBreakdown as $w)
+                            @php $weaponParams = http_build_query(['season' => $seasonId, 'weapon' => $w->weapon]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\WeaponCatalog::label($w->weapon) }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">{{ $w->kills }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums">{{ $w->headshots }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                    <button type="button" data-kills-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->kills }}</button>
+                                </td>
+                                <td class="px-4 py-2 text-right tabular-nums">
+                                    <button type="button" data-headshots-trigger data-player="{{ $player->guid }}" data-params="{{ $weaponParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $w->headshots }}</button>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>
