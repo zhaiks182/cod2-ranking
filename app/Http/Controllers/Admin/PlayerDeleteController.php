@@ -18,12 +18,21 @@ class PlayerDeleteController extends Controller
     public function index()
     {
         $players = Player::with(['aliases' => fn ($q) => $q->orderByDesc('last_seen_at')])
+            ->orderByDesc('kills_total')
             ->orderByDesc('last_seen_at')
             ->get();
 
         $zeroActivityCount = $players->filter(fn ($p) => $p->kills_total === 0 && $p->deaths_total === 0)->count();
 
-        return view('admin.players.delete', compact('players', 'zeroActivityCount'));
+        // Mismo criterio de medallas que /ranking (top 3 por kills) -- se calcula
+        // acá y no por posición en la tabla porque la tabla es ordenable por el
+        // usuario (kills o deaths, asc/desc) y la medalla tiene que seguir
+        // representando "top 3 por kills" sin importar cómo esté ordenada la
+        // vista en un momento dado. Nadie con 0 kills recibe medalla.
+        $medalPlayerIds = $players->filter(fn ($p) => $p->kills_total > 0)
+            ->sortByDesc('kills_total')->take(3)->pluck('id')->values();
+
+        return view('admin.players.delete', compact('players', 'zeroActivityCount', 'medalPlayerIds'));
     }
 
     /**

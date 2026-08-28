@@ -2424,8 +2424,30 @@ pero no limpió retroactivamente las que ya existían).
   fallos preexistentes sin relación. Desplegado, ruta confirmada con
   `route:list` (orden correcto, la específica antes que la wildcard),
   botón verificado renderizando con el conteo real (28) vía `tinker`.
-- **Pendiente de que el dueño lo pruebe** desde el panel — si algo sale mal,
-  restaurar desde `/adm_cod2/respaldos` con el backup de arriba.
+- **Probado por el dueño el mismo día, resultado limpio:** 28 fantasmas
+  borrados, quedaron 39 jugadores reales (69→39), conteo de 0/0 volvió a 0.
+  Auditado con la lista completa de nombres+guids en `admin_actions`. No
+  hizo falta restaurar el backup.
+- **Ajustes al mismo módulo, mismo día, a pedido del dueño:** filas
+  numeradas (`#`, columna nueva) y columnas Kills/Deaths/Visto sacadas —
+  después, en un pedido aparte, Kills/Deaths **volvieron** pero ahora
+  ordenables (headers clickeables, toggle mayor↔menor, primer click siempre
+  desc — mismo criterio que `/ranking`) más medallas 🥇🥈🥉 para el top 3 por
+  kills (mismo emoji/criterio que `/ranking` y el dashboard). La medalla se
+  calcula en el controller sobre el top-3-por-kills real, no por la posición
+  visual de la fila — así se mantiene correcta sin importar cómo esté
+  ordenada la tabla en un momento dado (JS solo reordena el DOM, no
+  recalcula medallas). `index()` pasó a ordenar por `kills_total` desc por
+  default (antes `last_seen_at` desc).
+- **Nav público:** el link dentro del dropdown "RANKING" se llamaba
+  "Ranking" (repetía la palabra del botón) — renombrado a "Estadísticas",
+  mismo pedido, mismo día.
+- **Nav admin, bug corregido (reportado por el dueño):** los 3 dropdowns del
+  header (Contenido/Moderación/Sistema) no se cerraban entre sí — cada
+  `<button>` solo miraba su propio `<div>`, así que abrir uno nunca cerraba
+  los demás. Reemplazado por un listener delegado (`data-dropdown-toggle`
+  unificado + clase `.admin-dropdown` compartida) que cierra todos antes de
+  abrir el tocado, y cierra todo al hacer click afuera.
 
 ## Pendientes / conocido-roto
 

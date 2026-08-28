@@ -50,6 +50,12 @@
                         <th class="px-3 py-2 font-medium w-10">#</th>
                         <th class="px-3 py-2 font-medium">Jugador</th>
                         <th class="px-3 py-2 font-medium">guid</th>
+                        <th class="px-3 py-2 font-medium text-right">
+                            <button type="button" data-sort="kills" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">Kills <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-3 py-2 font-medium text-right">
+                            <button type="button" data-sort="deaths" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">Deaths <span class="sort-arrow"></span></button>
+                        </th>
                         <th class="px-3 py-2 font-medium text-right">Acción</th>
                     </tr>
                 </thead>
@@ -57,14 +63,22 @@
                     @foreach($players as $player)
                         @php
                             $aliasNames = $player->aliases->pluck('name_plain')->unique();
+                            $medalIndex = $medalPlayerIds->search($player->id);
                         @endphp
                         <tr class="player-delete-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30"
-                            data-search="{{ mb_strtolower($player->last_name_plain.' '.$player->guid.' '.$aliasNames->implode(' ')) }}">
-                            <td class="px-3 py-2 text-slate-500 tabular-nums">{{ $loop->iteration }}</td>
+                            data-search="{{ mb_strtolower($player->last_name_plain.' '.$player->guid.' '.$aliasNames->implode(' ')) }}"
+                            data-kills="{{ $player->kills_total }}"
+                            data-deaths="{{ $player->deaths_total }}">
+                            <td class="px-3 py-2 text-slate-500 tabular-nums row-number">{{ $loop->iteration }}</td>
                             <td class="px-3 py-2 font-medium">
                                 <a href="{{ route('players.show', $player->guid) }}" target="_blank" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</a>
+                                @if($medalIndex !== false)
+                                    <span class="ml-1 align-text-bottom" title="{{ match($medalIndex) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($medalIndex) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
+                                @endif
                             </td>
                             <td class="px-3 py-2 font-mono text-xs text-slate-400">{{ $player->guid }}</td>
+                            <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ $player->kills_total }}</td>
+                            <td class="px-3 py-2 text-right tabular-nums text-slate-400">{{ $player->deaths_total }}</td>
                             <td class="px-3 py-2 text-right">
                                 <form method="POST" action="{{ route('admin.players.delete.destroy', $player) }}"
                                     class="player-delete-form"
@@ -139,6 +153,39 @@
             });
 
             empty.classList.toggle('hidden', visible > 0);
+        });
+    })();
+
+    (function () {
+        const tbody = document.getElementById('player-delete-rows');
+        if (!tbody) return;
+
+        function renumber() {
+            tbody.querySelectorAll('.player-delete-row').forEach((row, i) => {
+                row.querySelector('.row-number').textContent = i + 1;
+            });
+        }
+
+        document.querySelectorAll('.sort-toggle').forEach((button) => {
+            let direction = 'desc'; // primer click en cualquier columna: mayor a menor, como el ranking
+
+            button.addEventListener('click', () => {
+                const key = button.dataset.sort;
+
+                document.querySelectorAll('.sort-toggle .sort-arrow').forEach((a) => a.textContent = '');
+
+                const rows = Array.from(tbody.querySelectorAll('.player-delete-row'));
+                rows.sort((a, b) => {
+                    const diff = Number(a.dataset[key]) - Number(b.dataset[key]);
+                    return direction === 'desc' ? -diff : diff;
+                });
+                rows.forEach((row) => tbody.appendChild(row));
+
+                button.querySelector('.sort-arrow').textContent = direction === 'desc' ? '▼' : '▲';
+                renumber();
+
+                direction = direction === 'desc' ? 'asc' : 'desc';
+            });
         });
     })();
 </script>
