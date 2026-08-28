@@ -2934,6 +2934,43 @@ es el patrón real de esta página. Cambios aplicados, todos verificados con
   (80 ocurrencias en la página real), `weapon-modal` con `max-w-lg`, grilla de
   stats de vuelta a `md:grid-cols-7`.
 
+## Reorden final del perfil: pares por afinidad de datos, no por nombre de sección (2026-08-29)
+
+Seguimiento directo de la entrada anterior — el dueño pidió un emparejamiento
+distinto al que había quedado: **"Desempeño general por mapa" + "Historial de
+partidas"** lado a lado arriba, **"Alias usados" + "Armas"** lado a lado abajo
+(antes: Desempeño+Alias arriba, Historial+Armas como filas sueltas de ancho
+completo).
+
+- Las dos tablas de la fila de arriba tienen 6 y 4 columnas respectivamente —
+  a mitad de ancho cada una quedaban apretadas con el padding de siempre
+  (`px-4`). Se redujo a `px-2`/`px-3` en esas dos tablas puntuales (no en
+  Alias/Armas, que no lo necesitan) y los headers "Jugadas"/"Ganadas"/"Win
+  rate" de Desempeño se abreviaron a "Jug."/"Gan."/"WR" con `title=""` para
+  no perder el significado al pasar el mouse — mismo criterio de
+  "abreviar solo donde el espacio realmente aprieta" en vez de abreviar toda
+  la página parejo.
+  El modal "ver todos los mapas" (con más ancho disponible) sigue con los
+  labels completos sin abreviar.
+- Ambas tablas de la fila de arriba pasan de `take(5)` a `take(4)` filas
+  visibles — para que las dos cards queden con la misma altura al estar una
+  al lado de la otra (antes tenían distinto número de filas visibles y se
+  notaba el desnivel). Los umbrales de "¿mostrar el botón *ver todo*?"
+  (`@if($matchHistory->count() > ...)`) se actualizaron a juego en los 3
+  lugares que lo usan (tabla principal, botón, y el `@if` que envuelve el
+  modal entero) — encontrado un bug real de paso: el botón usaba `> 4` pero
+  el modal seguía envuelto en `> 5`, así que con exactamente 5 partidas el
+  botón aparecía pero el modal no existía en el DOM (click sin efecto).
+  Corregido antes de desplegar, no llegó a producción con esa inconsistencia.
+- **"Guid: {{ guid }}"** reemplaza el label en minúscula "guid {{ guid }}"
+  bajo el nombre del jugador (pedido explícito, solo en esta página — no se
+  tocó el mismo patrón que existe en `admin/bans/index.blade.php` ni
+  `admin/players/merge.blade.php`, fuera de alcance de este pedido).
+- Verificado en producción con `curl`: orden de headers confirmado
+  (Desempeño → Historial → Alias → Armas), datos reales renderizando
+  correctamente en la tabla comprimida (`Toujane, Tunisia · 195 kills`, etc.),
+  "Guid: -1106466662" presente.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
