@@ -134,7 +134,7 @@
             ronda -- ver data-round-jump en el script al final del archivo. --}}
             <div class="flex flex-wrap items-center gap-1">
                 @foreach($roundDetails as $rd)
-                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}"
+                    <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}"
                         title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
                         class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
                             {{ match($rd->winningSide) { 'axis' => 'bg-red-500 text-red-950', 'allies' => 'bg-blue-500 text-blue-950', default => 'bg-slate-800 text-slate-500' } }}
@@ -303,36 +303,16 @@
         </div>
     @endif
 
-    @if($roundDetails->isNotEmpty())
-        <div>
-            <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.remove('hidden')"
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400">
-                🎞️ Ver rondas <span class="text-slate-500">({{ $roundDetails->count() }})</span>
-            </button>
-        </div>
-    @endif
 </div>
 
 @if($roundDetails->isNotEmpty())
     <div id="cod2-rounds-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="w-full max-w-3xl max-h-[85vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold">🎞️ Rondas</span>
+                <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">Ronda</span></span>
                 <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="overflow-y-auto">
-                <div class="flex flex-wrap gap-2 p-3 border-b border-slate-800">
-                    @foreach($roundDetails as $rd)
-                        <button type="button" data-round-toggle="round-detail-{{ $rd->round->id }}"
-                            class="round-toggle-btn px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400 flex items-center gap-1">
-                            Ronda {{ $rd->number }}
-                            @if($rd->clutchGuid)
-                                <span title="Clutch 1vX">🥶</span>
-                            @endif
-                        </button>
-                    @endforeach
-                </div>
-
                 @foreach($roundDetails as $rd)
                     <div id="round-detail-{{ $rd->round->id }}" class="round-detail hidden border-b border-slate-800/60 last:border-0">
                         @if($rd->kills->isEmpty())
@@ -395,35 +375,20 @@
 @endif
 
 <script>
-    function openRoundDetail(id, { forceOpen = false, scroll = false } = {}) {
-        const target = document.getElementById(id);
-        if (!target) return;
-
-        const wasOpen = !target.classList.contains('hidden');
-
-        document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
-        document.querySelectorAll('.round-toggle-btn').forEach((b) => b.classList.remove('border-cyan-500', 'text-cyan-400'));
-
-        if (forceOpen || !wasOpen) {
-            target.classList.remove('hidden');
-            document.querySelector(`.round-toggle-btn[data-round-toggle="${id}"]`)?.classList.add('border-cyan-500', 'text-cyan-400');
-            if (scroll) target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    }
-
-    document.querySelectorAll('[data-round-toggle]').forEach((button) => {
-        button.addEventListener('click', () => openRoundDetail(button.dataset.roundToggle));
-    });
-
-    // Cuadraditos de la linea de tiempo (ahora arriba de todo, ver mas abajo) --
-    // abren el popup de rondas y saltan directo a la ronda clickeada, forzando que
-    // quede abierta (a diferencia de los botones "Ronda N" de adentro del popup,
-    // que solo togglean).
+    // Cada cuadradito de la linea de tiempo abre el popup directo en esa ronda --
+    // ya no hay lista de botones "Ronda N" adentro del popup (se saco a pedido del
+    // dueño, 2026-08-28): la linea de tiempo de arriba ES el selector de rondas.
     document.querySelectorAll('[data-round-jump]').forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
+
+            const target = document.getElementById(link.dataset.roundJump);
+            if (!target) return;
+
+            document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
+            target.classList.remove('hidden');
+            document.getElementById('cod2-rounds-modal-title').textContent = 'Ronda ' + link.dataset.roundNumber;
             document.getElementById('cod2-rounds-modal')?.classList.remove('hidden');
-            openRoundDetail(link.dataset.roundJump, { forceOpen: true, scroll: true });
         });
     });
 </script>
