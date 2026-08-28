@@ -65,10 +65,31 @@ class PlayerController extends Controller
         // solo numero agregado, mas simple de leer de un vistazo).
         $winRate = WinRateCalculator::forPlayer($player, $matchIds);
 
-        // Mapas ganados (2026-08-29, seguimiento del punto anterior -- el dueño
-        // igual pidio una seccion aparte con el desglose de partidas por mapa,
-        // no solo el numero agregado de arriba).
-        $mapsWon = WinRateCalculator::byMapForPlayer($player, $matchIds);
+        // Desempeño general por mapa (2026-08-29, a pedido del dueño -- unifica
+        // "Mejores mapas" (kills/muertes, de $player->mapStats de arriba) y "Mapas
+        // ganados" (jugadas/ganadas/win rate, de WinRateCalculator::byMapForPlayer)
+        // en una sola tabla, en vez de dos secciones separadas mostrando el mismo
+        // mapa dos veces. Se itera $player->mapStats (la lista mas completa -- cuenta
+        // CUALQUIER partida con al menos un kill/muerte del jugador) y se le suma el
+        // dato de victorias por mapa cuando existe (solo partidas con ganador
+        // determinable, ver WinRateCalculator) -- un mapa sin ganador determinable
+        // en ninguna partida simplemente queda en 0 jugadas/0 ganadas, no desaparece.
+        $winsByMap = WinRateCalculator::byMapForPlayer($player, $matchIds)->keyBy('map');
+        $mapPerformance = $player->mapStats->map(function ($stat) use ($winsByMap) {
+            $win = $winsByMap->get($stat->map);
+
+            return (object) [
+                'map' => $stat->map,
+                'map_codes' => $stat->map_codes,
+                'server' => $stat->server,
+                'kills' => $stat->kills,
+                'deaths' => $stat->deaths,
+                'teamkills' => $stat->teamkills,
+                'played' => $win->played ?? 0,
+                'wins' => $win->wins ?? 0,
+                'rate' => $win->rate ?? 0.0,
+            ];
+        });
 
         // Historial de partidas (2026-08-29, seguimiento directo del punto
         // anterior -- el dueño pregunto si "Mapas ganados" tambien mostraba el
@@ -109,6 +130,6 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapsWon', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
     }
 }

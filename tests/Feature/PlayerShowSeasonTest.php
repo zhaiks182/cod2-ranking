@@ -306,4 +306,86 @@ class PlayerShowSeasonTest extends TestCase
         $toujaneStats = $mapStats->first();
         $this->assertSame(1, $toujaneStats->kills);
     }
+
+    /**
+     * "Desempeño general por mapa" (2026-08-29) unifica "Mejores mapas"
+     * (kills/muertes) y "Mapas ganados" (jugadas/ganadas/win rate) en una sola
+     * fila por mapa -- verifica que ambos lados del merge (KillAggregator y
+     * WinRateCalculator) terminan juntos en la misma fila, no en dos listas
+     * separadas que el dueño tenía que cruzar mentalmente.
+     */
+    public function test_map_performance_merges_kills_deaths_and_win_rate(): void
+    {
+        $match = GameMatch::create([
+            'server_id' => $this->server->id,
+            'season_id' => Season::current()->id,
+            'map' => 'mp_toujane_fix',
+            'gametype' => 'sd',
+            'started_at' => now(),
+            'ended_at' => now(),
+        ]);
+
+        for ($i = 1; $i <= 13; $i++) {
+            Round::create([
+                'server_id' => $this->server->id,
+                'match_id' => $match->id,
+                'map' => 'mp_toujane_fix',
+                'gametype' => 'sd',
+                'started_at' => now(),
+                'ended_at' => now(),
+                'winner_guids' => [$this->attacker->guid],
+            ]);
+        }
+
+        Kill::create([
+            'round_id' => $match->rounds()->first()->id,
+            'match_id' => $match->id,
+            'attacker_player_id' => $this->attacker->id,
+            'attacker_guid' => $this->attacker->guid,
+            'attacker_name' => $this->attacker->last_name,
+            'attacker_team' => 'allies',
+            'victim_player_id' => $this->victim->id,
+            'victim_guid' => $this->victim->guid,
+            'victim_name' => $this->victim->last_name,
+            'victim_team' => 'axis',
+            'weapon' => 'weapon_mp44',
+            'mod' => 'MOD_RIFLE_BULLET',
+            'damage' => 50,
+            'is_headshot' => false,
+            'is_grenade' => false,
+            'is_suicide' => false,
+            'is_teamkill' => false,
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->get(route('players.show', $this->attacker->guid));
+
+        $row = $response->viewData('mapPerformance')->firstWhere('map', 'mp_toujane');
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row->kills);
+        $this->assertSame(0, $row->deaths);
+        $this->assertSame(1, $row->played);
+        $this->assertSame(1, $row->wins);
+        $this->assertSame(100.0, $row->rate);
+    }
+
+    /**
+     * Un mapa con kills/muertes reales pero sin ninguna partida con ganador
+     * determinable (rondas sin winner_guids, como en realMatchWithKill()) debe
+     * seguir apareciendo con jugadas/ganadas en 0 -- no desaparecer de la tabla
+     * solo porque el lado de WinRateCalculator no tiene nada que aportarle.
+     */
+    public function test_map_performance_defaults_played_and_wins_to_zero_without_a_determinable_winner(): void
+    {
+        $this->realMatchWithKill(Season::current()->id);
+
+        $response = $this->get(route('players.show', $this->attacker->guid));
+
+        $row = $response->viewData('mapPerformance')->firstWhere('map', 'mp_toujane');
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row->kills);
+        $this->assertSame(0, $row->played);
+        $this->assertSame(0, $row->wins);
+        $this->assertSame(0.0, $row->rate);
+    }
 }

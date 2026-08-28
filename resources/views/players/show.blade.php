@@ -74,7 +74,7 @@
 
     <div class="grid md:grid-cols-2 gap-6">
         <section>
-            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Mejores mapas</h2>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Desempeño general por mapa</h2>
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
                 <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -83,10 +83,13 @@
                             <th class="px-4 py-2 font-medium">Mapa</th>
                             <th class="px-4 py-2 font-medium text-right">Kills</th>
                             <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($player->mapStats->take(4) as $stat)
+                        @forelse($mapPerformance->take(4) as $stat)
                             @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
@@ -99,18 +102,21 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                            <tr><td colspan="6" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
                 </div>
             </div>
-            @if($player->mapStats->count() > 4)
+            @if($mapPerformance->count() > 4)
                 <button type="button" onclick="document.getElementById('map-stats-modal').classList.remove('hidden')"
                     class="mt-2 text-xs text-cyan-400 hover:underline">
-                    Ver todos los mapas ({{ $player->mapStats->count() }}) →
+                    Ver todos los mapas ({{ $mapPerformance->count() }}) →
                 </button>
             @endif
         </section>
@@ -136,83 +142,45 @@
         </section>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-6">
-        <section>
-            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                            <th class="px-4 py-2 font-medium">Mapa</th>
-                            <th class="px-4 py-2 font-medium text-right">Resultado</th>
-                            <th class="px-4 py-2 font-medium text-right">Marcador</th>
-                            <th class="px-4 py-2 font-medium text-right">Fecha</th>
+    <section>
+        <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Historial de partidas</h2>
+        <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                        <th class="px-4 py-2 font-medium">Mapa</th>
+                        <th class="px-4 py-2 font-medium text-right">Resultado</th>
+                        <th class="px-4 py-2 font-medium text-right">Marcador</th>
+                        <th class="px-4 py-2 font-medium text-right">Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($matchHistory->take(5) as $h)
+                        <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                            <td class="px-4 py-2">
+                                <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
+                            </td>
+                            <td class="px-4 py-2 text-right">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
+                            </td>
+                            <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
+                            <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($matchHistory->take(5) as $h)
-                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                                <td class="px-4 py-2">
-                                    <a href="{{ route('matches.show', $h->match->id) }}" class="hover:text-cyan-400">{{ \App\Support\MapCatalog::mapLabel($h->match->map) }}</a>
-                                </td>
-                                <td class="px-4 py-2 text-right">
-                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
-                                </td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->diffForHumans() }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                </div>
+                    @empty
+                        <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
             </div>
-            @if($matchHistory->count() > 5)
-                <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
-                    class="mt-2 text-xs text-cyan-400 hover:underline">
-                    Ver todo el historial ({{ $matchHistory->count() }}) →
-                </button>
-            @endif
-        </section>
-
-        <section>
-            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Mapas ganados</h2>
-            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                            <th class="px-4 py-2 font-medium">Mapa</th>
-                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($mapsWon->take(5) as $m)
-                            <tr class="border-b border-slate-800/60 last:border-0">
-                                <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($m->map) }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $m->played }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $m->wins }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $m->rate }}%</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin partidas con resultado registrado todavía.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-                </div>
-            </div>
-            @if($mapsWon->count() > 5)
-                <button type="button" onclick="document.getElementById('maps-won-modal').classList.remove('hidden')"
-                    class="mt-2 text-xs text-cyan-400 hover:underline">
-                    Ver todos los mapas ({{ $mapsWon->count() }}) →
-                </button>
-            @endif
-        </section>
-    </div>
+        </div>
+        @if($matchHistory->count() > 5)
+            <button type="button" onclick="document.getElementById('match-history-modal').classList.remove('hidden')"
+                class="mt-2 text-xs text-cyan-400 hover:underline">
+                Ver todo el historial ({{ $matchHistory->count() }}) →
+            </button>
+        @endif
+    </section>
 
     <section>
         <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">Armas</h2>
@@ -254,12 +222,12 @@
     </section>
 </div>
 
-@if($player->mapStats->count() > 4)
+@if($mapPerformance->count() > 4)
     <div id="map-stats-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
         onclick="if(event.target === this) this.classList.add('hidden')">
-        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
+        <div class="w-full max-w-lg max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold">Todos los mapas ({{ $player->mapStats->count() }})</span>
+                <span class="text-sm font-semibold">Todos los mapas ({{ $mapPerformance->count() }})</span>
                 <button type="button" onclick="document.getElementById('map-stats-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="overflow-y-auto overflow-x-auto">
@@ -269,10 +237,13 @@
                             <th class="px-4 py-2 font-medium">Mapa</th>
                             <th class="px-4 py-2 font-medium text-right">Kills</th>
                             <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
+                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($player->mapStats as $stat)
+                        @foreach($mapPerformance as $stat)
                             @php $tkParams = http_build_query(['server' => $stat->server?->slug, 'map' => implode(',', $stat->map_codes ?? [$stat->map]), 'season' => $seasonId]); @endphp
                             <tr class="border-b border-slate-800/60 last:border-0">
                                 <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($stat->map) }}</td>
@@ -285,6 +256,9 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-2 text-right tabular-nums">{{ $stat->deaths }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $stat->played }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $stat->wins }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $stat->rate }}%</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -309,40 +283,6 @@
                         <span class="text-xs text-slate-500 shrink-0 ml-3">{{ $alias->last_seen_at->diffForHumans() }}</span>
                     </div>
                 @endforeach
-            </div>
-        </div>
-    </div>
-@endif
-
-@if($mapsWon->count() > 5)
-    <div id="maps-won-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-        onclick="if(event.target === this) this.classList.add('hidden')">
-        <div class="w-full max-w-md max-h-[80vh] flex flex-col rounded-xl border border-slate-800 bg-panel">
-            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold">Todos los mapas ({{ $mapsWon->count() }})</span>
-                <button type="button" onclick="document.getElementById('maps-won-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
-            </div>
-            <div class="overflow-y-auto overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                            <th class="px-4 py-2 font-medium">Mapa</th>
-                            <th class="px-4 py-2 font-medium text-right">Jugadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Ganadas</th>
-                            <th class="px-4 py-2 font-medium text-right">Win rate</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($mapsWon as $m)
-                            <tr class="border-b border-slate-800/60 last:border-0">
-                                <td class="px-4 py-2">{{ \App\Support\MapCatalog::mapLabel($m->map) }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $m->played }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $m->wins }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $m->rate }}%</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -376,7 +316,7 @@
                                     <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $h->won ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' : 'bg-red-950 text-red-400 border border-red-900' }}">{{ $h->won ? 'Ganada' : 'Perdida' }}</span>
                                 </td>
                                 <td class="px-4 py-2 text-right tabular-nums text-cyan-300 font-medium">{{ $h->match->final_score ?? '—' }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->diffForHumans() }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $h->match->started_at->format('d/m/Y H:i') }}</td>
                             </tr>
                         @endforeach
                     </tbody>

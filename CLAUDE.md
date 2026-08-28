@@ -2860,6 +2860,44 @@ lo mismo aplicara también a la columna Muertes de `/ranking`.
   las 3 páginas (perfil, `/ranking`, tabla Armas) muestran los botones
   nuevos con los parámetros correctos en el HTML real.
 
+## ESC cierra popups, "Desempeño general por mapa" unificado, fecha real en Historial (2026-08-29)
+
+Tres pedidos chicos del dueño, mismo día.
+
+- **ESC cierra cualquier popup/modal abierto.** Antes solo se podía cerrar
+  clickeando afuera o el botón "X" — ningún modal del sitio escuchaba la
+  tecla. Un solo listener global nuevo en `layouts/app.blade.php` (base de
+  toda página pública) cierra el popover de kills/teamkill
+  (`#teamkill-popover`) y cualquier elemento cuyo id contenga `-modal`
+  (`[id*="-modal"]`, no `$=` porque algunos ids llevan sufijo dinámico, ej.
+  `dates-modal-2026-08` en `leaderboard.blade.php`) — cubre todos los modales
+  existentes (perfil de jugador, partida, ranking) sin tener que repetir el
+  listener en cada vista ni tocarlas.
+- **"Mejores mapas" y "Mapas ganados" del perfil se unificaron en una sola
+  tabla, "Desempeño general por mapa"** (Mapa/Kills/Muertes/Jugadas/Ganadas/
+  Win rate) — antes mostraban el mismo mapa en dos tablas separadas, obligando
+  a cruzar mentalmente los datos. `PlayerController::show()` arma
+  `$mapPerformance` iterando `$player->mapStats` (la lista más completa —
+  cualquier partida con al menos un kill/muerte del jugador, sin importar si
+  llegó a un resultado real) y le suma el dato de
+  `WinRateCalculator::byMapForPlayer()` cuando existe; un mapa sin ninguna
+  partida con ganador determinable simplemente queda en 0 jugadas/0 ganadas,
+  no desaparece de la tabla. `$player->mapStats` (la relación en sí) no se
+  tocó — sigue siendo la fuente de datos, solo dejó de leerse directo desde
+  la vista.
+- **"Historial de partidas" cambia "hace 1 día" por fecha real** (`d/m/Y H:i`,
+  mismo formato que ya usa el resto del panel — `admin/matches`, `admin/demos`,
+  auditoría, etc.) — a pedido del dueño, en la tabla principal y en el modal
+  "ver todo el historial".
+- TDD: `tests/Feature/PlayerShowSeasonTest.php` ganó 2 casos (el merge junta
+  kills/muertes con jugadas/ganadas/win rate correctamente para el mismo mapa;
+  un mapa con kills reales pero sin partida con ganador determinable
+  mantiene jugadas/ganadas en 0 en vez de desaparecer). Verificado junto a la
+  suite completa en un clone descartable del VPS: 173/175 tests, mismos 2
+  fallos preexistentes sin relación. Desplegado a producción, verificado con
+  `curl` contra un jugador real: una sola tabla con los 6 datos combinados
+  por mapa, y fechas reales (`26/08/2026 23:44`, etc.) en el historial.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
