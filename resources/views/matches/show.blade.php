@@ -131,7 +131,7 @@
                     <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}"
                         title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
                         class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
-                            {{ match($rd->winningSide) { 'axis' => 'bg-red-500 text-red-950', 'allies' => 'bg-blue-500 text-blue-950', default => 'bg-slate-800 text-slate-500' } }}
+                            {{ match($rd->winningSide) { 'axis' => 'bg-red-900/70 text-red-300', 'allies' => 'bg-blue-900/70 text-blue-300', default => 'bg-slate-800 text-slate-500' } }}
                             hover:ring-2 hover:ring-cyan-400 cursor-pointer">
                         {{ $rd->number }}
                     </a>
