@@ -147,6 +147,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
 
         Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
+        Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
         Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
 
         Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');

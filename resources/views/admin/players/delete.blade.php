@@ -18,6 +18,22 @@
         <div class="rounded-xl border border-emerald-900 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
     @endif
 
+    @if($zeroActivityCount > 0)
+        <div class="rounded-xl border border-red-900/60 bg-red-950/20 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+            <div class="text-sm text-red-200">
+                <strong>{{ $zeroActivityCount }}</strong> jugador(es) con 0 kills y 0 deaths (nunca jugaron una partida real —
+                ver "filas fantasma" en el CLAUDE.md). No hay nada real que perder al borrarlos.
+            </div>
+            <form method="POST" action="{{ route('admin.players.delete.bulk-zero-activity') }}" id="bulk-delete-form">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="rounded-lg bg-red-900/60 border border-red-800 px-4 py-2 text-sm font-medium text-red-200 hover:bg-red-900">
+                    Borrar los {{ $zeroActivityCount }} sin actividad
+                </button>
+            </form>
+        </div>
+    @endif
+
     @if($players->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
             No hay jugadores registrados.
@@ -95,6 +111,20 @@
             );
             if (!second) { e.preventDefault(); }
         });
+    });
+
+    document.getElementById('bulk-delete-form')?.addEventListener('submit', (e) => {
+        const first = confirm(
+            '¿Borrar TODOS los jugadores con 0 kills y 0 deaths ({{ $zeroActivityCount }} en total)?\n\n' +
+            'Ninguno tiene stats reales que perder, pero es una acción en bloque.'
+        );
+        if (!first) { e.preventDefault(); return; }
+
+        const second = confirm(
+            'Última confirmación: esto NO se puede deshacer.\n\n' +
+            '¿Borrar definitivamente los {{ $zeroActivityCount }} perfiles?'
+        );
+        if (!second) { e.preventDefault(); }
     });
 
     (function () {

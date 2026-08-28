@@ -79,4 +79,47 @@ class PlayerDeleteControllerTest extends TestCase
 
         $this->assertDatabaseHas('admin_actions', ['action' => 'players.destroy']);
     }
+
+    public function test_guests_are_redirected_to_login_for_bulk_destroy(): void
+    {
+        $this->delete(route('admin.players.delete.bulk-zero-activity'))->assertRedirect(route('admin.login'));
+    }
+
+    /**
+     * Caso real (2026-08-28): 27+ filas fantasma con 0 kills/0 deaths por el
+     * bug de guid corrupto en tránsito (ya arreglado en upsertPlayer(), ver
+     * CLAUDE.md) -- ninguna tiene stats reales que perder.
+     */
+    public function test_bulk_destroy_removes_only_players_with_zero_kills_and_zero_deaths(): void
+    {
+        $admin = User::factory()->create();
+
+        $phantom1 = Player::create(['guid' => 1, 'last_name' => 'Phantom1', 'last_name_plain' => 'Phantom1', 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+        $phantom2 = Player::create(['guid' => 2, 'last_name' => 'Phantom2', 'last_name_plain' => 'Phantom2', 'kills_total' => 0, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+        $onlyKills = Player::create(['guid' => 3, 'last_name' => 'OnlyKills', 'last_name_plain' => 'OnlyKills', 'kills_total' => 5, 'deaths_total' => 0, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+        $onlyDeaths = Player::create(['guid' => 4, 'last_name' => 'OnlyDeaths', 'last_name_plain' => 'OnlyDeaths', 'kills_total' => 0, 'deaths_total' => 3, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+        $realPlayer = Player::create(['guid' => 5, 'last_name' => 'Real', 'last_name_plain' => 'Real', 'kills_total' => 100, 'deaths_total' => 50, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+
+        $response = $this->actingAs($admin)->delete(route('admin.players.delete.bulk-zero-activity'));
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseMissing('players', ['id' => $phantom1->id]);
+        $this->assertDatabaseMissing('players', ['id' => $phantom2->id]);
+        $this->assertDatabaseHas('players', ['id' => $onlyKills->id]);
+        $this->assertDatabaseHas('players', ['id' => $onlyDeaths->id]);
+        $this->assertDatabaseHas('players', ['id' => $realPlayer->id]);
+        $this->assertDatabaseHas('admin_actions', ['action' => 'players.destroy-bulk-zero-activity']);
+    }
+
+    public function test_bulk_destroy_with_nothing_to_delete_does_not_error(): void
+    {
+        $admin = User::factory()->create();
+        Player::create(['guid' => 1, 'last_name' => 'Real', 'last_name_plain' => 'Real', 'kills_total' => 10, 'deaths_total' => 5, 'headshots_total' => 0, 'grenade_kills_total' => 0, 'suicides_total' => 0]);
+
+        $response = $this->actingAs($admin)->delete(route('admin.players.delete.bulk-zero-activity'));
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('admin_actions', ['action' => 'players.destroy-bulk-zero-activity']);
+    }
 }

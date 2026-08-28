@@ -2366,6 +2366,66 @@ usarse.
   tests/531 assertions, mismos 2 fallos preexistentes sin relación.
   Desplegado, rutas confirmadas con `route:list`, listado verificado
   renderizando con los 69 jugadores reales vía `tinker`.
+- **Ajustes chicos al mismo módulo, mismo día:** buscador client-side (JS,
+  sin recargar) por nombre/alias/guid agregado arriba de la tabla — el
+  listado sigue completo por default, el buscador solo acota filas
+  (`.classList.toggle('hidden')` sobre `<tr>`, sin round-trip al server). La
+  columna visible "Alias usados" se sacó de la tabla (los alias se siguen
+  indexando para la búsqueda, con `data-search` en cada `<tr>`, solo dejaron
+  de mostrarse como columna aparte).
+- **Bug de nav corregido, mismo día (reportado por el dueño): los 3
+  dropdowns del header admin (Contenido/Moderación/Sistema) no se cerraban
+  entre sí** — cada `<button>` solo miraba su propio `<div>` con
+  `classList.toggle('hidden')`, así que abrir "Sistema" nunca cerraba
+  "Moderación" si ya estaba abierto, quedaban varios abiertos a la vez.
+  Reemplazado por un listener delegado en `layouts/admin.blade.php`: cierra
+  todos los `.admin-dropdown` antes de abrir el que se tocó, y los cierra
+  también al hacer click afuera de cualquiera (`document.addEventListener`
+  a nivel body). Los 3 botones pasaron de 3 atributos `data-*-toggle`
+  distintos con `onclick` inline a uno solo `data-dropdown-toggle="<id>"`.
+
+## Borrado en masa de jugadores sin actividad (admin) (2026-08-28)
+
+Seguimiento directo de "Borrar un jugador" de arriba: el dueño pidió un botón
+para borrar de una todos los perfiles con 0 kills Y 0 deaths — exactamente
+las filas fantasma del bug de guid corrupto documentado más arriba (28 en
+producción a la fecha; el fix en `upsertPlayer()` evita que sigan creciendo,
+pero no limpió retroactivamente las que ya existían).
+
+- **Respaldo tomado ANTES de tocar código**, a pedido explícito del dueño —
+  `php artisan backup:run` corrido a mano en el VPS
+  (`backups/cod2_stats_2026-08-28_114614.sql.gz`), visible y restaurable
+  desde `/adm_cod2/respaldos` si algo sale mal probando el botón nuevo. No
+  se ejecutó el borrado en masa real contra producción — el dueño lo prueba
+  él mismo desde el panel.
+- **`PlayerDeleteController::destroyZeroActivity()`** (nuevo) — mismo
+  `delete()` de siempre, sin lógica de cascada custom (el esquema ya está
+  diseñado para esto, ver la sección de arriba), solo que en bloque: un
+  `whereIn` en vez de N deletes individuales. Lee la lista de afectados
+  ANTES de borrar (para poder auditar quiénes eran — la fila desaparece) y
+  usa `AdminAction::record('players.destroy-bulk-zero-activity', ...)`
+  guardando la lista completa de nombres+guids en la descripción.
+- Ruta `DELETE /adm_cod2/jugadores/borrar/masivo-sin-actividad` — **registrada
+  ANTES** de `DELETE /adm_cod2/jugadores/borrar/{player}` en `routes/web.php`
+  a propósito: si quedara después, Laravel matchearía `{player}` con el
+  string literal `"masivo-sin-actividad"` en vez de llegar nunca a la ruta
+  de borrado en masa (mismo tipo de trampa de orden de rutas ya conocida en
+  Laravel con wildcards).
+- UI: caja roja arriba del todo en `/adm_cod2/jugadores/borrar` con el
+  conteo real (`{{ $zeroActivityCount }}`, calculado en el controller sobre
+  los jugadores ya cargados) — solo aparece si hay al menos 1. Misma doble
+  confirmación que el borrado individual.
+- TDD: `tests/Feature/Admin/PlayerDeleteControllerTest.php` ganó 3 casos
+  (guest redirigido a login; el borrado en masa solo toca jugadores con
+  kills=0 Y deaths=0 —guarda uno con solo kills, uno con solo deaths, y uno
+  real, los 3 sobreviven—; correrlo sin nada que borrar no rompe nada ni
+  audita de más). Verificado en un clone descartable del VPS: 6/6 tests
+  relacionados en verde, suite completa 147 tests/542 assertions, mismos 2
+  fallos preexistentes sin relación. Desplegado, ruta confirmada con
+  `route:list` (orden correcto, la específica antes que la wildcard),
+  botón verificado renderizando con el conteo real (28) vía `tinker`.
+- **Pendiente de que el dueño lo pruebe** desde el panel — si algo sale mal,
+  restaurar desde `/adm_cod2/respaldos` con el backup de arriba.
 
 ## Pendientes / conocido-roto
 

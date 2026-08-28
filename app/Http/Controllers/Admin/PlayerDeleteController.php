@@ -21,7 +21,9 @@ class PlayerDeleteController extends Controller
             ->orderByDesc('last_seen_at')
             ->get();
 
-        return view('admin.players.delete', compact('players'));
+        $zeroActivityCount = $players->filter(fn ($p) => $p->kills_total === 0 && $p->deaths_total === 0)->count();
+
+        return view('admin.players.delete', compact('players', 'zeroActivityCount'));
     }
 
     /**
@@ -44,5 +46,32 @@ class PlayerDeleteController extends Controller
         AdminAction::record('players.destroy', "Borro al jugador \"{$label}\"");
 
         return back()->with('status', "Se borró a \"{$label}\". Sus kills/chat/demos quedan en el historial sin asociar a ningún perfil.");
+    }
+
+    /**
+     * Borrado en masa de los perfiles "fantasma" -- 0 kills Y 0 deaths, nunca
+     * generaron ningun evento de juego real (ver CLAUDE.md, "Bug real: filas
+     * fantasma en players por guid corrupto en transito", 2026-08-28). No hay
+     * nada real que perder: mismo delete() de siempre, solo que en bloque.
+     * Se lee la lista ANTES de borrar (para poder auditar quienes eran, ya
+     * que las filas van a desaparecer) y se borra con un solo whereIn para no
+     * hacer N queries.
+     */
+    public function destroyZeroActivity()
+    {
+        $players = Player::where('kills_total', 0)->where('deaths_total', 0)->get(['id', 'last_name_plain', 'guid']);
+
+        if ($players->isEmpty()) {
+            return back()->with('status', 'No hay jugadores con 0 kills y 0 deaths para borrar.');
+        }
+
+        $count = $players->count();
+        $label = $players->map(fn ($p) => "{$p->last_name_plain} (guid {$p->guid})")->implode(', ');
+
+        Player::whereIn('id', $players->pluck('id'))->delete();
+
+        AdminAction::record('players.destroy-bulk-zero-activity', "Borro en masa {$count} jugadores con 0 kills/0 deaths: {$label}");
+
+        return back()->with('status', "Se borraron {$count} jugadores con 0 kills y 0 deaths.");
     }
 }
