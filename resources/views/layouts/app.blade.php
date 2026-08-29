@@ -7,31 +7,77 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Tema "Void terminal glass" (2026-08-28, ver testing frontend/neon-db-design.md,
+        // fuente: neon.com) -- se remapean slate/cyan en vez de tocar clase por clase en
+        // las ~49 plantillas: casi todo el sitio ya usaba esos dos tokens para
+        // fondo/texto/bordes (slate) y acento (cyan), asi que redefinir la escala acá
+        // cascadea el look nuevo sin editar cada vista.
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        panel: '#111827',
-                        panel2: '#0b1220',
-                        gsprimary: '#1e40af',
-                        gsaccent: '#38bdf8',
+                        panel: '#111315',
+                        panel2: '#000000',
+                        gsprimary: '#47D18C',
+                        gsaccent: '#34D59A',
+                        slate: {
+                            50: '#FFFFFF',
+                            100: '#F5F6F7',
+                            200: '#FFFFFF',
+                            300: '#C9CBCF',
+                            400: '#94979E',
+                            500: '#75787F',
+                            600: '#4B4D52',
+                            700: '#303236',
+                            800: '#18191B',
+                            900: '#111315',
+                            950: '#000000',
+                        },
+                        cyan: {
+                            50: '#EAFBF3',
+                            100: '#CFF5E3',
+                            200: '#A6ECCB',
+                            300: '#6EDFAE',
+                            400: '#34D59A',
+                            500: '#20C28A',
+                            600: '#17A374',
+                            700: '#128364',
+                            800: '#106951',
+                            900: '#0E5643',
+                            950: '#062E23',
+                        },
                     },
                     fontFamily: {
-                        display: ['"Russo One"', 'sans-serif'],
-                        sans: ['"Chakra Petch"', 'sans-serif'],
+                        display: ['"Inter"', 'sans-serif'],
+                        sans: ['"Inter"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    borderRadius: {
+                        none: '0px',
+                        sm: '0px',
+                        DEFAULT: '0px',
+                        md: '0px',
+                        lg: '0px',
+                        xl: '0px',
+                        '2xl': '0px',
+                        '3xl': '0px',
+                        full: '9999px',
+                    },
+                    letterSpacing: {
+                        tightest: '-0.06em',
                     },
                 },
             },
         };
     </script>
     <style>
-        body { background: #0b1220; }
+        body { background: #000000; }
         ::-webkit-scrollbar { height: 8px; width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #303236; }
 
         /* Usado por cod2CopyConnect() mas abajo -- compartido entre cualquier boton
         de "copiar" de la pagina (Servidor en vivo, FAQ, etc.). */
