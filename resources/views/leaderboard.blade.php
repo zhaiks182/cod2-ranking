@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ranking')
+@section('title', __('Ranking'))
 
 @section('content')
 <div class="space-y-4">
@@ -14,7 +14,7 @@
 
     <div class="flex items-center justify-between flex-wrap gap-3">
         <h1 class="text-lg font-semibold">
-            Ranking {{ $map ? '— '.\App\Support\MapCatalog::mapLabel($map) : 'general' }}
+            {{ __('Ranking') }} {{ $map ? '— '.\App\Support\MapCatalog::mapLabel($map) : __('general') }}
             @if($usingDateFilter && $from && $from === $to)
                 <span class="text-slate-500 font-normal text-base">({{ \Illuminate\Support\Carbon::parse($from)->translatedFormat('j \d\e F') }})</span>
             @endif
@@ -28,7 +28,7 @@
     </div>
 
     <div class="flex items-center gap-2 text-sm flex-wrap">
-        <a href="{{ route('leaderboard', ['server' => $server?->slug, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ !$map ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">General</a>
+        <a href="{{ route('leaderboard', ['server' => $server?->slug, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ !$map ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('General') }}</a>
         @foreach($mapGroups as $mapCode => $group)
             <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $mapCode, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg border {{ $map === $mapCode ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ \App\Support\MapCatalog::mapLabel($mapCode) }}</a>
         @endforeach
@@ -39,7 +39,7 @@
             $monthGroups = $mapGroups[$map]->dates->groupBy(fn ($d) => $d->format('Y-m'));
         @endphp
         <div class="flex items-center gap-2 text-xs -mt-2 flex-wrap">
-            <span class="text-slate-500 uppercase tracking-wide">Atajo por sesión</span>
+            <span class="text-slate-500 uppercase tracking-wide">{{ __('Atajo por sesión') }}</span>
             @foreach($monthGroups as $monthKey => $dates)
                 @php $monthLabel = ucfirst($dates->first()->translatedFormat('F Y')); @endphp
                 <button type="button" onclick="document.getElementById('dates-modal-{{ $monthKey }}').classList.remove('hidden')"
@@ -77,19 +77,19 @@
         <input type="hidden" name="map" value="{{ $map }}">
         <input type="hidden" name="season" value="{{ $seasonId }}">
         <div>
-            <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Desde</label>
+            <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">{{ __('Desde') }}</label>
             <input type="date" name="from" value="{{ $from }}" class="bg-panel2 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
         </div>
         <div>
-            <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Hasta</label>
+            <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">{{ __('Hasta') }}</label>
             <input type="date" name="to" value="{{ $to }}" class="bg-panel2 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-200">
         </div>
-        <button type="submit" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-500 hover:text-cyan-400">Filtrar</button>
+        <button type="submit" class="px-3 py-1.5 rounded-lg border border-slate-700 hover:border-cyan-500 hover:text-cyan-400">{{ __('Filtrar') }}</button>
         @if($usingDateFilter)
-            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">Quitar filtro de fecha</a>
+            <a href="{{ route('leaderboard', ['server' => $server?->slug, 'map' => $map, 'season' => $seasonId]) }}" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">{{ __('Quitar filtro de fecha') }}</a>
         @endif
         @if(Route::has('team-balance'))
-            <a href="{{ route('team-balance', ['server' => $server?->slug]) }}" class="ml-auto px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold whitespace-nowrap">⚖️ Equipos</a>
+            <a href="{{ route('team-balance', ['server' => $server?->slug]) }}" class="ml-auto px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold whitespace-nowrap">⚖️ {{ __('Equipos') }}</a>
         @endif
     </form>
 
@@ -113,14 +113,14 @@
             <thead>
                 <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                     <th class="px-4 py-2 font-medium">#</th>
-                    <th class="px-4 py-2 font-medium">Jugador</th>
+                    <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                     <th class="px-4 py-2 font-medium text-right">Kills</th>
-                    <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                    <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                    <th class="px-4 py-2 font-medium text-right">Granadas</th>
-                    <th class="px-4 py-2 font-medium text-right" title="Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)">Horas</th>
-                    <th class="px-4 py-2 font-medium text-right" title="Kills ÷ horas jugadas">Kills/h</th>
+                    <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
+                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Horas') }}</th>
+                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Kills ÷ horas jugadas') }}">{{ __('Kills/h') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -133,7 +133,7 @@
                             <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             <x-player-icon :player="$row->player" />
                             @if($i < 3)
-                                <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
+                                <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => __('Oro'), 1 => __('Plata'), 2 => __('Bronce') } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
@@ -158,7 +158,7 @@
                         <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_hour }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Sin datos para esta temporada.</td></tr>
+                    <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">{{ __('Sin datos para esta temporada.') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -167,7 +167,7 @@
 
     @if($axisRows->isNotEmpty() || $alliesRows->isNotEmpty())
         <div>
-            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Tabla de Posiciones</h2>
+            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Tabla de Posiciones') }}</h2>
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
                     <div class="px-4 py-2 border-b border-slate-800 text-xs uppercase tracking-wide text-red-400 font-medium flex items-center gap-2">
@@ -176,16 +176,16 @@
                             <span class="text-slate-400 normal-case">({{ $sideScores['axis'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'axis')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">Ganador</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">Jugador</th>
+                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
@@ -212,7 +212,7 @@
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -226,16 +226,16 @@
                             <span class="text-slate-400 normal-case">({{ $sideScores['allies'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'allies')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">Ganador</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">Jugador</th>
+                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
@@ -262,7 +262,7 @@
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>

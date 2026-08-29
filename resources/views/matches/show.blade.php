@@ -10,26 +10,26 @@
             <img src="{{ $mapImageUrl }}" alt="" class="h-20 w-20 rounded-lg object-cover shrink-0">
         @endif
         <div>
-            <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← Volver a partidas</a>
+            <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← {{ __('Volver a partidas') }}</a>
             <h1 class="text-lg font-semibold mt-1">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</h1>
             <p class="text-xs text-slate-500 mt-0.5">
                 {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} ·
                 @if($match->is_backfilled)
-                    fecha no disponible (importado)
+                    {{ __('fecha no disponible (importado)') }}
                 @else
                     {{ $match->started_at->translatedFormat('j \d\e F, Y') }} ·
                     {{ $match->started_at->format('H:i') }}@if($match->ended_at) – {{ $match->ended_at->format('H:i') }}@endif ·
                     {{ $match->duration_label }}
                     @if($match->ended_at)
-                        <span class="text-emerald-400">Finalizado</span>
+                        <span class="text-emerald-400">{{ __('Finalizado') }}</span>
                     @else
-                        <span class="text-emerald-400">(en curso)</span>
+                        <span class="text-emerald-400">{{ __('(en curso)') }}</span>
                     @endif
                 @endif
                 @if($finalScore)
                     · <span class="text-slate-300 font-medium">{{ $finalScore }}</span>
                 @else
-                    · {{ $rounds->count() }} ronda(s)
+                    · {{ __(':n ronda(s)', ['n' => $rounds->count()]) }}
                 @endif
             </p>
         </div>
@@ -38,7 +38,7 @@
         @if($chatMessages->isNotEmpty())
           <button type="button" onclick="document.getElementById('cod2-chat-modal').classList.remove('hidden')"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400">
-              💬 Chats General <span class="text-slate-500">({{ $chatMessages->count() }})</span>
+              💬 {{ __('Chats General') }} <span class="text-slate-500">({{ $chatMessages->count() }})</span>
           </button>
         @endif
         @if($axisChat->isNotEmpty())
@@ -60,7 +60,7 @@
         <div class="flex flex-wrap gap-2 text-xs">
             @if($matchStartKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
-                    🏁 Inicio ·
+                    🏁 {{ __('Inicio') }} ·
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->attacker_name) }}
                     →
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->victim_name) }}
@@ -69,7 +69,7 @@
             @endif
             @if($halftimeKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-amber-900 bg-amber-950/40 text-amber-300">
-                    🔄 Cambio de bando ·
+                    🔄 {{ __('Cambio de bando') }} ·
                     {{ \App\Support\Cod2Colors::stripColors($halftimeKill->attacker_name) }}
                     →
                     {{ \App\Support\Cod2Colors::stripColors($halftimeKill->victim_name) }}
@@ -78,7 +78,7 @@
             @endif
             @if($topHeadshots)
                 <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
-                    🎯 Más headshots ·
+                    🎯 {{ __('Más headshots') }} ·
                     {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
                     <x-player-icon :player="$topHeadshots->player" />
                     ({{ $topHeadshots->headshots }})
@@ -86,7 +86,7 @@
             @endif
             @if($topGrenades)
                 <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
-                    💣 Más granadas ·
+                    💣 {{ __('Más granadas') }} ·
                     {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
                     <x-player-icon :player="$topGrenades->player" />
                     ({{ $topGrenades->grenade_kills }})
@@ -94,23 +94,23 @@
             @endif
             @if($topBash)
                 <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
-                    👊 Más bash ·
+                    👊 {{ __('Más bash') }} ·
                     {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
                     <x-player-icon :player="$topBash->player" />
                     ({{ $topBash->bash }})
                 </span>
             @endif
             @if($overtimeEvent)
-                <span class="px-2.5 py-1.5 rounded-lg border border-fuchsia-900 bg-fuchsia-950/40 text-fuchsia-300">⏱️ Tiempo extra</span>
+                <span class="px-2.5 py-1.5 rounded-lg border border-fuchsia-900 bg-fuchsia-950/40 text-fuchsia-300">⏱️ {{ __('Tiempo extra') }}</span>
             @endif
             @foreach($timeoutEvents as $ev)
                 <span class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300">
                     @if($ev->event_type === 'timeout_call')
                         ⏸️ Timeout · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
                     @elseif($ev->event_type === 'timeout_cancel')
-                        ▶️ Timeout cancelado · {{ \App\Support\Cod2Colors::stripColors($ev->name) }}
+                        ▶️ {{ __('Timeout cancelado') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }}
                     @elseif($ev->event_type === 'bash_call')
-                        🥊 Bash · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
+                        🥊 {{ __('Bash') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
                     @endif
                 </span>
             @endforeach
@@ -119,7 +119,7 @@
 
     @if($roundDetails->isNotEmpty())
         <div>
-            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Línea de tiempo</h2>
+            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Línea de tiempo') }}</h2>
 
             {{-- Un cuadrado por ronda, en orden, rojo si gano axis esa ronda especifica,
             azul si gano allies (mismos colores que los paneles Axis/Allies de mas
@@ -132,7 +132,7 @@
             <div class="flex flex-wrap items-center gap-1">
                 @foreach($roundDetails as $rd)
                     <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}" data-round-winner="{{ $rd->winningSide }}"
-                        title="Ronda {{ $rd->number }}{{ $rd->winningSide === 'axis' ? ' — Axis ganó' : ($rd->winningSide === 'allies' ? ' — Allies ganó' : '') }}"
+                        title="{{ __('Ronda :n', ['n' => $rd->number]) }}{{ $rd->winningSide === 'axis' ? __(' — Axis ganó') : ($rd->winningSide === 'allies' ? __(' — Allies ganó') : '') }}"
                         class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
                             {{ match($rd->winningSide) { 'axis' => 'bg-red-900/70 text-red-300', 'allies' => 'bg-blue-900/70 text-blue-300', default => 'bg-slate-800 text-slate-500' } }}
                             hover:ring-2 hover:ring-cyan-400 cursor-pointer">
@@ -167,16 +167,16 @@
                             <span class="text-slate-400 normal-case">({{ $sideScores['axis'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'axis')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">Ganador</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">Jugador</th>
+                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
@@ -201,7 +201,7 @@
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -215,16 +215,16 @@
                             <span class="text-slate-400 normal-case">({{ $sideScores['allies'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'allies')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">Ganador</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">Jugador</th>
+                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                                 <th class="px-4 py-2 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
@@ -249,7 +249,7 @@
                                     <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">Sin datos.</td></tr>
+                                <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -260,19 +260,19 @@
     @endif
 
     <div>
-        <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Tabla General</h2>
+        <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Tabla General') }}</h2>
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
             <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Jugador</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                         <th class="px-4 py-2 font-medium text-right">Kills</th>
-                        <th class="px-4 py-2 font-medium text-right">Muertes</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                         <th class="px-4 py-2 font-medium text-right">K/D</th>
                         <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                        <th class="px-4 py-2 font-medium text-right">Granadas</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -303,7 +303,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sin bajas registradas en esta partida.</td></tr>
+                        <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">{{ __('Sin bajas registradas en esta partida.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -317,10 +317,10 @@
         <div class="w-full max-w-3xl max-h-[calc(100vh-8rem)] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-2">
-                    <button type="button" id="cod2-round-prev" onclick="cod2StepRound(-1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda anterior">‹</button>
-                    <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">Ronda</span></span>
+                    <button type="button" id="cod2-round-prev" onclick="cod2StepRound(-1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="{{ __('Ronda anterior') }}">‹</button>
+                    <span class="text-sm font-semibold">🎞️ <span id="cod2-rounds-modal-title">{{ __('Ronda') }}</span></span>
                     <span id="cod2-rounds-modal-winner" class="px-1.5 py-0.5 rounded text-[10px] font-medium hidden"></span>
-                    <button type="button" id="cod2-round-next" onclick="cod2StepRound(1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="Ronda siguiente">›</button>
+                    <button type="button" id="cod2-round-next" onclick="cod2StepRound(1)" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center" title="{{ __('Ronda siguiente') }}">›</button>
                 </div>
                 <button type="button" onclick="document.getElementById('cod2-rounds-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
@@ -328,17 +328,17 @@
                 @foreach($roundDetails as $rd)
                     <div id="round-detail-{{ $rd->round->id }}" class="round-detail hidden border-b border-slate-800/60 last:border-0">
                         @if($rd->kills->isEmpty())
-                            <div class="px-4 py-4 text-center text-sm text-slate-500">Sin kills registradas en esta ronda.</div>
+                            <div class="px-4 py-4 text-center text-sm text-slate-500">{{ __('Sin kills registradas en esta ronda.') }}</div>
                         @else
                             <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800/60">
-                                        <th class="px-4 py-2 font-medium">Hora</th>
-                                        <th class="px-4 py-2 font-medium">Atacante</th>
+                                        <th class="px-4 py-2 font-medium">{{ __('Hora') }}</th>
+                                        <th class="px-4 py-2 font-medium">{{ __('Atacante') }}</th>
                                         <th class="px-4 py-2 font-medium"></th>
-                                        <th class="px-4 py-2 font-medium">Víctima</th>
-                                        <th class="px-4 py-2 font-medium">Arma</th>
+                                        <th class="px-4 py-2 font-medium">{{ __('Víctima') }}</th>
+                                        <th class="px-4 py-2 font-medium">{{ __('Arma') }}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -356,7 +356,7 @@
                                                 @else
                                                     <span class="text-slate-500">{{ \App\Support\Cod2Colors::stripColors($kill->attacker_name) }}</span>
                                                 @endif
-                                                @if($isClutchKill)<span title="Clutch 1vX">🥶</span>@endif
+                                                @if($isClutchKill)<span title="{{ __('Clutch 1vX') }}">🥶</span>@endif
                                             </td>
                                             <td class="px-4 py-2 text-slate-600">{{ $kill->is_suicide ? '☠️' : '→' }}</td>
                                             <td class="px-4 py-2">
@@ -370,7 +370,7 @@
                                             <td class="px-4 py-2 text-slate-400 flex items-center gap-1.5">
                                                 {{ \App\Support\WeaponCatalog::label($kill->weapon) }}
                                                 @if($kill->is_headshot)<span title="Headshot">🎯</span>@endif
-                                                @if($kill->is_teamkill)<span class="text-red-500 text-xs" title="Fuego amigo">FF</span>@endif
+                                                @if($kill->is_teamkill)<span class="text-red-500 text-xs" title="{{ __('Fuego amigo') }}">FF</span>@endif
                                             </td>
                                         </tr>
                                     @endforeach
@@ -386,6 +386,14 @@
 @endif
 
 <script>
+    // Textos usados por cod2ShowRoundByIndex() mas abajo -- __() no corre en el
+    // navegador, se resuelven server-side una sola vez.
+    const cod2MatchI18n = {
+        round: @json(__('Ronda')),
+        axisWon: @json(__('Axis ganó')),
+        alliesWon: @json(__('Allies ganó')),
+    };
+
     // Cada cuadradito de la linea de tiempo abre el popup directo en esa ronda --
     // ya no hay lista de botones "Ronda N" adentro del popup (se saco a pedido del
     // dueño, 2026-08-28): la linea de tiempo de arriba ES el selector de rondas.
@@ -404,12 +412,12 @@
 
         document.querySelectorAll('.round-detail').forEach((d) => d.classList.add('hidden'));
         target.classList.remove('hidden');
-        document.getElementById('cod2-rounds-modal-title').textContent = 'Ronda ' + link.dataset.roundNumber;
+        document.getElementById('cod2-rounds-modal-title').textContent = cod2MatchI18n.round + ' ' + link.dataset.roundNumber;
 
         const winnerEl = document.getElementById('cod2-rounds-modal-winner');
         const winner = link.dataset.roundWinner;
         if (winner === 'axis' || winner === 'allies') {
-            winnerEl.textContent = (winner === 'axis' ? 'Axis' : 'Allies') + ' ganó';
+            winnerEl.textContent = winner === 'axis' ? cod2MatchI18n.axisWon : cod2MatchI18n.alliesWon;
             winnerEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-medium ' + (winner === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300');
         } else {
             winnerEl.className = 'px-1.5 py-0.5 rounded text-[10px] font-medium hidden';
@@ -445,7 +453,7 @@
     <div id="cod2-chat-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2">💬 Chats de la partida</span>
+                <span class="text-sm font-semibold flex items-center gap-2">💬 {{ __('Chats de la partida') }}</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
@@ -475,7 +483,7 @@
     <div id="cod2-chat-axis-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2 text-red-400">💬 Chat de equipo · Axis</span>
+                <span class="text-sm font-semibold flex items-center gap-2 text-red-400">💬 {{ __('Chat de equipo') }} · Axis</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-axis-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
@@ -503,7 +511,7 @@
     <div id="cod2-chat-allies-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
         <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2 text-blue-400">💬 Chat de equipo · Allies</span>
+                <span class="text-sm font-semibold flex items-center gap-2 text-blue-400">💬 {{ __('Chat de equipo') }} · Allies</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-allies-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
             <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
