@@ -24,16 +24,25 @@
                         panel2: '#000000',
                         gsprimary: '#0099FF',
                         gsaccent: '#0099FF',
+                        // Ramp verificado contra WCAG AA (4.5:1) con la herramienta
+                        // ui-ux-pro-max (2026-08-29): 200-600 se usan casi siempre como
+                        // texto real (helper text, headers de tabla, labels), no solo
+                        // bordes, asi que no podian quedar tan oscuros como el spec de
+                        // framer.com sugiere literalmente (su "border" #767676 y
+                        // "text-muted" #666666 fallan 4.5:1 contra los paneles oscuros
+                        // del sitio). 700/800 concentran el uso real como borde (102 y
+                        // 244 apariciones respectivamente) y no llevan texto, asi que ahi
+                        // si se prioriza el look sobre el contraste.
                         slate: {
                             50: '#FFFFFF',
                             100: '#FFFFFF',
                             200: '#FFFFFF',
-                            300: '#C7C7C7',
+                            300: '#CCCCCC',
                             400: '#999999',
-                            500: '#858585',
-                            600: '#767676',
-                            700: '#666666',
-                            800: '#1E1E1E',
+                            500: '#8F8F8F',
+                            600: '#808080',
+                            700: '#767676',
+                            800: '#5C5C5C',
                             900: '#111111',
                             950: '#000000',
                         },

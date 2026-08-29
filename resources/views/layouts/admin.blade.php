@@ -21,16 +21,18 @@
                         panel2: '#000000',
                         gsprimary: '#0099FF',
                         gsaccent: '#0099FF',
+                        // Ver comentario en layouts/app.blade.php -- mismo ramp
+                        // verificado contra WCAG AA.
                         slate: {
                             50: '#FFFFFF',
                             100: '#FFFFFF',
                             200: '#FFFFFF',
-                            300: '#C7C7C7',
+                            300: '#CCCCCC',
                             400: '#999999',
-                            500: '#858585',
-                            600: '#767676',
-                            700: '#666666',
-                            800: '#1E1E1E',
+                            500: '#8F8F8F',
+                            600: '#808080',
+                            700: '#767676',
+                            800: '#5C5C5C',
                             900: '#111111',
                             950: '#000000',
                         },
