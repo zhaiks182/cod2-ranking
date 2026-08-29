@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('Fast DL') }} · Pug Latam</title>
+    <title>{{ __('Fast DL') }} · Zhaiks</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,11 +31,11 @@
     <style>body { background: #0b1220; }</style>
 </head>
 <body class="bg-panel2 text-slate-200 min-h-screen font-sans flex items-start justify-center px-4 py-10 sm:py-16">
-    <div class="w-full max-w-2xl">
+    <div class="w-full max-w-4xl">
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
             <div class="p-6 sm:p-8 text-center border-b border-slate-800">
                 <h1 class="font-display text-xl sm:text-2xl">
-                    <span class="text-gsaccent">Pug Latam</span> <span class="text-white">Fast DL</span>
+                    <span class="text-gsaccent">Zhaiks</span> <span class="text-white">Fast DL</span>
                 </h1>
                 <p class="text-sm text-slate-400 mt-1">{{ __('Explorá y descargá los mods y mapas del servidor.') }}</p>
             </div>
@@ -99,7 +99,7 @@
             </table>
 
             <div class="px-4 sm:px-6 py-4 border-t border-slate-800 text-center text-xs text-slate-500">
-                &copy; {{ date('Y') }} <span class="text-gsaccent">Pug Latam</span>. {{ __('Todos los derechos reservados.') }}
+                &copy; {{ date('Y') }} <span class="text-gsaccent">Zhaiks</span>. {{ __('Todos los derechos reservados.') }}
             </div>
         </div>
 

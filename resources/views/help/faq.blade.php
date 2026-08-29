@@ -9,7 +9,7 @@
     summary::-webkit-details-marker { display: none; }
 </style>
 
-<div class="max-w-3xl mx-auto space-y-6">
+<div class="space-y-6">
     <div>
         <h1 class="font-display text-2xl md:text-3xl font-bold text-white">{{ __('Preguntas frecuentes') }}</h1>
         <p class="text-sm text-slate-400 mt-1">{{ __('Todo lo que necesitás para conectarte y jugar sin problemas en Pug Latam.') }}</p>
