@@ -35,7 +35,7 @@
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
             <div class="p-6 sm:p-8 text-center border-b border-slate-800">
                 <h1 class="font-display text-xl sm:text-2xl">
-                    <span class="text-gsaccent">Zhaiks</span> <span class="text-white">Fast Download</span>
+                    <span class="text-gsaccent">Pug Latam</span> <span class="text-white">Fast Download</span>
                 </h1>
                 <p class="text-sm text-slate-400 mt-1">{{ __('Explorá y descargá los mods y mapas del servidor.') }}</p>
             </div>
