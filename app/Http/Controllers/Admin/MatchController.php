@@ -18,8 +18,12 @@ class MatchController extends Controller
         $server = $servers->firstWhere('slug', $request->query('server')) ?? $servers->first();
         $showIncomplete = $request->boolean('incompletas');
 
+        // El pug es SD -- una partida real de otro gametype (HQ, DM, etc.)
+        // se oculta igual que una incompleta, pero reusa el mismo toggle
+        // "Mostrar incompletas" para poder encontrarla y borrarla a mano
+        // (ver MatchController publico para el detalle completo).
         $matches = GameMatch::where('server_id', $server?->id)
-            ->when(! $showIncomplete, fn ($q) => $q->visibleInListing())
+            ->when(! $showIncomplete, fn ($q) => $q->where('gametype', 'sd')->visibleInListing())
             ->withCount(['rounds', 'kills'])
             ->with(['events' => fn ($q) => $q->where('event_type', 'match_end')])
             ->orderByDesc('started_at')

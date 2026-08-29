@@ -29,9 +29,18 @@ class MatchController extends Controller
         $backfilled = $usingDateFilter
             ? collect()
             : GameMatch::where('server_id', $server?->id)->where('is_backfilled', true)
+                ->where('gametype', 'sd')
                 ->orderByDesc('id')->withCount('kills')->get();
 
+        // El pug es de Search & Destroy -- una partida real de otro gametype
+        // (Headquarters, Deathmatch, etc.) no es un "resultado" en el sentido
+        // que esta pagina muestra, aunque haya tenido kills reales y un
+        // match_end valido (confirmado en vivo 2026-08-28, match id=111,
+        // Burgundy HQ). Se oculta siempre en /partidas; /adm_cod2/partidas
+        // sigue pudiendo mostrarla via el toggle "Mostrar incompletas" para
+        // poder borrarla a mano, mismo precedente que las partidas fantasma.
         $matches = GameMatch::where('server_id', $server?->id)->where('is_backfilled', false)
+            ->where('gametype', 'sd')
             ->visibleInListing()
             ->when($from, fn ($q) => $q->where('started_at', '>=', Carbon::parse($from)->startOfDay()))
             ->when($to, fn ($q) => $q->where('started_at', '<=', Carbon::parse($to)->endOfDay()))

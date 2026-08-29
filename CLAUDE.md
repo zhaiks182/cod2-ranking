@@ -691,6 +691,44 @@ tiempo de debug una vez.
     con el fix, y toda la suite (24/25, mismo `ExampleTest.php`
     preexistente sin relación) verificada antes de desplegar.
 
+19. **`/partidas` y `/adm_cod2/partidas` mostraban partidas reales de otro
+    gametype, no solo Search & Destroy (2026-08-28).** El dueño reportó una
+    partida de hoy, mapa Burgundy, que "no debería aparecer" — resultó ser
+    `match_id=111`, gametype `hq` (Headquarters), 70 kills reales y un
+    evento `match_end` real (15 minutos jugados de verdad, no una partida
+    fantasma tipo entradas 10-12). El pug prioriza SD desde el inicio del
+    proyecto, pero `scopeVisibleInListing()`/`scopeReachedConclusion()`
+    nunca filtraron por gametype — solo validaban "¿esto es un resultado
+    real?" (13+ rondas o `MatchEnd;`), y un HQ real pasa esa validación
+    igual que un SD real. Confirmado con el dueño: ocultar cualquier
+    gametype que no sea `sd` en ambos listados.
+
+    Fix a nivel controller, no en el scope del modelo — `visibleInListing()`/
+    `reachedConclusion()` los siguen usando otros consumidores (
+    `StatsRecalculator`, `current_match_id`, etc.) que no deben filtrar por
+    gametype, solo la vista de listado:
+    - `MatchController::index()` (público) — `->where('gametype', 'sd')`
+      tanto en la query de partidas normales como en la de
+      `is_backfilled=true` ("Historial importado").
+    - `Admin\MatchController::index()` — mismo filtro, pero reusando el
+      toggle existente "Mostrar incompletas" (`?incompletas=1`) como vía de
+      escape: con el toggle apagado se oculta cualquier gametype que no sea
+      `sd` (además de las incompletas, como ya hacía); con el toggle
+      prendido se ven todos los gametypes sin filtrar, mismo precedente que
+      las entradas 10-12 para poder encontrar y borrar una partida así a
+      mano sin tener que ir directo a la base de datos. La partida
+      `id=111` no se borró — sigue en la BD, visible solo con el toggle.
+
+    TDD: `tests/Feature/MatchListingSdOnlyTest.php` (2 casos: listado
+    público oculta HQ, listado admin lo oculta por default y lo muestra con
+    el toggle) — verificado GREEN junto al resto de la suite (197/199, las
+    2 fallas son `ExampleTest.php` y `CountriesSeasonTest.php`, ambas
+    preexistentes y reproducidas también contra el código sin este fix,
+    sin relación) en el entorno aislado del VPS (`/root/cod2-dev-test/repo/`,
+    sincronizado con `git archive HEAD | ssh ... tar -x` para eliminar
+    staleness de archivos sueltos de sesiones anteriores, en vez de copiar
+    archivo por archivo a mano).
+
 ## Subida automática de demos por HWID (2026-08-19)
 
 Al terminar una partida SD, el cliente CoD2x de cada jugador sube automáticamente su
