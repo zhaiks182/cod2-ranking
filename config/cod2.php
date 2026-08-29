@@ -30,8 +30,11 @@ return [
 
     // URL publica real de arriba -- los links de descarga de /descargas/archivos
     // apuntan aca (no a esta app), asi el archivo se sirve directo por Apache sin
-    // pasar por PHP-FPM (el paquete de mapas pesa >150MB). HTTP, no HTTPS: ese vhost
-    // por defecto solo tiene el cert autofirmado (snakeoil) de Ubuntu, HTTPS ahi
-    // dispara advertencia de certificado en el navegador.
-    'fast_download_public_url' => env('COD2_FAST_DOWNLOAD_PUBLIC_URL', 'http://151.245.32.43/cod2'),
+    // pasar por PHP-FPM (el paquete de mapas pesa >150MB). Via el dominio HTTPS real
+    // (Alias /cod2 -> fast_download_root agregado al vhost de cod2.4livepro.com, con
+    // el mismo cert Let's Encrypt del sitio), no la IP cruda por HTTP -- la version
+    // anterior (http://151.245.32.43/cod2) generaba "mixed content": Chrome/Edge
+    // bloquean en silencio la descarga de un link http:// clickeado desde una pagina
+    // https:// (2026-08-29, reportado por el dueño: el click no descargaba nada).
+    'fast_download_public_url' => env('COD2_FAST_DOWNLOAD_PUBLIC_URL', 'https://cod2.4livepro.com/cod2'),
 ];
