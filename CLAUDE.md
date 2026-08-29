@@ -3250,13 +3250,42 @@ un jugador.
   `/partidas/{id}` reales: el ícono de GenuineuPP. (puesto #6) aparece en
   los cuatro.
 
-## Ambiente de testing (`testing.4livepro.com`) (2026-08-28)
+## Ambiente de testing (`testing.4livepro.com`) — dado de baja (2026-08-28 → 2026-08-29)
+
+**Ya no existe.** A pedido del dueño (2026-08-29, "elimina el testing ya no lo
+voy a usar") se borró todo: vhost de Apache (`.conf`/`-le-ssl.conf`),
+certificado TLS (`certbot delete`), directorio `/var/www/testing.4livepro.com`
+y la base `cod2_stats_test`. Producción (`cod2.4livepro.com`) no se tocó,
+verificado con `curl` antes y después.
+
+**El registro DNS sigue existiendo** — lo creó el dueño directamente en
+Cloudflare, no se puede borrar desde este repo/VPS (sin API token de
+Cloudflare). Efecto observado: sin un vhost propio, una visita HTTPS a
+`testing.4livepro.com` cae al primer vhost SSL que Apache tiene cargado
+(en este caso, el de `cod2.4livepro.com`) y muestra el sitio real en vez de
+dar error — mismo tipo de fallback "vhost por defecto" ya documentado para
+`monitor.4livepro.com` en "Subida automática de demos por HWID" más arriba,
+no es un resto de la limpieza. Si se quiere que el subdominio deje de
+resolver del todo, hay que borrar el registro en Cloudflare.
+
+**Lo que sí sobrevive** (no se tocó, porque no es "el ambiente de testing" en
+sí — son las exploraciones de diseño que se probaron ahí): las ramas git
+`frontend-neon-redesign`, `frontend-framer-redesign` y
+`frontend-hostgamer-redesign` (ver "Exploración de rediseño de frontend" más
+abajo) y el directorio `testing frontend/` con los `.md` de referencia.
+Si se quiere volver a levantar un ambiente de pruebas para seguir iterando
+sobre alguna de esas ramas, repetir el procedimiento completo descripto
+originalmente más abajo en esta misma sección (vhost, cert, DB, `.env` con
+el mismo `APP_KEY` que producción).
+
+<details>
+<summary>Contenido original de esta sección, para no perder el procedimiento si se vuelve a necesitar</summary>
 
 A pedido del dueño, para poder probar cambios sin tocar `cod2.4livepro.com` en
-vivo. Vive en el mismo VPS (`151.245.32.43`) que producción, como un segundo
+vivo. Vivía en el mismo VPS (`151.245.32.43`) que producción, como un segundo
 vhost de Apache completamente separado en filesystem y base de datos — pero
-**comparte el mismo gameserver real y los mismos permisos de sistema que
-producción**, ver el aviso de riesgo más abajo, es la parte más importante de
+**compartía el mismo gameserver real y los mismos permisos de sistema que
+producción**, ver el aviso de riesgo más abajo, era la parte más importante de
 esta sección.
 
 ### Qué se armó
@@ -3343,6 +3372,58 @@ gameserver por RCON o `systemctl` sí es real.
   ambiente como "staging" antes de cada deploy real, hay que desplegar ahí
   a mano con el mismo comando (`git archive HEAD | ssh ... tar -x -C
   /var/www/testing.4livepro.com`) — no hay ningún pipeline armado para eso.
+
+</details>
+
+## Exploración de rediseño de frontend (2026-08-29)
+
+El dueño pidió cambiar el frontend (motivo del ambiente de testing de arriba)
+y probó tres direcciones visuales completas, cada una en su propia rama git
+(nunca en `main`), desplegada de a una sobre `testing.4livepro.com` mientras
+existió:
+
+1. **`frontend-neon-redesign`** — tema "Void terminal glass" de neon.com
+   (`testing frontend/neon-db-design.md`), fondo negro + acento menta
+   `#34D59A`, esquinas planas. **Rechazado por el dueño** ("no me gustó").
+2. **`frontend-framer-redesign`** — tema "Void-canvas agent noir" de
+   framer.com (`testing frontend/framer-design.md`), acento azul eléctrico
+   `#0099FF`, esquinas moderadamente redondeadas (8-20px), tipografía Plus
+   Jakarta Sans + Inter. Refinado con la skill `ui-ux-pro-max` (ver abajo).
+   Sin veredicto explícito del dueño todavía cuando se armó la tercera opción.
+3. **`frontend-hostgamer-redesign`** — inspirado en hostgamer.net a pedido
+   directo del dueño ("hazlo tipo este diseño"). A diferencia de las otras
+   dos (mood-boards reconstruidos a mano en un `.md`), estos valores salen
+   del **CSS real** del sitio (se bajó su bundle de Next.js y se leyeron sus
+   variables `--color-*` directamente) — fondo `#090911`, panel `#111420`,
+   acento `#2258FF`, tipografías Manrope + Oxanium, radios 6-16px, más un
+   glow tipo neón en los botones de acento sólidos.
+
+En las tres se usó el mismo mecanismo de alto apalancamiento: remapear los
+tokens `slate`/`cyan` de Tailwind (y `panel`/`panel2`/`gsprimary`/`gsaccent`)
+en el `tailwind.config` inline de `layouts/app.blade.php` y
+`layouts/admin.blade.php`, en vez de editar clase por clase las ~49
+plantillas — la mayoría ya usaba esos dos tokens de sobra (>1000 usos de
+`slate-*`, 263 de `cyan-*`) para fondo/texto/bordes/acento, así que
+redefinir la escala ahí cascadea el look nuevo solo.
+
+**Lección repetida en las tres iteraciones — cuidado si se retoma esto:** los
+tonos de gris literales de un mood-board/sitio de referencia (`border`/
+`text-muted`) casi siempre están pensados para **bordes decorativos**, pero
+en este código real `slate-400/500/600` se usan mayoritariamente como
+**texto de verdad** (headers de tabla, helper text, labels — 400+ apariciones
+combinadas). Aplicar el gris "muted" literal del sitio de referencia ahí
+rompe el contraste WCAG AA (4.5:1) contra los paneles oscuros del sitio. Las
+tres iteraciones necesitaron un ramp de grises recalculado a mano (verificado
+por luminancia relativa, no solo "se ve parecido") para que 400/500/600
+sigan siendo legibles, reservando los tonos más oscuros del sitio de
+referencia para `slate-700`/`800` (ahí sí son casi solo bordes, sin texto).
+
+**Ninguna de las tres se mergeó a `main` ni se desplegó a producción** — las
+ramas siguen existiendo en el repo (locales y/o en GitHub según si se
+pushearon) como punto de partida si el dueño elige retomar alguna. El
+ambiente de testing donde se probaron ya no existe (ver arriba) — para
+volver a ver cualquiera de las tres en vivo hay que rearmar el ambiente y
+desplegar la rama correspondiente.
 
 ## Pendientes / conocido-roto
 
