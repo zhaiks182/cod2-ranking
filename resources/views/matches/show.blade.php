@@ -60,7 +60,7 @@
         <div class="flex flex-wrap gap-2 text-xs">
             @if($matchStartKill)
                 <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
-                    🏁 {{ __('Inicio') }} ·
+                    🏁 {{ __('Inicio de partida') }} ·
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->attacker_name) }}
                     →
                     {{ \App\Support\Cod2Colors::stripColors($matchStartKill->victim_name) }}
