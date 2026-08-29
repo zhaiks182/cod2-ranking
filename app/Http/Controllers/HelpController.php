@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Server;
+use Illuminate\Support\Facades\File;
 
 class HelpController extends Controller
 {
@@ -26,6 +27,21 @@ class HelpController extends Controller
 
     public function downloads()
     {
-        return view('help.downloads');
+        // Lista la carpeta real de fast-download del gameserver (la misma que usa
+        // sv_wwwBaseURL, ver config/cod2.php) en vez de hardcodear nombres de archivo
+        // -- cuando se sube una version nueva del mod/mapas ahi (mismo procedimiento
+        // que "Cambios en el mod zPAM" en CLAUDE.md), esta pagina se actualiza sola.
+        $path = config('cod2.fast_download_path');
+
+        $mods = collect(File::isDirectory($path) ? File::files($path) : [])
+            ->map(fn ($file) => [
+                'name' => $file->getFilename(),
+                'size_mb' => round($file->getSize() / 1024 / 1024, 1),
+                'url' => asset('fastdl/'.rawurlencode($file->getFilename())),
+            ])
+            ->sortBy('name')
+            ->values();
+
+        return view('help.downloads', compact('mods'));
     }
 }

@@ -38,5 +38,36 @@
     </div>
 
     <p class="text-xs text-slate-500">Instrucciones de instalación paso a paso en las <a href="{{ route('faq') }}" class="text-gsaccent hover:underline">preguntas frecuentes</a>.</p>
+
+    @if($mods->isNotEmpty())
+        <div>
+            <h2 class="text-base font-semibold text-white">Mod y mapas del server</h2>
+            <p class="text-xs text-slate-400 mt-1 mb-3">El mismo mod (zPAM) y paquete de mapas que tu juego descarga solo al
+                conectarte por primera vez — bajalos acá si la descarga automática in-game va lenta.</p>
+
+            <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                            <th class="px-4 py-2 font-medium">Archivo</th>
+                            <th class="px-4 py-2 font-medium text-right">Tamaño</th>
+                            <th class="px-4 py-2 font-medium text-right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($mods as $mod)
+                            <tr class="border-b border-slate-800/60 last:border-0">
+                                <td class="px-4 py-2 font-mono text-xs text-slate-300">{{ $mod['name'] }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ number_format($mod['size_mb'], 1) }} MB</td>
+                                <td class="px-4 py-2 text-right">
+                                    <a href="{{ $mod['url'] }}" class="text-gsaccent hover:underline">Descargar</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
 </div>
 @endsection
