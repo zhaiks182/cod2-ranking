@@ -20,4 +20,18 @@ return [
     // public/fastdl (mismo patron que storage:link) para que Apache la sirva
     // directo, sin pasar por PHP-FPM -- el paquete de mapas pesa >150MB.
     'fast_download_path' => env('COD2_FAST_DOWNLOAD_PATH', '/var/www/html/cod2/main'),
+
+    // Raiz publica real del fast-download, un nivel arriba de fast_download_path --
+    // lo que Apache sirve directo por el vhost por defecto en http://<ip>/cod2/ (ese
+    // directorio no cuelga del dominio cod2.4livepro.com, que tiene su propio
+    // DocumentRoot en public/). HelpController::browseFiles() navega esta carpeta
+    // completa (con subdirectorios), no solo el nivel plano de fast_download_path.
+    'fast_download_root' => env('COD2_FAST_DOWNLOAD_ROOT', '/var/www/html/cod2'),
+
+    // URL publica real de arriba -- los links de descarga de /descargas/archivos
+    // apuntan aca (no a esta app), asi el archivo se sirve directo por Apache sin
+    // pasar por PHP-FPM (el paquete de mapas pesa >150MB). HTTP, no HTTPS: ese vhost
+    // por defecto solo tiene el cert autofirmado (snakeoil) de Ubuntu, HTTPS ahi
+    // dispara advertencia de certificado en el navegador.
+    'fast_download_public_url' => env('COD2_FAST_DOWNLOAD_PUBLIC_URL', 'http://151.245.32.43/cod2'),
 ];

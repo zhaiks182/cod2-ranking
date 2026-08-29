@@ -73,6 +73,9 @@ Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])-
 
 Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
 Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
+Route::get('/descargas/archivos/{path?}', [HelpController::class, 'browseFiles'])
+    ->where('path', '.*')
+    ->name('downloads.browse');
 
 Route::get('/idioma/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
 
