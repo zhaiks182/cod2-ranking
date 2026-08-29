@@ -99,7 +99,7 @@
             </table>
 
             <div class="px-4 sm:px-6 py-4 border-t border-slate-800 text-center text-xs text-slate-500">
-                Copyright &copy; {{ date('Y') }} <span class="text-gsaccent">zhaiks</span>. All Rights Reserved.
+                Copyright &copy; {{ date('Y') }} zhaiks. All Rights Reserved.
             </div>
         </div>
 
