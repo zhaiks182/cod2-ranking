@@ -3250,6 +3250,100 @@ un jugador.
   `/partidas/{id}` reales: el ícono de GenuineuPP. (puesto #6) aparece en
   los cuatro.
 
+## Ambiente de testing (`testing.4livepro.com`) (2026-08-28)
+
+A pedido del dueño, para poder probar cambios sin tocar `cod2.4livepro.com` en
+vivo. Vive en el mismo VPS (`151.245.32.43`) que producción, como un segundo
+vhost de Apache completamente separado en filesystem y base de datos — pero
+**comparte el mismo gameserver real y los mismos permisos de sistema que
+producción**, ver el aviso de riesgo más abajo, es la parte más importante de
+esta sección.
+
+### Qué se armó
+
+- **DNS**: `testing.4livepro.com` — registro creado por el dueño en Cloudflare,
+  proxiado (nube naranja) igual que el dominio principal, apunta al mismo VPS.
+- **Filesystem**: `/var/www/testing.4livepro.com/`, poblado con
+  `git archive HEAD | ssh ... tar -x` (mismo mecanismo que `deploy.sh`, apuntado
+  a mano al VPS nuevo — ver "`deploy.sh` apunta al VPS viejo" más arriba).
+  - `vendor/` copiado tal cual desde producción (`cp -a`, 46M) en vez de correr
+    `composer install` — mismo `composer.lock` exacto (mismo commit), así que
+    el resultado es idéntico y se ahorra la descarga/resolución de paquetes.
+  - `storage/` armado desde cero (`framework/{cache,sessions,views}`, `logs`,
+    `app/public`, `app/private`), **sin copiar los demos reales**
+    (`storage/app/private/demos`, 772M en producción al momento de crear
+    esto — no aportan nada para probar código y el VPS solo tenía 5.2G
+    libres). Sí se copiaron `storage/app/public/maps` (imágenes de mapa,
+    versionadas en git de todos modos) y `storage/app/geoip/country.mmdb`
+    (no versionado, pero chico y hace falta para que `/paises` y las
+    banderas funcionen igual que en producción).
+- **`.env`**: copiado del real y editado solo en `APP_URL`, `APP_ENV=testing`
+  y `DB_DATABASE=cod2_stats_test` — **el `APP_KEY` es el mismo que
+  producción a propósito**, porque la copia de la tabla `servers` trae
+  `rcon_password` ya encriptado con ese `APP_KEY` (cast `encrypted` de
+  Laravel, ver "Multi-servidor" más arriba); con un `APP_KEY` distinto esa
+  columna no se puede desencriptar y el RCON del panel de testing rompe.
+- **Base de datos**: `cod2_stats_test`, mismo usuario (`cod2_stats`) con
+  `GRANT ALL` sobre la base nueva. Poblada con un `mysqldump` completo de
+  `cod2_stats` de producción al momento de crear esto (2026-08-28) —
+  **es una foto fija, no se sincroniza después**. Si se necesita una copia
+  más nueva más adelante, repetir
+  `mysqldump --single-transaction cod2_stats | mysql cod2_stats_test`.
+- **Apache**: `/etc/apache2/sites-available/testing.4livepro.com.conf` (mismo
+  patrón que `cod2.4livepro.com.conf`, `DocumentRoot` propio), certificado TLS
+  propio vía `certbot --apache -d testing.4livepro.com` (no expandido sobre el
+  cert de `cod2.4livepro.com` — dominio raíz distinto, tiene sentido un cert
+  separado; vence 2026-11-27, renovación automática ya registrada por
+  certbot). Reusa el mismo pool de PHP-FPM que producción (la config
+  `proxy-sendcl`/socket de `php8.3-fpm.conf` es global, no por vhost) — no se
+  creó un pool aparte, el VPS ya anda ajustado de RAM (ver "Prioridad del
+  gameserver..." más abajo) y un segundo pool solo suma workers ociosos.
+
+**Nada de esto (vhost, cert, la base `cod2_stats_test`) es parte del repo git**
+— mismo precedente que el resto de infraestructura de "Migración a VPS
+dedicado". Si el VPS se reconstruye, hay que rehacer todo esto a mano con los
+comandos de arriba.
+
+### ⚠️ El RCON y el control de systemd apuntan al servidor REAL — decisión explícita del dueño
+
+La tabla `servers` copiada trae las credenciales RCON reales de Pug Latam, y
+`www-data` tiene los mismos permisos de `sudoers` (`/etc/sudoers.d/cod2-panel`)
+sin importar desde qué vhost se invoquen. Esto significa que **el panel de
+admin de `testing.4livepro.com/adm_cod2` controla el mismo gameserver en vivo
+que `cod2.4livepro.com`** — kick, ban, cambio de mapa, mensaje, y reiniciar/
+parar/iniciar `cod2server.service` afectan a jugadores reales ahora mismo, no
+hay ningún servidor "de mentira" para probar esas acciones sin consecuencias.
+Se preguntó explícitamente al dueño antes de armar esto (opción "apuntar al
+server real" elegida a sabiendas del riesgo, sobre la alternativa de dejar la
+tabla `servers` vacía/con RCON inválido). Lo mismo aplica a servidores
+temporales self-service (`hosted_servers`, mismo mecanismo de sudoers) si la
+copia de la base tenía alguna fila activa al momento del dump.
+
+**Lo único que SÍ está aislado es el código (deploy independiente) y los
+datos de jugadores/partidas/rankings (base de datos separada)** — un cambio
+de código o una partida "de prueba" en `cod2_stats_test` no toca
+`cod2_stats` real, pero cualquier botón del panel de admin que hable con el
+gameserver por RCON o `systemctl` sí es real.
+
+### Qué NO se activó (a propósito)
+
+- **Ningún cron/scheduler para testing** (`cod2:parse-log`,
+  `demos:reconcile-matches`, `cod2:recalculate-stats`, etc.) — el VPS tiene 1
+  solo core y RAM ajustada (ver "Migración a VPS dedicado" más abajo); correr
+  el parser dos veces sobre el mismo `games_mp.log` en paralelo (una vez para
+  `cod2_stats`, otra para `cod2_stats_test`) no aporta nada útil para un
+  ambiente de pruebas manual y sí compite por CPU con el server real. La base
+  de testing queda estática (la foto del dump) hasta que alguien la
+  refresque a mano. Si en algún momento hace falta que también parsee en
+  vivo, agregar una entrada de cron aparte apuntando explícitamente al
+  `artisan` de `/var/www/testing.4livepro.com`.
+- **Ningún despliegue automático a testing** — un `deploy.sh`/`git archive`
+  futuro a producción no toca `testing.4livepro.com` para nada (son
+  directorios y vhosts completamente separados); si se quiere usar este
+  ambiente como "staging" antes de cada deploy real, hay que desplegar ahí
+  a mano con el mismo comando (`git archive HEAD | ssh ... tar -x -C
+  /var/www/testing.4livepro.com`) — no hay ningún pipeline armado para eso.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
