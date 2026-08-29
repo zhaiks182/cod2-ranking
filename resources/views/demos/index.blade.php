@@ -26,13 +26,13 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="text-sm text-slate-400">{{ $match->demos_count }} demo(s) →</div>
+                        <div class="text-sm text-slate-400">{{ __(':n demo(s) →', ['n' => $match->demos_count]) }}</div>
                     </a>
                 @endforeach
             </div>
         </section>
     @empty
-        <p class="text-slate-500">Todavia no se subio ningun demo.</p>
+        <p class="text-slate-500">{{ __('Todavia no se subio ningun demo.') }}</p>
     @endforelse
 
     {{ $matches->links() }}

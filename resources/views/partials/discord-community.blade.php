@@ -12,7 +12,7 @@
 <div id="discord-widget" data-refresh-url="{{ route('dashboard.discord-widget') }}" data-online="{{ $discord['online'] }}">
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
-            <span class="text-[11px] uppercase tracking-wide text-slate-500">Miembros conectados</span>
+            <span class="text-[11px] uppercase tracking-wide text-slate-500">{{ __('Miembros conectados') }}</span>
             @if($discord['name'] ?? null)
                 <span class="text-sm font-semibold text-white">{{ $discord['name'] }}</span>
             @endif
@@ -38,9 +38,9 @@
                         <div class="text-sm font-medium truncate">{{ $member['username'] ?? '?' }}</div>
                         <div class="text-[11px] text-slate-500 truncate">
                             {{ $member['game']['name'] ?? match($member['status'] ?? '') {
-                                'online' => 'En línea',
-                                'idle' => 'Ausente',
-                                'dnd' => 'No molestar',
+                                'online' => __('En línea'),
+                                'idle' => __('Ausente'),
+                                'dnd' => __('No molestar'),
                                 default => '',
                             } }}
                         </div>
@@ -53,21 +53,21 @@
                     } }}">
                         {{ match($member['status'] ?? '') {
                             'online' => 'Online',
-                            'idle' => 'Ausente',
-                            'dnd' => 'Ocupado',
+                            'idle' => __('Ausente'),
+                            'dnd' => __('Ocupado'),
                             default => '—',
                         } }}
                     </span>
                 </div>
             @empty
-                <div class="px-4 py-6 text-center text-sm text-slate-600">Nadie conectado en Discord ahora mismo.</div>
+                <div class="px-4 py-6 text-center text-sm text-slate-600">{{ __('Nadie conectado en Discord ahora mismo.') }}</div>
             @endforelse
         </div>
 
         <div class="px-4 py-3 border-t border-slate-800">
             <div class="rounded-lg border border-slate-800 bg-slate-950/40 px-4 py-3 flex items-center justify-between">
                 <div>
-                    <div class="text-[10px] uppercase tracking-wide text-slate-500">Miembros online</div>
+                    <div class="text-[10px] uppercase tracking-wide text-slate-500">{{ __('Miembros online') }}</div>
                     <div class="text-2xl font-semibold tabular-nums text-indigo-400">{{ $discord['online'] }}</div>
                 </div>
                 <svg class="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -75,9 +75,9 @@
         </div>
 
         <div class="px-4 py-3 border-t border-slate-800 flex items-center justify-between gap-3">
-            <span class="text-xs text-slate-500">Unite para chatear y pedir soporte</span>
+            <span class="text-xs text-slate-500">{{ __('Unite para chatear y pedir soporte') }}</span>
             @if($discordSetting->discord_invite_url ?? null)
-                <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs font-medium transition-colors">Unirme a Discord</a>
+                <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="shrink-0 px-3 py-1.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-xs font-medium transition-colors">{{ __('Unirme a Discord') }}</a>
             @endif
         </div>
     </div>

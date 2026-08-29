@@ -21,6 +21,17 @@ class SetLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // /adm_cod2 se queda en español siempre, sin importar la cookie del
+        // visitante -- decision explicita del dueño (el panel es solo para el,
+        // no tiene selector propio). Importa en la practica porque
+        // partials/team-balance.blade.php SI esta traducido (se comparte con
+        // la pagina publica /equipos) -- sin este corte, la cookie "en" de una
+        // visita anterior al sitio publico se filtraria a ese partial dentro
+        // del panel admin.
+        if ($request->is('adm_cod2*')) {
+            return $next($request);
+        }
+
         $locale = $request->cookie('locale');
 
         if (in_array($locale, self::SUPPORTED, true)) {

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Equipos')
+@section('title', __('Equipos'))
 
 @section('content')
 @php
@@ -17,34 +17,33 @@
 
     <div>
         <h1 class="text-lg font-semibold flex items-center gap-2">
-            <span>⚖️</span> Equipos
+            <span>⚖️</span> {{ __('Equipos') }}
         </h1>
         <p class="text-xs text-slate-500 mt-0.5">
-            Arma 2 equipos parejos a partir del rango (A-E, ver <a href="{{ route('rango') }}" class="text-cyan-400 hover:underline">Rangos</a>) de los
-            jugadores conectados ahora mismo en el server. Pensada para usarse una vez que todos ya están adentro, antes de arrancar la partida.
+            {!! __('Arma 2 equipos parejos a partir del rango (A-E, ver :link) de los jugadores conectados ahora mismo en el server. Pensada para usarse una vez que todos ya están adentro, antes de arrancar la partida.', ['link' => '<a href="'.route('rango').'" class="text-cyan-400 hover:underline">'.__('Rangos').'</a>']) !!}
         </p>
     </div>
 
     @if(!$server)
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            No hay servidores configurados todavía.
+            {{ __('No hay servidores configurados todavía.') }}
         </div>
     @else
         <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-panel px-4 py-4">
             <div>
                 @if(!$status)
-                    <div class="text-sm text-red-300">No se pudo conectar al servidor por RCON en este momento.</div>
+                    <div class="text-sm text-red-300">{{ __('No se pudo conectar al servidor por RCON en este momento.') }}</div>
                 @else
                     <div class="text-2xl font-semibold tabular-nums">
                         <span class="text-cyan-400">{{ $playerCount }}</span>
                         <span class="text-slate-500 text-base">/ {{ $server->max_clients }}</span>
                     </div>
-                    <div class="text-[11px] uppercase tracking-[0.15em] text-slate-500">Jugadores conectados ahora</div>
+                    <div class="text-[11px] uppercase tracking-[0.15em] text-slate-500">{{ __('Jugadores conectados ahora') }}</div>
                 @endif
             </div>
             <a href="{{ route('team-balance', ['server' => $server->slug, 'generar' => 1]) }}"
                 class="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold whitespace-nowrap {{ !$status ? 'opacity-40 pointer-events-none' : '' }}">
-                Generar equipos
+                {{ __('Generar equipos') }}
             </a>
         </div>
 

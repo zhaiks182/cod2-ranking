@@ -158,7 +158,7 @@
 
     @if($axisRows->isNotEmpty() || $alliesRows->isNotEmpty())
         <div>
-            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">Tabla de Posiciones</h2>
+            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Tabla de Posiciones') }}</h2>
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
                     <div class="px-4 py-2 border-b border-slate-800 text-xs uppercase tracking-wide text-red-400 font-medium flex items-center gap-2">

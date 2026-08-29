@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Crear servidor')
+@section('title', __('Crear servidor'))
 
 @section('content')
 <div class="space-y-6">
@@ -18,14 +18,14 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
             <div class="relative px-4 sm:px-6 py-12 sm:py-20 md:py-32 text-center">
-                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight uppercase">Crea tu <span class="text-gsaccent">servidor</span></h1>
-                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
+                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight uppercase">{!! __('Crea tu :server', ['server' => '<span class="text-gsaccent">'.__('servidor').'</span>']) !!}</h1>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">{{ __('Comunidad Call of Duty 2 · Latinoamérica del Norte') }}</p>
 
                 <div class="mt-6 inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-slate-700 bg-panel2/60 text-xs sm:text-sm text-slate-300">
                     {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!}
                     <span>Miami, FL</span>
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
-                    <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available }} disponible{{ $available === 1 ? '' : 's' }}</span>
+                    <span class="{{ $available > 0 ? 'text-emerald-400' : 'text-amber-400' }} font-medium">{{ $available === 1 ? __(':n disponible', ['n' => $available]) : __(':n disponibles', ['n' => $available]) }}</span>
                     @if ($active > 0)
                         <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
                         <span class="inline-flex items-center gap-1.5 text-slate-400">
@@ -33,11 +33,11 @@
                                 <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                             </span>
-                            {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora
+                            {{ $active === 1 ? __(':n creado ahora', ['n' => $active]) : __(':n creados ahora', ['n' => $active]) }}
                         </span>
                     @endif
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
-                    <span id="hosted-server-ping" class="text-slate-500">midiendo…</span>
+                    <span id="hosted-server-ping" class="text-slate-500">{{ __('midiendo…') }}</span>
                 </div>
             </div>
         </section>
@@ -64,8 +64,8 @@
         </script>
     @else
         <div>
-            <h1 class="font-display text-2xl md:text-3xl font-bold text-white uppercase">Crea tu <span class="text-gsaccent">servidor</span></h1>
-            <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available }} disponible{{ $available === 1 ? '' : 's' }}@if($active > 0) · {{ $active }} creado{{ $active === 1 ? '' : 's' }} ahora @endif · se apaga solo a las {{ config('hosted_servers.expiry_hours') }} horas</p>
+            <h1 class="font-display text-2xl md:text-3xl font-bold text-white uppercase">{!! __('Crea tu :server', ['server' => '<span class="text-gsaccent">'.__('servidor').'</span>']) !!}</h1>
+            <p class="text-sm text-slate-400 mt-1">Miami, FL · {{ $available === 1 ? __(':n disponible', ['n' => $available]) : __(':n disponibles', ['n' => $available]) }}@if($active > 0) · {{ $active === 1 ? __(':n creado ahora', ['n' => $active]) : __(':n creados ahora', ['n' => $active]) }} @endif · {{ __('se apaga solo a las :n horas', ['n' => config('hosted_servers.expiry_hours')]) }}</p>
         </div>
     @endif
 
@@ -83,7 +83,7 @@
         </div>
     @endif
 
-    <h2 class="font-display text-lg font-bold text-white">Configurá tu servidor</h2>
+    <h2 class="font-display text-lg font-bold text-white">{{ __('Configurá tu servidor') }}</h2>
 
     <form method="POST" action="{{ route('hosted-servers.store') }}" class="rounded-xl border border-slate-800 bg-panel p-5 sm:p-6 space-y-5">
         @csrf
@@ -92,15 +92,15 @@
         diferencia de un position:absolute suelto que podia generar scroll horizontal),
         un bot que rellena todos los inputs a ciegas lo va a completar igual. --}}
         <div class="sr-only" aria-hidden="true">
-            <label for="website">No completar</label>
+            <label for="website">{{ __('No completar') }}</label>
             <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
         </div>
 
         <div>
-            <label for="hostname" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Nombre del servidor</label>
+            <label for="hostname" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">{{ __('Nombre del servidor') }}</label>
             <div class="flex items-stretch rounded-lg border border-slate-700 bg-panel2 focus-within:border-cyan-500 overflow-hidden">
                 <input type="text" name="hostname" id="hostname" value="{{ old('hostname') }}" maxlength="{{ \App\Models\HostedServer::NAME_MAX_LENGTH }}" required
-                    placeholder="Mi server"
+                    placeholder="{{ __('Mi server') }}"
                     class="min-w-0 flex-1 px-3 py-2 bg-transparent text-slate-200 text-sm focus:outline-none">
                 <span class="shrink-0 flex items-center pr-3 text-sm text-slate-500 whitespace-nowrap">{{ \App\Models\HostedServer::NAME_SUFFIX }}</span>
             </div>
@@ -108,7 +108,7 @@
 
         <div class="grid grid-cols-2 gap-4">
             <div>
-                <label for="slots" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Jugadores</label>
+                <label for="slots" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">{{ __('Jugadores') }}</label>
                 <select name="slots" id="slots" required class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
                     @for ($i = $slotsMin; $i <= $slotsMax; $i++)
                         <option value="{{ $i }}" @selected(old('slots', 12) == $i)>{{ $i }}</option>
@@ -116,15 +116,15 @@
                 </select>
             </div>
             <div>
-                <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Contraseña de acceso</label>
+                <label for="join_password" class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">{{ __('Contraseña de acceso') }}</label>
                 <input type="text" name="join_password" id="join_password" value="{{ old('join_password') }}" maxlength="32" required
-                    placeholder="Ej: pug2024"
+                    placeholder="{{ __('Ej: pug2024') }}"
                     class="w-full px-3 py-2 rounded-lg bg-panel2 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-cyan-500">
             </div>
         </div>
 
         <div>
-            <span class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">Mapa</span>
+            <span class="block text-xs font-medium uppercase tracking-wide text-slate-400 mb-1">{{ __('Mapa') }}</span>
             <input type="hidden" name="map" id="map-select-value" value="{{ old('map') }}">
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-0.5">
                 @foreach ($maps as $code => $label)
@@ -149,7 +149,7 @@
 
         <label class="flex items-center gap-2 text-sm text-slate-300">
             <input type="checkbox" name="cracked" value="1" @checked(old('cracked')) class="rounded border-slate-700 bg-panel2 text-cyan-500 focus:ring-cyan-500">
-            Permitir clientes no originales (cracked)
+            {{ __('Permitir clientes no originales (cracked)') }}
         </label>
 
         @if ($turnstileSiteKey)
@@ -159,7 +159,7 @@
         @endif
 
         <div class="flex justify-center">
-            <button type="submit" class="px-6 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors">Crear servidor</button>
+            <button type="submit" class="px-6 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold transition-colors">{{ __('Crear servidor') }}</button>
         </div>
     </form>
 </div>

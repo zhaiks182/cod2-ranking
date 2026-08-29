@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Server;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -53,5 +55,36 @@ class LocaleSwitcherTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Inicio');
+    }
+
+    /**
+     * partials/team-balance.blade.php se comparte entre /equipos (publico, ya
+     * traducido) y admin/console.blade.php -- sin el corte en SetLocale, la
+     * cookie "en" de una visita anterior al sitio publico se filtraria a ese
+     * partial dentro del panel admin, que debe quedar siempre en español.
+     */
+    public function test_admin_panel_ignores_the_locale_cookie(): void
+    {
+        $admin = User::factory()->create();
+        $server = Server::create([
+            'name' => 'Test Server',
+            'slug' => 'test-server',
+            'log_path' => '/tmp/games_mp.log',
+            'rcon_host' => '127.0.0.1',
+            'rcon_port' => 28960,
+            'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1',
+            'connect_port' => 28960,
+            'max_clients' => 30,
+            'is_active' => true,
+        ]);
+
+        $response = $this->withCookie('locale', 'en')
+            ->actingAs($admin)
+            ->get(route('admin.console.show', $server));
+
+        $response->assertOk();
+        $response->assertSee('Balanceo sugerido de equipos');
+        $response->assertDontSee('Suggested team balance');
     }
 }
