@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Rangos')
+@section('title', __('Rangos'))
 
 @section('content')
 <div class="space-y-6">
@@ -15,13 +15,11 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>🎖️</span> Rangos
+                <span>🎖️</span> {{ __('Rangos') }}
             </h1>
             <p class="text-xs text-slate-500 mt-0.5">
-                Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra
-                el resto de jugadores calificados, Search and Destroy). Headshots y granadas se
-                muestran en la tabla como referencia pero no entran en el cálculo.
-                Mínimo {{ $minMatches }} partidas jugadas para entrar.
+                {{ __('Categoría A-E según un score de 70% K/D + 30% win rate (cada uno su percentil contra el resto de jugadores calificados, Search and Destroy). Headshots y granadas se muestran en la tabla como referencia pero no entran en el cálculo.') }}
+                {{ __('Mínimo :n partidas jugadas para entrar.', ['n' => $minMatches]) }}
             </p>
         </div>
 
@@ -34,7 +32,7 @@
 
     @if($rows->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay suficientes jugadores calificados.
+            {{ __('Todavía no hay suficientes jugadores calificados.') }}
         </div>
     @else
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -43,12 +41,12 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Jugador</th>
-                        <th class="px-4 py-2 font-medium text-center">Rango</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
+                        <th class="px-4 py-2 font-medium text-center">{{ __('Rango') }}</th>
                         <th class="px-4 py-2 font-medium text-right">K/D</th>
                         <th class="px-4 py-2 font-medium text-right">Win rate</th>
                         <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                        <th class="px-4 py-2 font-medium text-right">Granadas</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
                         <th class="px-4 py-2 font-medium text-right">Score</th>
                     </tr>
                 </thead>

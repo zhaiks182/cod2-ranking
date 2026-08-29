@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Hora Pico')
+@section('title', __('Hora Pico'))
 
 @section('content')
 <div class="space-y-6">
@@ -15,9 +15,9 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>📈</span> Hora Pico
+                <span>📈</span> {{ __('Hora Pico') }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">Cuándo hay más actividad — bajas de Search and Destroy por hora y día</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ __('Cuándo hay más actividad — bajas de Search and Destroy por hora y día') }}</p>
         </div>
 
         @include('partials.season-selector', [
@@ -28,7 +28,7 @@
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4">
-        <h2 class="text-xs uppercase tracking-wide text-slate-400 mb-3">Por hora del día</h2>
+        <h2 class="text-xs uppercase tracking-wide text-slate-400 mb-3">{{ __('Por hora del día') }}</h2>
         <div class="space-y-1">
             @foreach($byHour as $row)
                 <div class="flex items-center gap-2 text-xs">
@@ -43,7 +43,7 @@
     </div>
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4">
-        <h2 class="text-xs uppercase tracking-wide text-slate-400 mb-3">Por día de la semana</h2>
+        <h2 class="text-xs uppercase tracking-wide text-slate-400 mb-3">{{ __('Por día de la semana') }}</h2>
         <div class="space-y-1">
             @foreach($byWeekday as $row)
                 <div class="flex items-center gap-2 text-xs">

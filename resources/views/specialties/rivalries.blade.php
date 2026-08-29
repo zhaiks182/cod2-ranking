@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Rivalidades')
+@section('title', __('Rivalidades'))
 
 @section('content')
 <div class="space-y-6">
@@ -23,15 +23,15 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>😈</span> Rivalidades{{ ($type ?? 'all') === 'grenades' ? ' con granadas' : '' }}
+                <span>😈</span> {{ __('Rivalidades') }}{{ ($type ?? 'all') === 'grenades' ? ' '.__('con granadas') : '' }}
             </h1>
             <p class="text-xs text-slate-500 mt-0.5">
                 @if(($type ?? 'all') === 'grenades')
-                    El "verdugo" de cada jugador con granadas — quién lo mató más veces que nadie con este tipo de arma (mínimo 2 bajas contra esa víctima).
+                    {{ __('El "verdugo" de cada jugador con granadas — quién lo mató más veces que nadie con este tipo de arma (mínimo 2 bajas contra esa víctima).') }}
                 @else
-                    El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima).
+                    {{ __('El "verdugo" de cada jugador — quién lo mató más veces que nadie (mínimo 3 bajas contra esa víctima).') }}
                 @endif
-                Click en una fila para ver el cara a cara completo.
+                {{ __('Click en una fila para ver el cara a cara completo.') }}
             </p>
         </div>
 
@@ -44,7 +44,7 @@
 
     @if($rivalries->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay suficientes enfrentamientos repetidos para armar este ranking.
+            {{ __('Todavía no hay suficientes enfrentamientos repetidos para armar este ranking.') }}
         </div>
     @else
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -53,9 +53,9 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Víctima</th>
-                        <th class="px-4 py-2 font-medium">Verdugo</th>
-                        <th class="px-4 py-2 font-medium text-right">Veces</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Víctima') }}</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Verdugo') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Veces') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,6 +94,11 @@
 </div>
 
 <script>
+    const cod2RivalriesI18n = {
+        favoriteWeapon: @json(__('Arma favorita')),
+        faceToFace: @json(__('Cara a cara')),
+    };
+
     function showRivalryDetail(row) {
         const popover = document.getElementById('teamkill-popover');
         const key = 'rivalry:' + row.dataset.nemesis + ':' + row.dataset.victim;
@@ -112,12 +117,12 @@
 
         const weaponRow = row.dataset.weapon ? `
                 <li class="flex items-center justify-between gap-3 py-1 border-t border-slate-800/60 mt-1 pt-1.5">
-                    <span class="text-slate-500">Arma favorita</span>
+                    <span class="text-slate-500">${cod2RivalriesI18n.favoriteWeapon}</span>
                     <span class="text-slate-300 font-medium shrink-0">${escapeHtml(row.dataset.weapon)}</span>
                 </li>` : '';
 
         popover.innerHTML = `
-            <div class="text-red-400 font-semibold mb-1.5 uppercase tracking-wide text-[10px]">Cara a cara</div>
+            <div class="text-red-400 font-semibold mb-1.5 uppercase tracking-wide text-[10px]">${cod2RivalriesI18n.faceToFace}</div>
             <ul>
                 <li class="flex items-center justify-between gap-3 py-1 border-b border-slate-800/60">
                     <span class="text-slate-300 truncate">${escapeHtml(row.dataset.nemesis)} → ${escapeHtml(row.dataset.victim)}</span>

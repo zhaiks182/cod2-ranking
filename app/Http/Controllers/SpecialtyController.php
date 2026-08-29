@@ -56,14 +56,14 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.grenades', 'icon' => '💣', 'title' => 'Especialistas en Granadas',
-            'subtitle' => 'Ranking de bajas con granada — Search and Destroy, '.($server?->name ?? 'servidor'),
-            'valueLabel' => 'granadas', 'valueColor' => 'text-amber-400',
-            'shareLabel' => '% de sus bajas',
+            'routeName' => 'specialties.grenades', 'icon' => '💣', 'title' => __('Especialistas en Granadas'),
+            'subtitle' => __('Ranking de bajas con granada — Search and Destroy, :server', ['server' => $server?->name ?? __('servidor')]),
+            'valueLabel' => __('granadas'), 'valueColor' => 'text-amber-400',
+            'shareLabel' => __('% de sus bajas'),
             'statCards' => [
-                ['label' => 'Bajas con granada', 'value' => $totalGrenadeKills, 'color' => 'text-amber-400'],
-                ['label' => '% del total de bajas', 'value' => $totalKills > 0 ? round($totalGrenadeKills / $totalKills * 100, 1).'%' : '0%'],
-                ['label' => 'Granada favorita', 'value' => $favoriteGrenade ? \App\Support\WeaponCatalog::label($favoriteGrenade->weapon) : '—'],
+                ['label' => __('Bajas con granada'), 'value' => $totalGrenadeKills, 'color' => 'text-amber-400'],
+                ['label' => __('% del total de bajas'), 'value' => $totalKills > 0 ? round($totalGrenadeKills / $totalKills * 100, 1).'%' : '0%'],
+                ['label' => __('Granada favorita'), 'value' => $favoriteGrenade ? \App\Support\WeaponCatalog::label($favoriteGrenade->weapon) : '—'],
             ],
         ]);
     }
@@ -96,12 +96,12 @@ class SpecialtyController extends Controller
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.headshots', 'icon' => '🎯', 'title' => 'Headshots',
-            'subtitle' => 'Ranking de headshots — Search and Destroy, '.($server?->name ?? 'servidor'),
+            'subtitle' => __('Ranking de headshots — Search and Destroy, :server', ['server' => $server?->name ?? __('servidor')]),
             'valueLabel' => 'headshots', 'valueColor' => 'text-rose-400',
-            'shareLabel' => '% de sus bajas',
+            'shareLabel' => __('% de sus bajas'),
             'statCards' => [
-                ['label' => 'Total de headshots', 'value' => $totalHeadshots, 'color' => 'text-rose-400'],
-                ['label' => '% del total de bajas', 'value' => $totalKills > 0 ? round($totalHeadshots / $totalKills * 100, 1).'%' : '0%'],
+                ['label' => __('Total de headshots'), 'value' => $totalHeadshots, 'color' => 'text-rose-400'],
+                ['label' => __('% del total de bajas'), 'value' => $totalKills > 0 ? round($totalHeadshots / $totalKills * 100, 1).'%' : '0%'],
             ],
         ]);
     }
@@ -131,12 +131,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.friendly-fire', 'icon' => '💀', 'title' => 'Fuego amigo',
-            'subtitle' => 'Los que más matan a sus propios compañeros — con cariño',
-            'valueLabel' => 'compañeros', 'valueColor' => 'text-red-400',
-            'shareLabel' => '% de sus bajas',
+            'routeName' => 'specialties.friendly-fire', 'icon' => '💀', 'title' => __('Fuego amigo'),
+            'subtitle' => __('Los que más matan a sus propios compañeros — con cariño'),
+            'valueLabel' => __('compañeros'), 'valueColor' => 'text-red-400',
+            'shareLabel' => __('% de sus bajas'),
             'statCards' => [
-                ['label' => 'Total de fuego amigo', 'value' => $totalTeamkills, 'color' => 'text-red-400'],
+                ['label' => __('Total de fuego amigo'), 'value' => $totalTeamkills, 'color' => 'text-red-400'],
             ],
         ]);
     }
@@ -175,12 +175,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.suicides', 'icon' => '🤡', 'title' => 'Suicidios',
-            'subtitle' => 'Los que más se matan solos (granada en la mano, caídas, etc.)',
-            'valueLabel' => 'suicidios', 'valueColor' => 'text-fuchsia-400',
+            'routeName' => 'specialties.suicides', 'icon' => '🤡', 'title' => __('Suicidios'),
+            'subtitle' => __('Los que más se matan solos (granada en la mano, caídas, etc.)'),
+            'valueLabel' => __('suicidios'), 'valueColor' => 'text-fuchsia-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Total de suicidios', 'value' => $totalSuicides, 'color' => 'text-fuchsia-400'],
+                ['label' => __('Total de suicidios'), 'value' => $totalSuicides, 'color' => 'text-fuchsia-400'],
             ],
         ]);
     }
@@ -226,12 +226,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.grenade-deaths', 'icon' => '🪦', 'title' => 'Muertes por granada',
-            'subtitle' => 'Los que más mueren por granadas ajenas (no cuenta autoeliminarse) — Search and Destroy',
-            'valueLabel' => 'muertes por nade', 'valueColor' => 'text-lime-400',
+            'routeName' => 'specialties.grenade-deaths', 'icon' => '🪦', 'title' => __('Muertes por granada'),
+            'subtitle' => __('Los que más mueren por granadas ajenas (no cuenta autoeliminarse) — Search and Destroy'),
+            'valueLabel' => __('muertes por nade'), 'valueColor' => 'text-lime-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Total de muertes por nade', 'value' => $totalGrenadeDeaths, 'color' => 'text-lime-400'],
+                ['label' => __('Total de muertes por nade'), 'value' => $totalGrenadeDeaths, 'color' => 'text-lime-400'],
             ],
         ]);
     }
@@ -261,12 +261,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.efficiency', 'icon' => '⚔️', 'title' => 'Los Más Eficientes',
-            'subtitle' => "Mejor ratio kills/muertes (K/D) — mínimo {$minKills} bajas para entrar al ranking",
+            'routeName' => 'specialties.efficiency', 'icon' => '⚔️', 'title' => __('Los Más Eficientes'),
+            'subtitle' => __('Mejor ratio kills/muertes (K/D) — mínimo :min bajas para entrar al ranking', ['min' => $minKills]),
             'valueLabel' => 'K/D', 'valueColor' => 'text-emerald-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Mínimo de bajas para calificar', 'value' => $minKills],
+                ['label' => __('Mínimo de bajas para calificar'), 'value' => $minKills],
             ],
         ]);
     }
@@ -318,12 +318,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.maps-won', 'icon' => '🏆', 'title' => 'Mapas Ganados',
-            'subtitle' => "Partidas completas ganadas por jugador (de {$totalMaps} mapas jugados y decididos)",
-            'valueLabel' => 'mapas', 'valueColor' => 'text-yellow-400',
+            'routeName' => 'specialties.maps-won', 'icon' => '🏆', 'title' => __('Mapas Ganados'),
+            'subtitle' => __('Partidas completas ganadas por jugador (de :n mapas jugados y decididos)', ['n' => $totalMaps]),
+            'valueLabel' => __('mapas'), 'valueColor' => 'text-yellow-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Mapas jugados y decididos', 'value' => $totalMaps],
+                ['label' => __('Mapas jugados y decididos'), 'value' => $totalMaps],
             ],
         ]);
     }
@@ -456,8 +456,8 @@ class SpecialtyController extends Controller
 
         $tabParams = array_filter(['server' => $server?->slug, 'season' => $seasonId]);
         $tabs = [
-            ['label' => '😈 General', 'url' => route('specialties.rivalries', $tabParams), 'active' => $type === 'all'],
-            ['label' => '💣 Con granadas', 'url' => route('specialties.rivalries', array_merge($tabParams, ['type' => 'grenades'])), 'active' => $type === 'grenades'],
+            ['label' => '😈 '.__('General'), 'url' => route('specialties.rivalries', $tabParams), 'active' => $type === 'all'],
+            ['label' => '💣 '.__('Con granadas'), 'url' => route('specialties.rivalries', array_merge($tabParams, ['type' => 'grenades'])), 'active' => $type === 'grenades'],
         ];
 
         return view('specialties.rivalries', compact('servers', 'server', 'seasons', 'seasonId', 'rivalries', 'type', 'tabs'));
@@ -513,13 +513,13 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.playtime', 'icon' => '⏱️', 'title' => 'Más Horas Jugadas',
-            'subtitle' => 'Tiempo estimado en partida — suma la duración de las rondas SD en las que participó cada jugador',
-            'valueLabel' => 'tiempo', 'valueColor' => 'text-sky-400',
+            'routeName' => 'specialties.playtime', 'icon' => '⏱️', 'title' => __('Más Horas Jugadas'),
+            'subtitle' => __('Tiempo estimado en partida — suma la duración de las rondas SD en las que participó cada jugador'),
+            'valueLabel' => __('tiempo'), 'valueColor' => 'text-sky-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Tiempo total registrado', 'value' => PlaytimeCalculator::formatDuration($totalSeconds), 'color' => 'text-sky-400'],
-                ['label' => 'Jugadores con tiempo registrado', 'value' => $totalPlayers],
+                ['label' => __('Tiempo total registrado'), 'value' => PlaytimeCalculator::formatDuration($totalSeconds), 'color' => 'text-sky-400'],
+                ['label' => __('Jugadores con tiempo registrado'), 'value' => $totalPlayers],
             ],
         ]);
     }
@@ -626,13 +626,13 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.recent-activity', 'icon' => '📈', 'title' => 'Actividad Reciente',
-            'subtitle' => 'Más bajas (Search and Destroy) en los últimos 7 días — '.$since->translatedFormat('d M').' a hoy',
-            'valueLabel' => 'bajas', 'valueColor' => 'text-lime-400',
+            'routeName' => 'specialties.recent-activity', 'icon' => '📈', 'title' => __('Actividad Reciente'),
+            'subtitle' => __('Más bajas (Search and Destroy) en los últimos 7 días — :from a hoy', ['from' => $since->translatedFormat('d M')]),
+            'valueLabel' => __('bajas'), 'valueColor' => 'text-lime-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Bajas en los últimos 7 días', 'value' => $totalKills, 'color' => 'text-lime-400'],
-                ['label' => 'Jugadores activos', 'value' => $rows->count()],
+                ['label' => __('Bajas en los últimos 7 días'), 'value' => $totalKills, 'color' => 'text-lime-400'],
+                ['label' => __('Jugadores activos'), 'value' => $rows->count()],
             ],
         ]);
     }
@@ -757,11 +757,11 @@ class SpecialtyController extends Controller
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.clutches', 'icon' => '🥶', 'title' => 'Clutches 1vX',
-            'subtitle' => 'Rondas ganadas siendo el único sobreviviente de su equipo',
+            'subtitle' => __('Rondas ganadas siendo el único sobreviviente de su equipo'),
             'valueLabel' => 'clutches', 'valueColor' => 'text-cyan-300',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Clutches totales', 'value' => $totalClutches, 'color' => 'text-cyan-300'],
+                ['label' => __('Clutches totales'), 'value' => $totalClutches, 'color' => 'text-cyan-300'],
             ],
         ]);
     }
@@ -823,9 +823,9 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.streaks-kills', 'icon' => '🔥', 'title' => 'Rachas de Bajas',
-            'subtitle' => 'Mejor racha histórica de bajas sin morir (Search and Destroy)',
-            'valueLabel' => 'racha', 'valueColor' => 'text-orange-400',
+            'routeName' => 'specialties.streaks-kills', 'icon' => '🔥', 'title' => __('Rachas de Bajas'),
+            'subtitle' => __('Mejor racha histórica de bajas sin morir (Search and Destroy)'),
+            'valueLabel' => __('racha'), 'valueColor' => 'text-orange-400',
             'shareLabel' => null,
             'statCards' => [],
         ]);
@@ -860,12 +860,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.chattiest', 'icon' => '💬', 'title' => 'Jugador Más Hablador',
-            'subtitle' => 'Más mensajes de chat público enviados',
-            'valueLabel' => 'mensajes', 'valueColor' => 'text-lime-400',
+            'routeName' => 'specialties.chattiest', 'icon' => '💬', 'title' => __('Jugador Más Hablador'),
+            'subtitle' => __('Más mensajes de chat público enviados'),
+            'valueLabel' => __('mensajes'), 'valueColor' => 'text-lime-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Mensajes totales', 'value' => $totalMessages, 'color' => 'text-lime-400'],
+                ['label' => __('Mensajes totales'), 'value' => $totalMessages, 'color' => 'text-lime-400'],
             ],
         ]);
     }
@@ -888,7 +888,7 @@ class SpecialtyController extends Controller
             $weekdayRows = $this->sdKills($server->id, $matchIds)
                 ->selectRaw('dayofweek(kills.occurred_at) as d, count(*) as c')
                 ->groupBy('d')->pluck('c', 'd');
-            $labels = [2 => 'Lun', 3 => 'Mar', 4 => 'Mié', 5 => 'Jue', 6 => 'Vie', 7 => 'Sáb', 1 => 'Dom'];
+            $labels = [2 => __('Lun'), 3 => __('Mar'), 4 => __('Mié'), 5 => __('Jue'), 6 => __('Vie'), 7 => __('Sáb'), 1 => __('Dom')];
             $byWeekday = collect($labels)->map(fn ($label, $d) => (object) ['label' => $label, 'value' => $weekdayRows[$d] ?? 0])->values();
         }
 
@@ -917,8 +917,8 @@ class SpecialtyController extends Controller
         return view('specialties.timeouts', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.timeouts', 'icon' => '⏸️', 'title' => 'Timeouts',
-            'subtitle' => 'Quién más pide tiempo fuera durante una partida',
-            'valueLabel' => 'Timeouts pedidos', 'emptyText' => 'Todavía no hay timeouts registrados.',
+            'subtitle' => __('Quién más pide tiempo fuera durante una partida'),
+            'valueLabel' => __('Timeouts pedidos'), 'emptyText' => __('Todavía no hay timeouts registrados.'),
         ]);
     }
 
@@ -956,11 +956,11 @@ class SpecialtyController extends Controller
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.bash', 'icon' => '🥊', 'title' => 'Bash',
-            'subtitle' => 'Más bajas cuerpo a cuerpo (bash) — Search and Destroy',
+            'subtitle' => __('Más bajas cuerpo a cuerpo (bash) — Search and Destroy'),
             'valueLabel' => 'bash', 'valueColor' => 'text-orange-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Total de bash', 'value' => $totalBashes, 'color' => 'text-orange-400'],
+                ['label' => __('Total de bash'), 'value' => $totalBashes, 'color' => 'text-orange-400'],
             ],
         ]);
     }
@@ -1140,19 +1140,19 @@ class SpecialtyController extends Controller
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.bombs', 'icon' => '💣',
-            'title' => $stat === 'defuses' ? 'Especialistas en Desactivar Bombas' : 'Especialistas en Bombas',
-            'subtitle' => ($stat === 'defuses' ? 'Más bombas desactivadas' : 'Más bombas plantadas').' (Search and Destroy)',
-            'valueLabel' => $stat === 'defuses' ? 'desactivadas' : 'plantadas',
+            'title' => $stat === 'defuses' ? __('Especialistas en Desactivar Bombas') : __('Especialistas en Bombas'),
+            'subtitle' => ($stat === 'defuses' ? __('Más bombas desactivadas') : __('Más bombas plantadas')).' (Search and Destroy)',
+            'valueLabel' => $stat === 'defuses' ? __('desactivadas') : __('plantadas'),
             'valueColor' => $stat === 'defuses' ? 'text-emerald-400' : 'text-red-400',
             'shareLabel' => null,
             'stat' => $stat,
             'tabs' => [
-                ['label' => '💣 Plantadas', 'url' => route('specialties.bombs', $tabParams), 'active' => $stat === 'plants'],
-                ['label' => '✂️ Desactivadas', 'url' => route('specialties.bombs', array_merge($tabParams, ['stat' => 'defuses'])), 'active' => $stat === 'defuses'],
+                ['label' => '💣 '.__('Plantadas'), 'url' => route('specialties.bombs', $tabParams), 'active' => $stat === 'plants'],
+                ['label' => '✂️ '.__('Desactivadas'), 'url' => route('specialties.bombs', array_merge($tabParams, ['stat' => 'defuses'])), 'active' => $stat === 'defuses'],
             ],
             'statCards' => [
-                ['label' => 'Bombas plantadas', 'value' => $totalPlants, 'color' => 'text-red-400'],
-                ['label' => 'Bombas desactivadas', 'value' => $totalDefuses, 'color' => 'text-emerald-400'],
+                ['label' => __('Bombas plantadas'), 'value' => $totalPlants, 'color' => 'text-red-400'],
+                ['label' => __('Bombas desactivadas'), 'value' => $totalDefuses, 'color' => 'text-emerald-400'],
             ],
         ]);
     }
@@ -1211,12 +1211,12 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.damage', 'icon' => '💥', 'title' => 'Especialistas en Daño',
-            'subtitle' => 'Más daño infligido en total (Search and Destroy)',
-            'valueLabel' => 'daño', 'valueColor' => 'text-amber-400',
+            'routeName' => 'specialties.damage', 'icon' => '💥', 'title' => __('Especialistas en Daño'),
+            'subtitle' => __('Más daño infligido en total (Search and Destroy)'),
+            'valueLabel' => __('daño'), 'valueColor' => 'text-amber-400',
             'shareLabel' => null,
             'statCards' => [
-                ['label' => 'Daño total infligido', 'value' => number_format($totalDamage), 'color' => 'text-amber-400'],
+                ['label' => __('Daño total infligido'), 'value' => number_format($totalDamage), 'color' => 'text-amber-400'],
             ],
         ]);
     }
@@ -1270,9 +1270,9 @@ class SpecialtyController extends Controller
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
-            'routeName' => 'specialties.disconnects', 'icon' => '🔌', 'title' => 'Se Fueron a Media Ronda',
-            'subtitle' => 'Desconexiones mientras la ronda seguía activa (Search and Destroy)',
-            'valueLabel' => 'desconexiones', 'valueColor' => 'text-rose-400',
+            'routeName' => 'specialties.disconnects', 'icon' => '🔌', 'title' => __('Se Fueron a Media Ronda'),
+            'subtitle' => __('Desconexiones mientras la ronda seguía activa (Search and Destroy)'),
+            'valueLabel' => __('desconexiones'), 'valueColor' => 'text-rose-400',
             'shareLabel' => null,
             'statCards' => [],
         ]);

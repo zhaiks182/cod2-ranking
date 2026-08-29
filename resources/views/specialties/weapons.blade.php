@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ranking por Arma')
+@section('title', __('Ranking por Arma'))
 
 @section('content')
 <div class="space-y-6">
@@ -15,9 +15,9 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>🔫</span> Ranking por Arma
+                <span>🔫</span> {{ __('Ranking por Arma') }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">Las armas más letales del servidor, y quién es el más mortal con cada una</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ __('Las armas más letales del servidor, y quién es el más mortal con cada una') }}</p>
         </div>
 
         @include('partials.season-selector', [
@@ -29,7 +29,7 @@
 
     @if($weapons->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay datos suficientes.
+            {{ __('Todavía no hay datos suficientes.') }}
         </div>
     @else
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -38,10 +38,10 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Arma</th>
-                        <th class="px-4 py-2 font-medium text-right">Bajas totales</th>
-                        <th class="px-4 py-2 font-medium">Más letal con esta arma</th>
-                        <th class="px-4 py-2 font-medium text-right">Bajas con ella</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Arma') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Bajas totales') }}</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Más letal con esta arma') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Bajas con ella') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,6 +78,11 @@
 </div>
 
 <script>
+    const cod2WeaponsI18n = {
+        killsWith: @json(__('Bajas con')),
+        noData: @json(__('Sin datos.')),
+    };
+
     function showWeaponKillers(btn) {
         const popover = document.getElementById('teamkill-popover');
         const key = 'weapon:' + btn.dataset.weaponLabel;
@@ -103,8 +108,8 @@
         `).join('');
 
         popover.innerHTML = `
-            <div class="text-cyan-400 font-semibold mb-1.5 uppercase tracking-wide text-[10px]">Bajas con ${escapeHtml(btn.dataset.weaponLabel)}</div>
-            <ul>${rows || '<li class="text-slate-500 py-1">Sin datos.</li>'}</ul>
+            <div class="text-cyan-400 font-semibold mb-1.5 uppercase tracking-wide text-[10px]">${cod2WeaponsI18n.killsWith} ${escapeHtml(btn.dataset.weaponLabel)}</div>
+            <ul>${rows || '<li class="text-slate-500 py-1">' + cod2WeaponsI18n.noData + '</li>'}</ul>
         `;
         popover.classList.remove('hidden');
     }

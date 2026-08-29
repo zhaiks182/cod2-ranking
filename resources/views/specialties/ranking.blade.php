@@ -50,7 +50,7 @@
 
     @if($rows->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay datos suficientes para este ranking.
+            {{ __('Todavía no hay datos suficientes para este ranking.') }}
         </div>
     @else
         @php $podium = $rows->take(3); $rest = $rows->slice(3)->values(); @endphp
@@ -79,7 +79,7 @@
                         <div class="mt-1 text-3xl font-bold {{ $valueColor }}">{{ $p->value }}</div>
                         <div class="text-[10px] text-slate-500 uppercase tracking-wide">{{ $valueLabel }}</div>
                         @if($shareLabel && $p->share !== null)
-                            <div class="mt-1 text-[11px] text-slate-400">{{ $p->share }}% {{ $shareLabel === '% de sus bajas' ? 'de sus bajas' : $shareLabel }}</div>
+                            <div class="mt-1 text-[11px] text-slate-400">{{ $p->share }}% {{ $shareLabel === __('% de sus bajas') ? __('de sus bajas') : $shareLabel }}</div>
                         @endif
                     </div>
                 @endif
@@ -106,12 +106,12 @@
                     <thead>
                         <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                             <th class="px-4 py-2 font-medium">#</th>
-                            <th class="px-4 py-2 font-medium">Jugador</th>
+                            <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                             <th class="px-4 py-2 font-medium text-right">{{ ucfirst($valueLabel) }}</th>
                             @if($shareLabel)
                                 <th class="px-4 py-2 font-medium text-right">{{ $shareLabel }}</th>
                             @endif
-                            <th class="px-4 py-2 font-medium text-right">Kills totales</th>
+                            <th class="px-4 py-2 font-medium text-right">{{ __('Kills totales') }}</th>
                         </tr>
                     </thead>
                     <tbody>

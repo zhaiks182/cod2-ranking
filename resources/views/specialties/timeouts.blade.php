@@ -38,8 +38,8 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Jugador</th>
-                        <th class="px-4 py-2 font-medium">Bando</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Bando') }}</th>
                         <th class="px-4 py-2 font-medium text-right">{{ $valueLabel }}</th>
                     </tr>
                 </thead>

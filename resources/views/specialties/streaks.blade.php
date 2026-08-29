@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Racha de Mapas')
+@section('title', __('Racha de Mapas'))
 
 @section('content')
 <div class="space-y-6">
@@ -15,9 +15,9 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>🔥</span> Racha de Mapas
+                <span>🔥</span> {{ __('Racha de Mapas') }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">Mapas completos ganados de forma consecutiva (Search and Destroy) — mínimo 2 seguidos para entrar</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ __('Mapas completos ganados de forma consecutiva (Search and Destroy) — mínimo 2 seguidos para entrar') }}</p>
         </div>
 
         @include('partials.season-selector', [
@@ -30,11 +30,11 @@
     @if($longestEver)
         <div class="grid grid-cols-2 gap-3">
             <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
-                <div class="text-[11px] uppercase tracking-wide text-slate-500">Racha más larga registrada</div>
-                <div class="mt-1 text-lg font-semibold text-orange-400">{{ $longestEver->best }} mapas — {!! \App\Support\Cod2Colors::toHtml($longestEver->player->last_name) !!}<x-player-icon :player="$longestEver->player" /></div>
+                <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ __('Racha más larga registrada') }}</div>
+                <div class="mt-1 text-lg font-semibold text-orange-400">{{ __(':n mapas', ['n' => $longestEver->best]) }} — {!! \App\Support\Cod2Colors::toHtml($longestEver->player->last_name) !!}<x-player-icon :player="$longestEver->player" /></div>
             </div>
             <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
-                <div class="text-[11px] uppercase tracking-wide text-slate-500">Jugadores con racha activa (2+)</div>
+                <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ __('Jugadores con racha activa (2+)') }}</div>
                 <div class="mt-1 text-lg font-semibold text-orange-400">{{ $rows->filter(fn($r) => $r->current >= 2)->count() }}</div>
             </div>
         </div>
@@ -42,7 +42,7 @@
 
     @if($rows->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay rachas de 2 o más mapas seguidos.
+            {{ __('Todavía no hay rachas de 2 o más mapas seguidos.') }}
         </div>
     @else
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -51,9 +51,9 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Jugador</th>
-                        <th class="px-4 py-2 font-medium text-right">Mejor racha</th>
-                        <th class="px-4 py-2 font-medium text-right">Racha actual</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Mejor racha') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Racha actual') }}</th>
                     </tr>
                 </thead>
                 <tbody>

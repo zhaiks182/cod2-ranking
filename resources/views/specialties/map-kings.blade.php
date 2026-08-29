@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Reyes de Cada Mapa')
+@section('title', __('Reyes de Cada Mapa'))
 
 @section('content')
 <div class="space-y-6">
@@ -15,9 +15,9 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>👑</span> Reyes de Cada Mapa
+                <span>👑</span> {{ __('Reyes de Cada Mapa') }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">El jugador con más bajas (Search and Destroy) en cada mapa</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ __('El jugador con más bajas (Search and Destroy) en cada mapa') }}</p>
         </div>
 
         @include('partials.season-selector', [
@@ -29,7 +29,7 @@
 
     @if($maps->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay datos suficientes.
+            {{ __('Todavía no hay datos suficientes.') }}
         </div>
     @else
         <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
@@ -38,11 +38,11 @@
                 <thead>
                     <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
                         <th class="px-4 py-2 font-medium">#</th>
-                        <th class="px-4 py-2 font-medium">Mapa</th>
-                        <th class="px-4 py-2 font-medium">Rey del mapa</th>
-                        <th class="px-4 py-2 font-medium text-right">Sus bajas</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Mapa') }}</th>
+                        <th class="px-4 py-2 font-medium">{{ __('Rey del mapa') }}</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Sus bajas') }}</th>
                         <th class="px-4 py-2 font-medium text-right">K/D</th>
-                        <th class="px-4 py-2 font-medium text-right">Bajas totales en el mapa</th>
+                        <th class="px-4 py-2 font-medium text-right">{{ __('Bajas totales en el mapa') }}</th>
                     </tr>
                 </thead>
                 <tbody>

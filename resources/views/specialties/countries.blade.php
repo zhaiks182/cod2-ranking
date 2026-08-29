@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'Países')
+@section('title', __('Países'))
 
 @section('content')
 <div class="space-y-6">
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-lg font-semibold flex items-center gap-2">
-                <span>🌎</span> Países
+                <span>🌎</span> {{ __('Países') }}
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">Países de los Jugadores</p>
+            <p class="text-xs text-slate-500 mt-0.5">{{ __('Países de los Jugadores') }}</p>
         </div>
 
         @include('partials.season-selector', [
@@ -21,18 +21,18 @@
 
     <div class="grid grid-cols-2 gap-3">
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
-            <div class="text-[11px] uppercase tracking-wide text-slate-500">Países distintos</div>
+            <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ __('Países distintos') }}</div>
             <div class="mt-1 text-lg font-semibold text-cyan-400">{{ $countries->count() }}</div>
         </div>
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">
-            <div class="text-[11px] uppercase tracking-wide text-slate-500">Jugadores con país detectado</div>
+            <div class="text-[11px] uppercase tracking-wide text-slate-500">{{ __('Jugadores con país detectado') }}</div>
             <div class="mt-1 text-lg font-semibold text-cyan-400">{{ $totalWithCountry }} / {{ $totalPlayers }}</div>
         </div>
     </div>
 
     @if($countries->isEmpty())
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-10 text-center text-sm text-slate-500">
-            Todavía no hay suficientes datos de geolocalización.
+            {{ __('Todavía no hay suficientes datos de geolocalización.') }}
         </div>
     @else
         <div class="space-y-4">
@@ -42,7 +42,7 @@
                         <div class="font-medium flex items-center gap-2">
                             {!! $c->flag !!} {{ $c->name }}
                         </div>
-                        <div class="text-xs text-slate-500">{{ $c->count }} {{ $c->count === 1 ? 'jugador' : 'jugadores' }} · {{ $c->share }}%</div>
+                        <div class="text-xs text-slate-500">{{ $c->count === 1 ? __(':n jugador', ['n' => $c->count]) : __(':n jugadores', ['n' => $c->count]) }} · {{ $c->share }}%</div>
                     </div>
                     <div class="px-4 py-3 flex flex-wrap gap-x-6 gap-y-1.5">
                         @foreach($c->players as $p)
