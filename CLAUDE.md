@@ -3260,13 +3260,35 @@ verificado con `curl` antes y después.
 
 **El registro DNS sigue existiendo** — lo creó el dueño directamente en
 Cloudflare, no se puede borrar desde este repo/VPS (sin API token de
-Cloudflare). Efecto observado: sin un vhost propio, una visita HTTPS a
-`testing.4livepro.com` cae al primer vhost SSL que Apache tiene cargado
-(en este caso, el de `cod2.4livepro.com`) y muestra el sitio real en vez de
-dar error — mismo tipo de fallback "vhost por defecto" ya documentado para
-`monitor.4livepro.com` en "Subida automática de demos por HWID" más arriba,
-no es un resto de la limpieza. Si se quiere que el subdominio deje de
-resolver del todo, hay que borrar el registro en Cloudflare.
+Cloudflare). El primer intento de limpieza dejó un efecto secundario: sin
+un vhost propio, una visita HTTPS a `testing.4livepro.com` caía al primer
+vhost SSL que Apache tenía cargado alfabéticamente
+(`cod2.4livepro.com-le-ssl.conf`, ya que `cod2...` ordena antes que
+cualquier vhost por defecto de Ubuntu) y mostraba el sitio real en vez de
+dar error o un placeholder — mismo tipo de fallback "vhost por defecto" ya
+documentado para `monitor.4livepro.com` en "Subida automática de demos por
+HWID" más arriba. El dueño lo notó y pidió que se corrigiera del todo.
+
+**Fix (2026-08-29): `000-default-ssl.conf`** — se habilitó un vhost
+`<VirtualHost *:443>` catch-all nuevo (`/etc/apache2/sites-available/
+000-default-ssl.conf`, con el cert autofirmado `ssl-cert-snakeoil` que ya
+trae Ubuntu, `DocumentRoot /var/www/html`), con el prefijo `000-` a
+propósito para que ordene ANTES que `cod2.4livepro.com-le-ssl.conf` en
+`sites-enabled/` — Apache usa el primer `<VirtualHost *:443>` cargado como
+default para cualquier SNI/Host que no matchee ningún `ServerName`/
+`ServerAlias` exacto, sin importar si hay o no un registro DNS apuntando
+ahí. Mismo patrón que `000-default.conf` (el catch-all de puerto 80 que
+Ubuntu ya trae de fábrica), solo que para 443 no existe uno por defecto —
+hay que crearlo a mano. Con esto, `testing.4livepro.com` (y cualquier otro
+hostname futuro que alguien apunte a esta IP sin crear un vhost real)
+muestra la página default de Apache ("It works") en vez de filtrar el
+sitio real. Verificado que `cod2.4livepro.com` y su alias real
+`direct.cod2.4livepro.com` siguen respondiendo con el sitio normal — el
+catch-all solo afecta a hostnames que no matchean ningún `ServerName`
+existente. **No versionado en git** (vive en `/etc/apache2/` del VPS,
+mismo precedente que el resto de esta sección) — si el VPS se reconstruye,
+recrear este archivo (contenido completo más arriba en el historial de
+git de este mismo archivo) y correr `a2ensite 000-default-ssl.conf`.
 
 **Lo que sí sobrevive** (no se tocó, porque no es "el ambiente de testing" en
 sí — son las exploraciones de diseño que se probaron ahí): las ramas git
