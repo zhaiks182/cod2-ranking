@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
+use Symfony\Component\HttpFoundation\Response;
+
+class SetLocale
+{
+    public const SUPPORTED = ['es', 'en'];
+
+    /**
+     * El español es el idioma "canonico" -- las plantillas tienen el texto en
+     * español directo dentro de __(), sin claves abstractas, y lang/en.json
+     * traduce esas mismas frases. Por eso no hace falta locale=es en la
+     * cookie para que el sitio se vea en español: es simplemente lo que
+     * __() devuelve cuando no hay traduccion activa.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        $locale = $request->cookie('locale');
+
+        if (in_array($locale, self::SUPPORTED, true)) {
+            App::setLocale($locale);
+        }
+
+        return $next($request);
+    }
+}

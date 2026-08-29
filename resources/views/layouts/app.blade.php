@@ -60,8 +60,8 @@
                     la derecha de "Inicio" (dos ajustes de posicion el mismo dia). --}}
                     <a href="{{ route('hosted-servers.show', [$activeHostedServer, $activeHostedServer->management_token]) }}"
                         class="relative p-1.5 rounded-lg text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
-                        title="Tu servidor temporal está activo">
-                        <span class="sr-only">Tu servidor temporal está activo — ver</span>
+                        title="{{ __('Tu servidor temporal está activo') }}">
+                        <span class="sr-only">{{ __('Tu servidor temporal está activo — ver') }}</span>
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
                         <span class="absolute top-0.5 right-0.5 flex h-2 w-2" aria-hidden="true">
                             <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -69,8 +69,8 @@
                         </span>
                     </a>
                 @endif
-                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Inicio</a>
-                <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">Crear servidor</a>
+                <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Inicio') }}</a>
+                <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Crear servidor') }}</a>
                 <div class="relative">
                     <button type="button" data-ranking-toggle onclick="document.getElementById('ranking-dropdown').classList.toggle('hidden')"
                         class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
@@ -78,68 +78,68 @@
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
                     <div id="ranking-dropdown" class="hidden absolute right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
-                        <a href="{{ route('leaderboard') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Estadísticas</a>
-                        <a href="{{ route('matches.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Partidas</a>
-                        <a href="{{ route('rango') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Rangos</a>
+                        <a href="{{ route('leaderboard') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Estadísticas') }}</a>
+                        <a href="{{ route('matches.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Partidas') }}</a>
+                        <a href="{{ route('rango') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Rangos') }}</a>
                         <a href="{{ route('demos.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Demos</a>
                     </div>
                 </div>
                 <div class="relative">
                     <button type="button" data-specialties-toggle onclick="document.getElementById('specialties-dropdown').classList.toggle('hidden')"
                         class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
-                        ESPECIALISTA
+                        {{ __('ESPECIALISTA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
                     <div id="specialties-dropdown" class="hidden absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         @php
                             $specialtyGroups = [
-                                'Combate' => [
+                                __('Combate') => [
                                     'icon' => '⚔️',
                                     'items' => [
-                                        ['route' => 'specialties.headshots', 'icon' => '🎯', 'label' => 'Headshots'],
-                                        ['route' => 'specialties.grenades', 'icon' => '💣', 'label' => 'Granadas'],
-                                        ['route' => 'specialties.rivalries', 'icon' => '😈', 'label' => 'Rivalidades'],
-                                        ['route' => 'specialties.weapons', 'icon' => '🔫', 'label' => 'Ranking por arma'],
-                                        ['route' => 'specialties.efficiency', 'icon' => '⚔️', 'label' => 'Eficiencia (K/D)'],
-                                        ['route' => 'specialties.bombs', 'icon' => '💣', 'label' => 'Especialistas en bombas'],
-                                        ['route' => 'specialties.damage', 'icon' => '💥', 'label' => 'Especialistas en daño'],
-                                        ['route' => 'specialties.clutches', 'icon' => '🥶', 'label' => 'Clutches 1vX'],
-                                        ['route' => 'specialties.streaks-kills', 'icon' => '🔥', 'label' => 'Rachas de bajas'],
-                                        ['route' => 'specialties.bash', 'icon' => '🥊', 'label' => 'Bash'],
+                                        ['route' => 'specialties.headshots', 'icon' => '🎯', 'label' => __('Headshots')],
+                                        ['route' => 'specialties.grenades', 'icon' => '💣', 'label' => __('Granadas')],
+                                        ['route' => 'specialties.rivalries', 'icon' => '😈', 'label' => __('Rivalidades')],
+                                        ['route' => 'specialties.weapons', 'icon' => '🔫', 'label' => __('Ranking por arma')],
+                                        ['route' => 'specialties.efficiency', 'icon' => '⚔️', 'label' => __('Eficiencia (K/D)')],
+                                        ['route' => 'specialties.bombs', 'icon' => '💣', 'label' => __('Especialistas en bombas')],
+                                        ['route' => 'specialties.damage', 'icon' => '💥', 'label' => __('Especialistas en daño')],
+                                        ['route' => 'specialties.clutches', 'icon' => '🥶', 'label' => __('Clutches 1vX')],
+                                        ['route' => 'specialties.streaks-kills', 'icon' => '🔥', 'label' => __('Rachas de bajas')],
+                                        ['route' => 'specialties.bash', 'icon' => '🥊', 'label' => __('Bash')],
                                     ],
                                 ],
-                                'Mapas y partidas' => [
+                                __('Mapas y partidas') => [
                                     'icon' => '🗺️',
                                     'items' => [
-                                        ['route' => 'specialties.maps-won', 'icon' => '🏆', 'label' => 'Mapas ganados'],
-                                        ['route' => 'specialties.map-kings', 'icon' => '👑', 'label' => 'Reyes de cada mapa'],
-                                        ['route' => 'specialties.streaks', 'icon' => '🔥', 'label' => 'Racha de mapas'],
-                                        ['route' => 'specialties.win-rate', 'icon' => '📈', 'label' => 'Win rate general'],
+                                        ['route' => 'specialties.maps-won', 'icon' => '🏆', 'label' => __('Mapas ganados')],
+                                        ['route' => 'specialties.map-kings', 'icon' => '👑', 'label' => __('Reyes de cada mapa')],
+                                        ['route' => 'specialties.streaks', 'icon' => '🔥', 'label' => __('Racha de mapas')],
+                                        ['route' => 'specialties.win-rate', 'icon' => '📈', 'label' => __('Win rate general')],
                                     ],
                                 ],
-                                'Salón de la vergüenza' => [
+                                __('Salón de la vergüenza') => [
                                     'icon' => '🙈',
                                     'items' => [
-                                        ['route' => 'specialties.grenade-deaths', 'icon' => '🪦', 'label' => 'Muertes por nade'],
-                                        ['route' => 'specialties.friendly-fire', 'icon' => '💀', 'label' => 'Fuego amigo'],
-                                        ['route' => 'specialties.suicides', 'icon' => '🤡', 'label' => 'Suicidios'],
-                                        ['route' => 'specialties.disconnects', 'icon' => '🔌', 'label' => 'Se fueron a media ronda'],
+                                        ['route' => 'specialties.grenade-deaths', 'icon' => '🪦', 'label' => __('Muertes por nade')],
+                                        ['route' => 'specialties.friendly-fire', 'icon' => '💀', 'label' => __('Fuego amigo')],
+                                        ['route' => 'specialties.suicides', 'icon' => '🤡', 'label' => __('Suicidios')],
+                                        ['route' => 'specialties.disconnects', 'icon' => '🔌', 'label' => __('Se fueron a media ronda')],
                                     ],
                                 ],
-                                'Social' => [
+                                __('Social') => [
                                     'icon' => '💬',
                                     'items' => [
-                                        ['route' => 'specialties.chattiest', 'icon' => '💬', 'label' => 'Más hablador'],
+                                        ['route' => 'specialties.chattiest', 'icon' => '💬', 'label' => __('Más hablador')],
                                         ['route' => 'specialties.timeouts', 'icon' => '⏸️', 'label' => 'Timeouts'],
                                     ],
                                 ],
-                                'Actividad' => [
+                                __('Actividad') => [
                                     'icon' => '📊',
                                     'items' => [
-                                        ['route' => 'specialties.playtime', 'icon' => '⏱️', 'label' => 'Más horas jugadas'],
-                                        ['route' => 'specialties.recent-activity', 'icon' => '📈', 'label' => 'Actividad reciente'],
-                                        ['route' => 'specialties.peak-times', 'icon' => '📈', 'label' => 'Hora pico'],
-                                        ['route' => 'specialties.countries', 'icon' => '🌎', 'label' => 'Países'],
+                                        ['route' => 'specialties.playtime', 'icon' => '⏱️', 'label' => __('Más horas jugadas')],
+                                        ['route' => 'specialties.recent-activity', 'icon' => '📈', 'label' => __('Actividad reciente')],
+                                        ['route' => 'specialties.peak-times', 'icon' => '📈', 'label' => __('Hora pico')],
+                                        ['route' => 'specialties.countries', 'icon' => '🌎', 'label' => __('Países')],
                                     ],
                                 ],
                             ];
@@ -163,12 +163,34 @@
                 <div class="relative">
                     <button type="button" data-help-toggle onclick="document.getElementById('help-dropdown').classList.toggle('hidden')"
                         class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
-                        AYUDA
+                        {{ __('AYUDA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
                     <div id="help-dropdown" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
-                        <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ Preguntas frecuentes</a>
-                        <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ Descargas</a>
+                        <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ {{ __('Preguntas frecuentes') }}</a>
+                        <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
+                    </div>
+                </div>
+                {{-- Selector ES/EN (2026-08-29, a pedido del dueño, referencia
+                hostgamer.net/es) -- solo icono de bandera + chevron en el trigger,
+                banderas via GeoIp::flagIconHtml() (flagcdn.com, reusado del mismo
+                helper que ya usan las tablas de jugadores -- ver "GeoIp y banderas
+                de país" en CLAUDE.md, nunca emoji de bandera por el problema de
+                render en Windows ya documentado ahí). --}}
+                <div class="relative">
+                    <button type="button" data-lang-toggle onclick="document.getElementById('lang-dropdown').classList.toggle('hidden')"
+                        class="flex items-center gap-1 p-1 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
+                        aria-label="Cambiar idioma / Change language">
+                        {!! \App\Services\GeoIp::flagIconHtml(app()->getLocale() === 'en' ? 'us' : 'es', 20, 14) !!}
+                        <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <a href="{{ route('locale.switch', 'es') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'es' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
+                            {!! \App\Services\GeoIp::flagIconHtml('es', 18, 13) !!} Español
+                        </a>
+                        <a href="{{ route('locale.switch', 'en') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'en' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
+                            {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!} English
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -185,6 +207,24 @@
 
     <div id="teamkill-popover" class="hidden fixed z-50 w-64 max-h-72 overflow-y-auto bg-panel shadow-xl text-xs p-3"></div>
     <script>
+        // Textos usados por el JS de mas abajo (cod2CopyConnect, openDetailsPopover,
+        // cod2MeasurePing) -- __() no corre en el navegador, asi que se resuelven
+        // server-side una sola vez aca y el JS solo lee de este objeto.
+        window.cod2I18n = {
+            copied: @json(__('Copiado')),
+            error: @json(__('Error')),
+            noLatencyData: @json(__('sin datos de latencia')),
+            loading: @json(__('Cargando...')),
+            noDetails: @json(__('Sin detalles disponibles.')),
+            errorLoading: @json(__('Error al cargar.')),
+            friendlyFire: @json(__('Fuego amigo')),
+            grenadeKills: @json(__('Bajas con granada')),
+            deaths: @json(__('Muertes')),
+            kills: @json(__('Bajas')),
+            youKilledThem: @json(__('Lo mataste')),
+            theyKilledYou: @json(__('Te mató')),
+        };
+
         function toggleSpecGroup(btn) {
             const submenu = btn.nextElementSibling;
             submenu.classList.toggle('hidden');
@@ -202,8 +242,8 @@
 
             var flash = function (ok) {
                 btn.innerHTML = ok
-                    ? '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 scale-0 animate-[cod2-pop_0.3s_ease-out_forwards]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.415L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>Copiado</span>'
-                    : '<span class="inline-flex items-center gap-1">Error</span>';
+                    ? '<span class="inline-flex items-center gap-1"><svg class="w-3.5 h-3.5 scale-0 animate-[cod2-pop_0.3s_ease-out_forwards]" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.29a1 1 0 010 1.415l-7.5 7.5a1 1 0 01-1.415 0l-3.5-3.5a1 1 0 111.415-1.415L8.5 12.086l6.79-6.796a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>' + window.cod2I18n.copied + '</span>'
+                    : '<span class="inline-flex items-center gap-1">' + window.cod2I18n.error + '</span>';
                 btn.classList.add.apply(btn.classList, ok ? successClasses : errorClasses);
                 btn.classList.remove('border-slate-700');
 
@@ -264,7 +304,7 @@
             }
 
             if (samples.length < 2) {
-                el.textContent = 'sin datos de latencia';
+                el.textContent = window.cod2I18n.noLatencyData;
                 return;
             }
 
@@ -323,7 +363,7 @@
                 popover.style.top = (rect.bottom + 6) + 'px';
             }
             popover.style.left = Math.max(8, Math.min(rect.left - 220, document.documentElement.clientWidth - 272)) + 'px';
-            popover.innerHTML = '<div class="text-slate-500">Cargando...</div>';
+            popover.innerHTML = '<div class="text-slate-500">' + window.cod2I18n.loading + '</div>';
             popover.classList.remove('hidden');
             popover.dataset.owner = key;
 
@@ -346,18 +386,18 @@
                 if (popover.dataset.owner !== key) return;
 
                 if (!data.length) {
-                    popover.innerHTML = '<div class="text-slate-500">Sin detalles disponibles.</div>';
+                    popover.innerHTML = '<div class="text-slate-500">' + window.cod2I18n.noDetails + '</div>';
                     return;
                 }
 
-                const title = kind === 'teamkill' ? `Fuego amigo (${data.length})`
+                const title = kind === 'teamkill' ? `${window.cod2I18n.friendlyFire} (${data.length})`
                     : kind === 'headshots' ? `Headshots (${data.reduce((s, k) => s + (k.count || 1), 0)})`
-                    : kind === 'grenades' ? `Bajas con granada (${data.reduce((s, k) => s + (k.count || 1), 0)})`
-                    : kind === 'deaths' ? `Muertes (${data.reduce((s, k) => s + (k.count || 1), 0)})`
-                    : `Bajas (${data.reduce((s, k) => s + (k.count || 1), 0)})`;
+                    : kind === 'grenades' ? `${window.cod2I18n.grenadeKills} (${data.reduce((s, k) => s + (k.count || 1), 0)})`
+                    : kind === 'deaths' ? `${window.cod2I18n.deaths} (${data.reduce((s, k) => s + (k.count || 1), 0)})`
+                    : `${window.cod2I18n.kills} (${data.reduce((s, k) => s + (k.count || 1), 0)})`;
                 const titleColor = kind === 'teamkill' || kind === 'deaths' ? 'text-red-400' : 'text-cyan-400';
                 const countColor = kind === 'deaths' ? 'text-red-400' : 'text-cyan-400';
-                const reverseLabel = kind === 'deaths' ? 'Lo mataste' : 'Te mató';
+                const reverseLabel = kind === 'deaths' ? window.cod2I18n.youKilledThem : window.cod2I18n.theyKilledYou;
                 const reverseColor = kind === 'deaths' ? 'text-cyan-400' : 'text-red-400';
 
                 // En "kills"/"headshots"/"grenades"/"deaths" (no en teamkill), cada fila
@@ -398,7 +438,7 @@
                     <ul>${rows}</ul>
                 `;
             } catch (e) {
-                popover.innerHTML = '<div class="text-red-400">Error al cargar.</div>';
+                popover.innerHTML = '<div class="text-red-400">' + window.cod2I18n.errorLoading + '</div>';
             }
         }
 
@@ -453,6 +493,11 @@
             const helpDropdown = document.getElementById('help-dropdown');
             if (helpDropdown && !helpDropdown.contains(e.target) && !e.target.closest('[data-help-toggle]')) {
                 helpDropdown.classList.add('hidden');
+            }
+
+            const langDropdown = document.getElementById('lang-dropdown');
+            if (langDropdown && !langDropdown.contains(e.target) && !e.target.closest('[data-lang-toggle]')) {
+                langDropdown.classList.add('hidden');
             }
         });
 

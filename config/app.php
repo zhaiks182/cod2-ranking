@@ -78,9 +78,14 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    // Español es el idioma "fuente" -- el texto de las plantillas ya esta en
+    // español dentro de __(), sin claves abstractas, y lang/en.json traduce esas
+    // mismas frases cuando corresponde (ver SetLocale). Nunca cambiar este default
+    // a 'en': sin una cookie de preferencia, __() debe devolver el texto tal cual
+    // (español), no buscar una traduccion inexistente.
+    'locale' => env('APP_LOCALE', 'es'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'es'),
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 

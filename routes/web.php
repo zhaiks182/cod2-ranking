@@ -24,6 +24,7 @@ use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HostedServerController;
 use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\SpecialtyController;
@@ -72,7 +73,8 @@ Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])-
 
 Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
 Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
-// La ruta para "Descargas" (menu Ayuda) se agrega cuando este definido el contenido.
+
+Route::get('/idioma/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
 // es una ruta de Laravel -- ver public/ping (archivo estatico vacio) y public/.htaccess

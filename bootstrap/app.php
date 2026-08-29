@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\SetLocale;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/adm_cod2/login');
+
+        // Selector ES/EN del sitio publico (2026-08-29) -- lee la cookie "locale"
+        // y activa App::setLocale('en') cuando corresponde. Solo en el grupo web
+        // (nunca hace falta en /adm_cod2, que se dejo en español a proposito).
+        $middleware->web(append: [SetLocale::class]);
 
         // El cliente CoD2x no puede mandar un token CSRF al subir el demo.
         $middleware->validateCsrfTokens(except: [
