@@ -7,28 +7,75 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oxanium:wght@500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Mismo tema hostgamer.net que layouts/app.blade.php -- ver el comentario ahi
+        // para el origen de estos valores (CSS real del sitio, no un mood-board).
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        panel: '#111827',
-                        panel2: '#0b1220',
-                        gsprimary: '#1e40af',
-                        gsaccent: '#38bdf8',
+                        panel: '#111420',
+                        panel2: '#090911',
+                        gsprimary: '#2258FF',
+                        gsaccent: '#2258FF',
+                        slate: {
+                            50: '#F7F9FF',
+                            100: '#F7F9FF',
+                            200: '#F7F9FF',
+                            300: '#C4C4D2',
+                            400: '#9A9AAC',
+                            500: '#8888A0',
+                            600: '#7D7D8E',
+                            700: '#4A4A5C',
+                            800: '#2D2D3A',
+                            900: '#111420',
+                            950: '#090911',
+                        },
+                        cyan: {
+                            50: '#EAF0FF',
+                            100: '#D6E1FF',
+                            200: '#B3C8FF',
+                            300: '#4F7BFF',
+                            400: '#2258FF',
+                            500: '#1B46CC',
+                            600: '#14349E',
+                            700: '#0F2570',
+                            800: '#0A1A4D',
+                            900: '#061229',
+                            950: '#030A17',
+                        },
                     },
                     fontFamily: {
-                        display: ['"Russo One"', 'sans-serif'],
-                        sans: ['"Chakra Petch"', 'sans-serif'],
+                        display: ['"Oxanium"', 'sans-serif'],
+                        sans: ['"Manrope"', 'sans-serif'],
+                        mono: ['ui-monospace', '"Cascadia Code"', '"Courier New"', 'monospace'],
+                    },
+                    borderRadius: {
+                        none: '0px',
+                        sm: '6px',
+                        DEFAULT: '6px',
+                        md: '12px',
+                        lg: '14px',
+                        xl: '16px',
+                        '2xl': '16px',
+                        '3xl': '16px',
+                        full: '9999px',
                     },
                 },
             },
         };
     </script>
-    <style>body { background: #0b1220; }</style>
+    <style>
+        body { background: #090911; }
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #2D2D3A; }
+        [class*="bg-cyan-500"], [class*="bg-cyan-600"] {
+            box-shadow: 0 0 22px -8px rgba(34, 88, 255, 0.75);
+        }
+    </style>
 </head>
 <body class="bg-panel2 text-slate-200 min-h-screen font-sans">
     @auth
