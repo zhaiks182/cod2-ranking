@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
@@ -11,6 +12,8 @@ use Tests\TestCase;
  */
 class LocaleSwitcherTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_default_visitor_sees_spanish(): void
     {
         $response = $this->get('/');

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Inicio Ranking')
+@section('title', __('Inicio Ranking'))
 
 @section('content')
 <div class="space-y-7">
@@ -26,18 +26,18 @@
                 <div class="absolute inset-0 bg-gradient-to-t from-panel2 via-panel2/85 to-panel2/50"></div>
             </div>
             <div class="relative px-4 sm:px-6 py-10 sm:py-16 md:py-24 text-center">
-                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">Bienvenidos a <span class="text-gsaccent">Pug Latam</span></h1>
-                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">Comunidad Call of Duty 2 · Latinoamérica del Norte</p>
+                <h1 class="font-display text-2xl sm:text-3xl md:text-5xl font-bold text-white leading-tight">{{ __('Bienvenidos a') }} <span class="text-gsaccent">Pug Latam</span></h1>
+                <p class="mt-3 text-[10px] sm:text-xs md:text-sm text-slate-300 uppercase tracking-[0.15em]">{{ __('Comunidad Call of Duty 2 · Latinoamérica del Norte') }}</p>
 
                 <div class="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3">
                     <a href="#servidor-en-vivo" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-gsprimary hover:bg-blue-700 text-white text-sm font-semibold transition-colors">
                         <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
-                        Estado del servidor
+                        {{ __('Estado del servidor') }}
                     </a>
                     @if($discordSetting->discord_invite_url ?? null)
                         <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
                             <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                            Unirme a Discord
+                            {{ __('Unirme a Discord') }}
                         </a>
                     @endif
                 </div>
@@ -47,9 +47,9 @@
                         <span class="{{ $status ? 'motion-safe:animate-ping' : '' }} absolute inline-flex h-full w-full rounded-full {{ $status ? 'bg-emerald-400' : 'bg-slate-500' }} opacity-75"></span>
                         <span class="relative inline-flex h-2 w-2 rounded-full {{ $status ? 'bg-emerald-400' : 'bg-slate-500' }}"></span>
                     </span>
-                    {{ $heroOnline }} jugador{{ $heroOnline === 1 ? '' : 'es' }} conectado{{ $heroOnline === 1 ? '' : 's' }}
+                    {{ $heroOnline === 1 ? __(':n jugador conectado', ['n' => $heroOnline]) : __(':n jugadores conectados', ['n' => $heroOnline]) }}
                     <span class="w-px h-3 bg-slate-700" aria-hidden="true"></span>
-                    <span id="dashboard-ping" class="text-slate-500">midiendo…</span>
+                    <span id="dashboard-ping" class="text-slate-500">{{ __('midiendo…') }}</span>
                 </div>
             </div>
         </section>
@@ -80,15 +80,15 @@
                 <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
             </span>
-            Servidor en vivo
+            {{ __('Servidor en vivo') }}
         </h2>
         @include('partials.live-status')
     </section>
 
     <section>
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Top 10 jugadores</h2>
-            <a href="{{ route('leaderboard', ['server' => $server?->slug]) }}" class="text-xs text-gsaccent hover:underline">Ver ranking completo →</a>
+            <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500">{{ __('Top 10 jugadores') }}</h2>
+            <a href="{{ route('leaderboard', ['server' => $server?->slug]) }}" class="text-xs text-gsaccent hover:underline">{{ __('Ver ranking completo →') }}</a>
         </div>
 
         @php $tkParams = http_build_query(array_filter(['server' => $server?->slug])); @endphp
@@ -97,12 +97,12 @@
             <thead>
                 <tr class="text-left text-[10px] uppercase tracking-[0.15em] text-slate-600 border-b border-slate-800">
                     <th class="px-4 py-2.5 font-medium w-8"></th>
-                    <th class="px-4 py-2.5 font-medium">Jugador</th>
+                    <th class="px-4 py-2.5 font-medium">{{ __('Jugador') }}</th>
                     <th class="px-4 py-2.5 font-medium text-right">Kills</th>
-                    <th class="px-4 py-2.5 font-medium text-right">Muertes</th>
+                    <th class="px-4 py-2.5 font-medium text-right">{{ __('Muertes') }}</th>
                     <th class="px-4 py-2.5 font-medium text-right">K/D</th>
                     <th class="px-4 py-2.5 font-medium text-right">Headshots</th>
-                    <th class="px-4 py-2.5 font-medium text-right">Granadas</th>
+                    <th class="px-4 py-2.5 font-medium text-right">{{ __('Granadas') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-800/50">
@@ -120,7 +120,7 @@
                             <a href="{{ route('players.show', $stat->player->guid) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($stat->player->last_name) !!}</a>
                             <x-player-icon :player="$stat->player" />
                             @if($i < 3)
-                                <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => 'Oro', 1 => 'Plata', 2 => 'Bronce' } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
+                                <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => __('Oro'), 1 => __('Plata'), 2 => __('Bronce') } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right tabular-nums text-cyan-300">
@@ -141,7 +141,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-4 py-8 text-center text-slate-600">Todavía no hay estadísticas registradas.</td></tr>
+                    <tr><td colspan="7" class="px-4 py-8 text-center text-slate-600">{{ __('Todavía no hay estadísticas registradas.') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -150,7 +150,7 @@
 
     @if($discord)
         <section>
-            <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-4">Discord</h2>
+            <h2 class="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-4">{{ __('Discord') }}</h2>
             <div class="rounded-2xl border border-slate-800 bg-panel p-6 md:p-8">
             <div class="grid md:grid-cols-2 gap-8 items-start">
                 {{-- Columna izquierda: presentacion + botones + beneficios --}}
@@ -164,13 +164,13 @@
                                 <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                             </span>
-                            Servidor activo
+                            {{ __('Servidor activo') }}
                         @else
                             <span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-                            Servidor sin conexión
+                            {{ __('Servidor sin conexión') }}
                         @endif
                     </span>
-                    <h3 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">Unite a nuestro Discord</h3>
+                    <h3 class="font-display text-2xl md:text-3xl font-bold text-white mt-4 mb-2">{{ __('Unite a nuestro Discord') }}</h3>
                     @if($discordSetting->discord_description)
                         <p class="text-sm text-slate-400 mb-5">{{ $discordSetting->discord_description }}</p>
                     @endif
@@ -179,7 +179,7 @@
                         @if($discordSetting->discord_invite_url)
                             <a href="{{ $discordSetting->discord_invite_url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#5865F2] hover:bg-[#4752c4] text-white text-sm font-semibold transition-colors">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                Unirme a Discord
+                                {{ __('Unirme a Discord') }}
                             </a>
                         @endif
                         <span class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-700 text-sm text-slate-300">
@@ -187,7 +187,7 @@
                                 <span class="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
                             </span>
-                            <span id="discord-online-count">{{ $discord['online'] }} online ahora</span>
+                            <span id="discord-online-count">{{ __(':n online ahora', ['n' => $discord['online']]) }}</span>
                         </span>
                     </div>
 
@@ -254,7 +254,7 @@
 
                     var countEl = document.getElementById('discord-online-count');
                     if (countEl && fresh.dataset.online) {
-                        countEl.textContent = fresh.dataset.online + ' online ahora';
+                        countEl.textContent = fresh.dataset.online + @json(' '.__('online ahora'));
                     }
 
                     el.replaceWith(fresh);

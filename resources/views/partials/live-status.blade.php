@@ -79,12 +79,12 @@
 <div id="live-status-widget" class="space-y-6" data-server="{{ $server?->slug }}">
     @if(!$server)
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-6 text-center text-sm text-slate-500">
-            No hay servidores configurados todavía.
+            {{ __('No hay servidores configurados todavía.') }}
         </div>
     @else
         @if(!$status)
             <div class="rounded-xl border border-gsaccent/40 bg-gsaccent/10 px-4 py-3 text-sm text-rose-200 font-semibold">
-                No se pudo conectar al servidor en este momento (RCON no respondió).
+                {{ __('No se pudo conectar al servidor en este momento (RCON no respondió).') }}
             </div>
         @endif
 
@@ -95,7 +95,7 @@
                         <span class="text-cyan-400">{{ count($players) }}</span>
                         <span class="text-slate-500 text-xl sm:text-2xl">/ {{ $maxClients }}</span>
                     </div>
-                    <div class="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">Jugadores conectados</div>
+                    <div class="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">{{ __('Jugadores conectados') }}</div>
                 </div>
 
                 <div class="min-w-0 sm:ml-24">
@@ -110,12 +110,12 @@
 
             <div class="flex items-center gap-3 sm:ml-auto pt-4 sm:pt-0 border-t border-slate-800 sm:border-t-0">
                 <div class="min-w-0 flex-1 sm:flex-initial sm:text-right">
-                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Conectar por consola</div>
+                    <div class="text-[11px] uppercase tracking-[0.2em] text-slate-400">{{ __('Conectar por consola') }}</div>
                     <div class="mt-1 font-mono text-sm text-cyan-300 truncate">/connect {{ $connectString }}</div>
                 </div>
                 <button type="button" onclick="cod2CopyConnect(this, {{ json_encode('/connect '.$connectString) }})"
                     class="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 hover:border-gsaccent hover:text-gsaccent transition-all duration-200 ease-out">
-                    <span class="inline-flex items-center gap-1">Copiar IP</span>
+                    <span class="inline-flex items-center gap-1">{{ __('Copiar IP') }}</span>
                 </button>
             </div>
         </div>
@@ -130,21 +130,21 @@
 
             <div class="md:col-span-2 rounded-xl border border-slate-800 bg-panel flex flex-col overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                    <span class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Jugadores conectados</span>
+                    <span class="text-[11px] uppercase tracking-[0.2em] text-slate-500">{{ __('Jugadores conectados') }}</span>
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/50 border border-emerald-900 text-emerald-400 text-[11px]" data-stat="players-count-label">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        {{ count($players) }} conectados
+                        {{ __(':n conectados', ['n' => count($players)]) }}
                     </span>
                 </div>
                 <div class="max-h-60 overflow-y-auto overflow-x-auto px-4">
                     <table class="w-full text-sm min-w-[480px]">
                         <thead>
                             <tr class="text-left text-[10px] uppercase tracking-[0.15em] text-slate-600 sticky top-0 bg-panel">
-                                <th class="py-2 font-medium">Nombre</th>
-                                <th class="py-2 font-medium text-right">Puntaje</th>
-                                <th class="py-2 font-medium text-right">Muertes</th>
+                                <th class="py-2 font-medium">{{ __('Nombre') }}</th>
+                                <th class="py-2 font-medium text-right">{{ __('Puntaje') }}</th>
+                                <th class="py-2 font-medium text-right">{{ __('Muertes') }}</th>
                                 <th class="py-2 font-medium text-right">Headshots</th>
-                                <th class="py-2 font-medium text-right">Granadas</th>
+                                <th class="py-2 font-medium text-right">{{ __('Granadas') }}</th>
                                 <th class="py-2 font-medium text-right">Ping</th>
                             </tr>
                         </thead>
@@ -160,10 +160,10 @@
                                             <span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>
                                         @endif
                                         @if($p['guid'] !== 0)
-                                            <a href="{{ route('players.show', $p['guid']) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: '(sin nombre)') !!}</a>
+                                            <a href="{{ route('players.show', $p['guid']) }}" class="hover:text-gsaccent">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: __('(sin nombre)')) !!}</a>
                                             <x-player-icon :player="$iconUrlByGuid[$p['guid']] ?? null" />
                                         @else
-                                            <span class="text-slate-500">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: 'bot') !!}</span>
+                                            <span class="text-slate-500">{!! \App\Support\Cod2Colors::toHtml($p['name'] ?: __('bot')) !!}</span>
                                         @endif
                                     </td>
                                     <td class="py-2.5 text-right tabular-nums">{{ $p['score'] }}</td>
@@ -179,7 +179,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="py-8 text-center text-slate-600">Servidor vacío ahora mismo.</td></tr>
+                                <tr><td colspan="6" class="py-8 text-center text-slate-600">{{ __('Servidor vacío ahora mismo.') }}</td></tr>
                             @endforelse
                         </tbody>
                     </table>
