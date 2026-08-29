@@ -7,28 +7,72 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Mismo tema "Void-canvas agent noir" que layouts/app.blade.php -- ver el
+        // comentario ahi para el porque del remapeo de slate/cyan.
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        panel: '#111827',
-                        panel2: '#0b1220',
-                        gsprimary: '#1e40af',
-                        gsaccent: '#38bdf8',
+                        panel: '#111111',
+                        panel2: '#000000',
+                        gsprimary: '#0099FF',
+                        gsaccent: '#0099FF',
+                        slate: {
+                            50: '#FFFFFF',
+                            100: '#FFFFFF',
+                            200: '#FFFFFF',
+                            300: '#C7C7C7',
+                            400: '#999999',
+                            500: '#858585',
+                            600: '#767676',
+                            700: '#666666',
+                            800: '#1E1E1E',
+                            900: '#111111',
+                            950: '#000000',
+                        },
+                        cyan: {
+                            50: '#E6F4FF',
+                            100: '#CCE9FF',
+                            200: '#99D6FF',
+                            300: '#4DB8FF',
+                            400: '#0099FF',
+                            500: '#0088E6',
+                            600: '#0077CC',
+                            700: '#0066B3',
+                            800: '#005999',
+                            900: '#004D80',
+                            950: '#002E4D',
+                        },
                     },
                     fontFamily: {
-                        display: ['"Russo One"', 'sans-serif'],
-                        sans: ['"Chakra Petch"', 'sans-serif'],
+                        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        sans: ['"Inter"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    borderRadius: {
+                        none: '0px',
+                        sm: '6px',
+                        DEFAULT: '8px',
+                        md: '8px',
+                        lg: '15px',
+                        xl: '20px',
+                        '2xl': '20px',
+                        '3xl': '20px',
+                        full: '9999px',
                     },
                 },
             },
         };
     </script>
-    <style>body { background: #0b1220; }</style>
+    <style>
+        body { background: #000000; }
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #1E1E1E; }
+    </style>
 </head>
 <body class="bg-panel2 text-slate-200 min-h-screen font-sans">
     @auth
