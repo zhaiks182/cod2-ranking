@@ -469,16 +469,16 @@
 
 @if($chatMessages->isNotEmpty())
     <div id="cod2-chat-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
-            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2">💬 {{ __('Chats de la partida') }}</span>
+        <div class="w-fit max-w-[min(42rem,calc(100vw-2rem))] max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-base font-semibold flex items-center gap-2">💬 {{ __('Chats de la partida') }}</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-            <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
+            <div class="px-5 py-4 overflow-y-auto space-y-2 text-base">
                 @foreach($chatMessages as $msg)
                     <div class="flex gap-2">
-                        <span class="text-slate-600 tabular-nums shrink-0">{{ $msg->occurred_at->format('H:i') }}</span>
-                        <span>
+                        <span class="text-slate-600 tabular-nums shrink-0 text-sm">{{ $msg->occurred_at->format('H:i') }}</span>
+                        <span class="break-words">
                             @if($msg->player)
                                 {{-- The say; log line's name field has no color codes (unlike Kill;/RCON status) —
                                      use the player's stored colored name instead of the plain one from the chat line. --}}
@@ -499,16 +499,16 @@
 
 @if($axisChat->isNotEmpty())
     <div id="cod2-chat-axis-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
-            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2 text-red-400">💬 {{ __('Chat de equipo') }} · Axis</span>
+        <div class="w-fit max-w-[min(42rem,calc(100vw-2rem))] max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-base font-semibold flex items-center gap-2 text-red-400">💬 {{ __('Chat de equipo') }} · Axis</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-axis-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-            <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
+            <div class="px-5 py-4 overflow-y-auto space-y-2 text-base">
                 @foreach($axisChat as $msg)
                     <div class="flex gap-2">
-                        <span class="text-slate-600 tabular-nums shrink-0">{{ $msg->occurred_at->format('H:i') }}</span>
-                        <span>
+                        <span class="text-slate-600 tabular-nums shrink-0 text-sm">{{ $msg->occurred_at->format('H:i') }}</span>
+                        <span class="break-words">
                             @if($msg->player)
                                 <a href="{{ route('players.show', $msg->player->guid) }}" class="font-medium hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($msg->player->last_name) !!}</a>
                                 <x-player-icon :player="$msg->player" />
@@ -527,16 +527,16 @@
 
 @if($alliesChat->isNotEmpty())
     <div id="cod2-chat-allies-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
-            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-                <span class="text-sm font-semibold flex items-center gap-2 text-blue-400">💬 {{ __('Chat de equipo') }} · Allies</span>
+        <div class="w-fit max-w-[min(42rem,calc(100vw-2rem))] max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+            <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-base font-semibold flex items-center gap-2 text-blue-400">💬 {{ __('Chat de equipo') }} · Allies</span>
                 <button type="button" onclick="document.getElementById('cod2-chat-allies-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
             </div>
-            <div class="px-4 py-3 overflow-y-auto space-y-1.5 text-sm">
+            <div class="px-5 py-4 overflow-y-auto space-y-2 text-base">
                 @foreach($alliesChat as $msg)
                     <div class="flex gap-2">
-                        <span class="text-slate-600 tabular-nums shrink-0">{{ $msg->occurred_at->format('H:i') }}</span>
-                        <span>
+                        <span class="text-slate-600 tabular-nums shrink-0 text-sm">{{ $msg->occurred_at->format('H:i') }}</span>
+                        <span class="break-words">
                             @if($msg->player)
                                 <a href="{{ route('players.show', $msg->player->guid) }}" class="font-medium hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($msg->player->last_name) !!}</a>
                                 <x-player-icon :player="$msg->player" />
