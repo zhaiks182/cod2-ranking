@@ -35,6 +35,16 @@
         </div>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        @php
+            $eventBadgeCount = ($matchStartKill ? 1 : 0) + ($halftimeKill ? 1 : 0) + ($topHeadshots ? 1 : 0)
+                + ($topGrenades ? 1 : 0) + ($topBash ? 1 : 0) + ($overtimeEvent ? 1 : 0) + $timeoutEvents->count();
+        @endphp
+        @if($eventBadgeCount > 0)
+          <button type="button" onclick="document.getElementById('cod2-events-modal').classList.remove('hidden')"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400">
+              📋 {{ __('Eventos de la partida') }} <span class="text-slate-500">({{ $eventBadgeCount }})</span>
+          </button>
+        @endif
         @if($chatMessages->isNotEmpty())
           <button type="button" onclick="document.getElementById('cod2-chat-modal').classList.remove('hidden')"
               class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-sm text-slate-300 hover:border-cyan-500 hover:text-cyan-400">
@@ -55,67 +65,6 @@
         @endif
       </div>
     </div>
-
-    @if($matchStartKill || $halftimeKill || $overtimeEvent || $timeoutEvents->isNotEmpty() || $topBash || $topHeadshots || $topGrenades)
-        <div class="flex flex-wrap gap-2 text-xs">
-            @if($matchStartKill)
-                <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
-                    🏁 {{ __('Inicio de partida') }} ·
-                    {{ \App\Support\Cod2Colors::stripColors($matchStartKill->attacker_name) }}
-                    →
-                    {{ \App\Support\Cod2Colors::stripColors($matchStartKill->victim_name) }}
-                    ({{ \App\Support\WeaponCatalog::label($matchStartKill->weapon) }})
-                </span>
-            @endif
-            @if($halftimeKill)
-                <span class="px-2.5 py-1.5 rounded-lg border border-amber-900 bg-amber-950/40 text-amber-300">
-                    🔄 {{ __('Cambio de bando') }} ·
-                    {{ \App\Support\Cod2Colors::stripColors($halftimeKill->attacker_name) }}
-                    →
-                    {{ \App\Support\Cod2Colors::stripColors($halftimeKill->victim_name) }}
-                    ({{ \App\Support\WeaponCatalog::label($halftimeKill->weapon) }})
-                </span>
-            @endif
-            @if($topHeadshots)
-                <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
-                    🎯 {{ __('Más headshots') }} ·
-                    {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
-                    <x-player-icon :player="$topHeadshots->player" />
-                    ({{ $topHeadshots->headshots }})
-                </span>
-            @endif
-            @if($topGrenades)
-                <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
-                    💣 {{ __('Más granadas') }} ·
-                    {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
-                    <x-player-icon :player="$topGrenades->player" />
-                    ({{ $topGrenades->grenade_kills }})
-                </span>
-            @endif
-            @if($topBash)
-                <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
-                    👊 {{ __('Más bash') }} ·
-                    {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
-                    <x-player-icon :player="$topBash->player" />
-                    ({{ $topBash->bash }})
-                </span>
-            @endif
-            @if($overtimeEvent)
-                <span class="px-2.5 py-1.5 rounded-lg border border-fuchsia-900 bg-fuchsia-950/40 text-fuchsia-300">⏱️ {{ __('Tiempo extra') }}</span>
-            @endif
-            @foreach($timeoutEvents as $ev)
-                <span class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300">
-                    @if($ev->event_type === 'timeout_call')
-                        ⏸️ Timeout · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
-                    @elseif($ev->event_type === 'timeout_cancel')
-                        ▶️ {{ __('Timeout cancelado') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }}
-                    @elseif($ev->event_type === 'bash_call')
-                        🥊 {{ __('Bash') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
-                    @endif
-                </span>
-            @endforeach
-        </div>
-    @endif
 
     @if($roundDetails->isNotEmpty())
         <div>
@@ -448,6 +397,75 @@
         if (e.key === 'ArrowRight') cod2StepRound(1);
     });
 </script>
+
+@if($eventBadgeCount > 0)
+    <div id="cod2-events-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="w-full max-w-lg max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                <span class="text-sm font-semibold flex items-center gap-2">📋 {{ __('Eventos de la partida') }}</span>
+                <button type="button" onclick="document.getElementById('cod2-events-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300">✕</button>
+            </div>
+            <div class="px-4 py-3 overflow-y-auto flex flex-wrap gap-2 text-xs">
+                @if($matchStartKill)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
+                        🏁 {{ __('Inicio de partida') }} ·
+                        {{ \App\Support\Cod2Colors::stripColors($matchStartKill->attacker_name) }}
+                        →
+                        {{ \App\Support\Cod2Colors::stripColors($matchStartKill->victim_name) }}
+                        ({{ \App\Support\WeaponCatalog::label($matchStartKill->weapon) }})
+                    </span>
+                @endif
+                @if($halftimeKill)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-amber-900 bg-amber-950/40 text-amber-300">
+                        🔄 {{ __('Cambio de bando') }} ·
+                        {{ \App\Support\Cod2Colors::stripColors($halftimeKill->attacker_name) }}
+                        →
+                        {{ \App\Support\Cod2Colors::stripColors($halftimeKill->victim_name) }}
+                        ({{ \App\Support\WeaponCatalog::label($halftimeKill->weapon) }})
+                    </span>
+                @endif
+                @if($topHeadshots)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-sky-900 bg-sky-950/40 text-sky-300">
+                        🎯 {{ __('Más headshots') }} ·
+                        {!! \App\Support\Cod2Colors::toHtml($topHeadshots->player->last_name) !!}
+                        <x-player-icon :player="$topHeadshots->player" />
+                        ({{ $topHeadshots->headshots }})
+                    </span>
+                @endif
+                @if($topGrenades)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-lime-900 bg-lime-950/40 text-lime-300">
+                        💣 {{ __('Más granadas') }} ·
+                        {!! \App\Support\Cod2Colors::toHtml($topGrenades->player->last_name) !!}
+                        <x-player-icon :player="$topGrenades->player" />
+                        ({{ $topGrenades->grenade_kills }})
+                    </span>
+                @endif
+                @if($topBash)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-orange-900 bg-orange-950/40 text-orange-300">
+                        👊 {{ __('Más bash') }} ·
+                        {!! \App\Support\Cod2Colors::toHtml($topBash->player->last_name) !!}
+                        <x-player-icon :player="$topBash->player" />
+                        ({{ $topBash->bash }})
+                    </span>
+                @endif
+                @if($overtimeEvent)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-fuchsia-900 bg-fuchsia-950/40 text-fuchsia-300">⏱️ {{ __('Tiempo extra') }}</span>
+                @endif
+                @foreach($timeoutEvents as $ev)
+                    <span class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 text-slate-300">
+                        @if($ev->event_type === 'timeout_call')
+                            ⏸️ Timeout · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
+                        @elseif($ev->event_type === 'timeout_cancel')
+                            ▶️ {{ __('Timeout cancelado') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }}
+                        @elseif($ev->event_type === 'bash_call')
+                            🥊 {{ __('Bash') }} · {{ \App\Support\Cod2Colors::stripColors($ev->name) }} ({{ ucfirst($ev->side) }})
+                        @endif
+                    </span>
+                @endforeach
+            </div>
+        </div>
+    </div>
+@endif
 
 @if($chatMessages->isNotEmpty())
     <div id="cod2-chat-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
