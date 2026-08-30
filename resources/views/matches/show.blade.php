@@ -400,7 +400,7 @@
 
 @if($eventBadgeCount > 0)
     <div id="cod2-events-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="w-full max-w-2xl max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
+        <div class="w-fit max-w-[min(42rem,calc(100vw-2rem))] max-h-[80vh] rounded-xl border border-slate-800 bg-panel shadow-xl flex flex-col">
             <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                 <span class="text-base font-semibold flex items-center gap-2">📋 {{ __('Eventos de la partida') }}</span>
                 <button type="button" onclick="document.getElementById('cod2-events-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-lg leading-none">✕</button>
