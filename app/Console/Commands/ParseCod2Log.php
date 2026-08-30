@@ -214,9 +214,33 @@ class ParseCod2Log extends Command
             // halftime, but the roster's guids don't) — used to compute the match's
             // final score without needing to track which roster is currently which side.
             $this->recordRoundWinner(substr($rest, strlen('Winners;')), $currentRound);
-        } elseif (str_starts_with($rest, 'RoundEnd;') || str_starts_with($rest, 'ShutdownGame:')) {
+        } elseif (str_starts_with($rest, 'RoundEnd;')) {
             if ($currentRound && ! $currentRound->ended_at) {
                 $currentRound->update(['ended_at' => now()]);
+            }
+            if ($currentMatch && ! $currentMatch->ended_at) {
+                $currentMatch->update(['ended_at' => now()]);
+            }
+        } elseif (str_starts_with($rest, 'ShutdownGame:')) {
+            // Una ronda real siempre pasa por RoundEnd; primero (que ya deja
+            // ended_at puesto) antes de llegar aca -- si ShutdownGame:
+            // encuentra una ronda TODAVIA sin ended_at y sin ningun Kill;,
+            // nunca se jugo de verdad: zPAM la abre con RoundStart; normal,
+            // pero un TOO; (timeout de ready-up, confirmado en vivo dos veces
+            // en la misma partida real) la aborta antes de que nadie dispare,
+            // y el motor reinicia con un RoundStart; nuevo segundos despues.
+            // Sin esto quedaba una fila fantasma de 0 kills en el listado de
+            // la partida ("Sin kills registradas en esta ronda") -- mismo
+            // espiritu que el filtro ya existente de "Round 0"/"strat", pero
+            // solo detectable del lado del cierre (no se sabe de antemano, al
+            // abrir el RoundStart;, si va a terminar en TOO;).
+            if ($currentRound && ! $currentRound->ended_at) {
+                if (Kill::where('round_id', $currentRound->id)->doesntExist()) {
+                    $currentRound->delete();
+                    $currentRound = null;
+                } else {
+                    $currentRound->update(['ended_at' => now()]);
+                }
             }
             if ($currentMatch && ! $currentMatch->ended_at) {
                 $currentMatch->update(['ended_at' => now()]);
