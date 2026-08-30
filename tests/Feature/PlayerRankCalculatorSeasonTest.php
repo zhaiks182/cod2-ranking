@@ -224,4 +224,109 @@ class PlayerRankCalculatorSeasonTest extends TestCase
         $ranks = PlayerRankCalculator::calculateForServer($this->server);
         $this->assertFalse($ranks->has($a->guid));
     }
+
+    /**
+     * Variante de rangoMatch() que permite que el guid "en crudo" de $a en esa
+     * partida (kills.attacker_guid/victim_guid, rounds.winner_guids) sea
+     * distinto de $a->guid -- simula una partida jugada ANTES de que $a se
+     * fusionara a su guid actual (PlayerMerger repunta attacker_player_id/
+     * victim_player_id, pero a proposito nunca reescribe el guid crudo
+     * historico, ver CLAUDE.md).
+     */
+    private function rangoMatchWithRawGuid(int $seasonId, Player $a, int $aRawGuid, Player $r, Player $v, int $aKills, int $aDeaths, int $rKills, int $rDeaths): GameMatch
+    {
+        $match = GameMatch::create([
+            'server_id' => $this->server->id,
+            'season_id' => $seasonId,
+            'map' => 'mp_toujane_fix',
+            'gametype' => 'sd',
+            'started_at' => now(),
+            'ended_at' => now(),
+        ]);
+
+        for ($i = 1; $i <= 13; $i++) {
+            Round::create([
+                'server_id' => $this->server->id,
+                'match_id' => $match->id,
+                'map' => 'mp_toujane_fix',
+                'gametype' => 'sd',
+                'started_at' => now(),
+                'ended_at' => now(),
+                'winner_guids' => [$aRawGuid, $r->guid],
+            ]);
+        }
+
+        $round = $match->rounds()->first();
+
+        $makeKill = function (int $attackerPlayerId, int $attackerGuid, string $attackerName, int $victimPlayerId, int $victimGuid, string $victimName) use ($round, $match) {
+            Kill::create([
+                'round_id' => $round->id,
+                'match_id' => $match->id,
+                'attacker_player_id' => $attackerPlayerId,
+                'attacker_guid' => $attackerGuid,
+                'attacker_name' => $attackerName,
+                'attacker_team' => 'allies',
+                'victim_player_id' => $victimPlayerId,
+                'victim_guid' => $victimGuid,
+                'victim_name' => $victimName,
+                'victim_team' => 'axis',
+                'weapon' => 'weapon_mp44',
+                'damage' => 100,
+                'mod' => 'MOD_RIFLE_BULLET',
+                'hitloc' => 'torso_upper',
+                'is_headshot' => false,
+                'is_grenade' => false,
+                'is_suicide' => false,
+                'is_teamkill' => false,
+                'occurred_at' => now(),
+            ]);
+        };
+
+        for ($i = 0; $i < $aKills; $i++) {
+            $makeKill($a->id, $aRawGuid, $a->last_name, $v->id, $v->guid, $v->last_name);
+        }
+        for ($i = 0; $i < $aDeaths; $i++) {
+            $makeKill($v->id, $v->guid, $v->last_name, $a->id, $aRawGuid, $a->last_name);
+        }
+        for ($i = 0; $i < $rKills; $i++) {
+            $makeKill($r->id, $r->guid, $r->last_name, $v->id, $v->guid, $v->last_name);
+        }
+        for ($i = 0; $i < $rDeaths; $i++) {
+            $makeKill($v->id, $v->guid, $v->last_name, $r->id, $r->guid, $r->last_name);
+        }
+
+        return $match;
+    }
+
+    /**
+     * Bug real (2026-08-30): admin fusiono un jugador con historial en el guid
+     * viejo (ya no existe en `players` tras la fusion) al guid actual --
+     * $played/$won se llevaban por attacker_guid/victim_guid crudo de cada
+     * kill en vez de por attacker_player_id/victim_player_id (la FK, la unica
+     * que PlayerMerger repunta), asi que las partidas jugadas antes del cambio
+     * de guid no contaban para el minimo -- el jugador quedaba sin rango
+     * ("?" en /equipos) a pesar de tener de sobra MIN_MATCHES combinadas.
+     */
+    public function test_played_count_uses_player_id_not_raw_historical_guid_after_a_merge(): void
+    {
+        $season = Season::current();
+        $a = Player::create(['guid' => 951, 'last_name' => 'A', 'last_name_plain' => 'A']);
+        $r = Player::create(['guid' => 952, 'last_name' => 'R', 'last_name_plain' => 'R']);
+        $v = Player::create(['guid' => 953, 'last_name' => 'V', 'last_name_plain' => 'V']);
+        $oldGuid = 999951;
+
+        // 5 partidas jugadas con el guid viejo (pre-fusion), 4 con el actual --
+        // 9 en total (cumple MIN_MATCHES), pero solo 4 bajo el guid actual solo.
+        for ($i = 0; $i < 5; $i++) {
+            $this->rangoMatchWithRawGuid($season->id, $a, $oldGuid, $r, $v, 4, 2, 4, 4);
+        }
+        for ($i = 0; $i < 4; $i++) {
+            $this->rangoMatch($season->id, $a, $r, $v, 4, 2, 4, 4);
+        }
+
+        $ranks = PlayerRankCalculator::calculateForServer($this->server);
+
+        $this->assertTrue($ranks->has($a->guid));
+        $this->assertSame(9, $ranks[$a->guid]->played);
+    }
 }

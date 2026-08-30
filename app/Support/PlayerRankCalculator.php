@@ -61,6 +61,15 @@ class PlayerRankCalculator
         // paginas de especialidades: sin lista de participantes por partida,
         // un jugador cuenta como presente si aparece como atacante o victima
         // en al menos una baja de esa partida.
+        //
+        // Se lleva por attacker_player_id/victim_player_id (la FK), no por el
+        // guid crudo de la kill -- PlayerMerger::merge() repunta esa FK al
+        // fusionar dos jugadores, pero a proposito nunca reescribe el guid
+        // historico de kills/rounds.winner_guids (ver CLAUDE.md). Llevar el
+        // conteo por guid crudo fragmentaba las partidas de un jugador
+        // fusionado entre su guid viejo (ya sin fila en `players`) y el
+        // actual, dejandolo sin rango pese a tener de sobra MIN_MATCHES
+        // combinadas (bug real 2026-08-30, "?" en /equipos tras una fusion).
         $matches = GameMatch::where('server_id', $server->id)
             ->where('is_backfilled', false)
             ->where('gametype', 'sd')
@@ -72,25 +81,44 @@ class PlayerRankCalculator
         $played = [];
         $won = [];
         foreach ($matches as $match) {
-            $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
-            $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
-                ->filter(fn ($g) => $g && $g !== '0')->unique();
+            $kills = Kill::where('match_id', $match->id)->get(['attacker_player_id', 'attacker_guid', 'victim_player_id', 'victim_guid']);
 
-            foreach ($participantGuids as $guid) {
-                $played[$guid] = ($played[$guid] ?? 0) + 1;
+            // Guid -> player_id valido para esta partida puntual (un guid
+            // historico puede no tener fila en `players` si el jugador se
+            // fusiono despues, pero la kill de esa partida todavia sabe a
+            // que player_id apuntaba en su momento).
+            $guidToPlayerId = [];
+            foreach ($kills as $kill) {
+                if ($kill->attacker_player_id) {
+                    $guidToPlayerId[$kill->attacker_guid] = $kill->attacker_player_id;
+                }
+                if ($kill->victim_player_id) {
+                    $guidToPlayerId[$kill->victim_guid] = $kill->victim_player_id;
+                }
+            }
+
+            $participantPlayerIds = $kills->pluck('attacker_player_id')->merge($kills->pluck('victim_player_id'))
+                ->filter()->unique();
+
+            foreach ($participantPlayerIds as $playerId) {
+                $played[$playerId] = ($played[$playerId] ?? 0) + 1;
             }
 
             $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
             if ($winningGuids) {
                 foreach ($winningGuids as $guid) {
-                    $won[$guid] = ($won[$guid] ?? 0) + 1;
+                    $playerId = $guidToPlayerId[$guid] ?? null;
+                    if ($playerId) {
+                        $won[$playerId] = ($won[$playerId] ?? 0) + 1;
+                    }
                 }
             }
         }
 
         $qualified = collect();
         foreach ($stats as $guid => $stat) {
-            $playedCount = $played[$guid] ?? 0;
+            $playerId = $stat->player->id;
+            $playedCount = $played[$playerId] ?? 0;
             if ($playedCount < self::MIN_MATCHES) {
                 continue;
             }
@@ -101,7 +129,7 @@ class PlayerRankCalculator
                 'kd' => $stat->deaths > 0 ? round($stat->kills / $stat->deaths, 2) : $stat->kills,
                 'hsPct' => $stat->kills > 0 ? round($stat->headshots / $stat->kills * 100, 1) : 0,
                 'nadePct' => $stat->kills > 0 ? round($stat->grenade_kills / $stat->kills * 100, 1) : 0,
-                'winPct' => round(min($won[$guid] ?? 0, $playedCount) / $playedCount * 100, 1),
+                'winPct' => round(min($won[$playerId] ?? 0, $playedCount) / $playedCount * 100, 1),
                 'played' => $playedCount,
             ]);
         }
