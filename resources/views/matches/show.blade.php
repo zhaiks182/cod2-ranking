@@ -129,11 +129,11 @@
             entero (mismo $sideScores que ya usan los paneles de abajo). Cada
             cuadrado abre el popup de rondas (mas abajo en la pagina) directo en esa
             ronda -- ver data-round-jump en el script al final del archivo. --}}
-            <div class="flex flex-wrap items-center gap-1">
+            <div class="flex flex-wrap items-center gap-1.5">
                 @foreach($roundDetails as $rd)
                     <a href="#round-detail-{{ $rd->round->id }}" data-round-jump="round-detail-{{ $rd->round->id }}" data-round-number="{{ $rd->number }}" data-round-winner="{{ $rd->winningSide }}"
                         title="{{ __('Ronda :n', ['n' => $rd->number]) }}{{ $rd->winningSide === 'axis' ? __(' — Axis ganó') : ($rd->winningSide === 'allies' ? __(' — Allies ganó') : '') }}"
-                        class="w-5 h-5 rounded-sm flex items-center justify-center text-[9px] font-medium
+                        class="w-8 h-8 rounded-md flex items-center justify-center text-sm font-semibold
                             {{ match($rd->winningSide) { 'axis' => 'bg-red-900/70 text-red-300', 'allies' => 'bg-blue-900/70 text-blue-300', default => 'bg-slate-800 text-slate-500' } }}
                             hover:ring-2 hover:ring-cyan-400 cursor-pointer">
                         {{ $rd->number }}
@@ -141,11 +141,11 @@
                 @endforeach
                 @if($sideScores['winning'])
                     @php $loser = $sideScores['winning'] === 'axis' ? 'allies' : 'axis'; @endphp
-                    <span class="ml-2 flex items-center gap-1.5 text-[11px]">
-                        <span class="px-2 py-1 rounded-md {{ $sideScores['winning'] === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }} font-medium">
+                    <span class="ml-2 flex items-center gap-1.5 text-sm">
+                        <span class="px-2.5 py-1.5 rounded-md {{ $sideScores['winning'] === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }} font-medium">
                             🏆 {{ ucfirst($sideScores['winning']) }} ({{ $sideScores[$sideScores['winning']] }})
                         </span>
-                        <span class="px-2 py-1 rounded-md bg-slate-800/60 border border-slate-700 text-slate-500">
+                        <span class="px-2.5 py-1.5 rounded-md bg-slate-800/60 border border-slate-700 text-slate-500">
                             {{ ucfirst($loser) }} ({{ $sideScores[$loser] }})
                         </span>
                     </span>
