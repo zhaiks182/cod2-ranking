@@ -50,6 +50,26 @@ class HelpDownloadsBrowseFilesTest extends TestCase
         File::deleteDirectory($dir);
     }
 
+    /**
+     * Bug real (2026-08-30): la vista era un documento HTML standalone (su propio
+     * <html>/<head>/<body>, sin @extends('layouts.app')) -- perdia el header/nav del
+     * sitio, distinto a cualquier otra pagina publica. El dueño pidio que fuera igual
+     * al resto. De paso, el <title> decia "Fast DL · Zhaiks" en vez de "Fast Download".
+     */
+    public function test_uses_the_site_layout_with_the_standard_nav_and_title(): void
+    {
+        $dir = $this->makeRoot();
+
+        $response = $this->get(route('downloads.browse'));
+
+        $response->assertOk();
+        $response->assertSee('<title>Fast Download</title>', false);
+        $response->assertSee(route('dashboard'), false);
+        $response->assertSee('LEADERBOARDS');
+
+        File::deleteDirectory($dir);
+    }
+
     public function test_navigating_into_a_subdirectory_lists_its_files_with_download_links(): void
     {
         $dir = $this->makeRoot();
