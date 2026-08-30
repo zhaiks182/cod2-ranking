@@ -109,26 +109,26 @@
     @endphp
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-base">
             <thead>
-                <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                    <th class="px-4 py-2 font-medium">#</th>
-                    <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
-                    <th class="px-4 py-2 font-medium text-right">Kills</th>
-                    <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
-                    <th class="px-4 py-2 font-medium text-right">K/D</th>
-                    <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                    <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
-                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Horas') }}</th>
-                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Kills ÷ horas jugadas') }}">{{ __('Kills/h') }}</th>
+                <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                    <th class="px-5 py-3 font-medium">#</th>
+                    <th class="px-5 py-3 font-medium">{{ __('Jugador') }}</th>
+                    <th class="px-5 py-3 font-medium text-right">Kills</th>
+                    <th class="px-5 py-3 font-medium text-right">{{ __('Muertes') }}</th>
+                    <th class="px-5 py-3 font-medium text-right">K/D</th>
+                    <th class="px-5 py-3 font-medium text-right">Headshots</th>
+                    <th class="px-5 py-3 font-medium text-right">{{ __('Granadas') }}</th>
+                    <th class="px-5 py-3 font-medium text-right" title="{{ __('Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Horas') }}</th>
+                    <th class="px-5 py-3 font-medium text-right" title="{{ __('Kills ÷ horas jugadas') }}">{{ __('Kills/h') }}</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($rows as $i => $row)
                     @php $kd = $row->deaths > 0 ? round($row->kills / $row->deaths, 2) : $row->kills; $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
                     <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
-                        <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
-                        <td class="px-4 py-2 font-medium">
+                        <td class="px-5 py-3 text-cyan-400">{{ $i + 1 }}</td>
+                        <td class="px-5 py-3 font-medium">
                             @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                             <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                             <x-player-icon :player="$row->player" />
@@ -136,7 +136,7 @@
                                 <span class="ml-1 align-text-bottom" title="{{ match($i) { 0 => __('Oro'), 1 => __('Plata'), 2 => __('Bronce') } }}">{{ match($i) { 0 => '🥇', 1 => '🥈', 2 => '🥉' } }}</span>
                             @endif
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                        <td class="px-5 py-3 text-right tabular-nums text-cyan-300">
                             <span class="relative inline-block">
                                 <button type="button" data-kills-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->kills }}</button>
                                 @if($row->teamkills > 0)
@@ -144,18 +144,18 @@
                                 @endif
                             </span>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums">
+                        <td class="px-5 py-3 text-right tabular-nums">
                             <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums">
+                        <td class="px-5 py-3 text-right tabular-nums">{{ $kd }}</td>
+                        <td class="px-5 py-3 text-right tabular-nums">
                             <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums">
+                        <td class="px-5 py-3 text-right tabular-nums">
                             <button type="button" data-grenades-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->grenade_kills }}</button>
                         </td>
-                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->hours_played }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->kills_per_hour }}</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-slate-400">{{ $row->hours_played }}</td>
+                        <td class="px-5 py-3 text-right tabular-nums text-slate-400">{{ $row->kills_per_hour }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">{{ __('Sin datos para esta temporada.') }}</td></tr>
@@ -167,38 +167,38 @@
 
     @if($axisRows->isNotEmpty() || $alliesRows->isNotEmpty())
         <div>
-            <h2 class="text-sm uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Tabla de Posiciones') }}</h2>
+            <h2 class="text-base uppercase tracking-wide text-slate-200 font-bold mb-3">{{ __('Tabla de Posiciones') }}</h2>
             <div class="grid md:grid-cols-2 gap-4">
                 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                    <div class="px-4 py-2 border-b border-slate-800 text-xs uppercase tracking-wide text-red-400 font-medium flex items-center gap-2">
+                    <div class="px-5 py-3 border-b border-slate-800 text-sm uppercase tracking-wide text-red-400 font-medium flex items-center gap-2">
                         Axis
                         @if($sideScores['axis'] !== null)
                             <span class="text-slate-400 normal-case">({{ $sideScores['axis'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'axis')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-xs normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-base">
                         <thead>
-                            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
-                                <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
-                                <th class="px-4 py-2 font-medium text-right">K/D</th>
+                            <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                                <th class="px-5 py-3 font-medium">{{ __('Jugador') }}</th>
+                                <th class="px-5 py-3 font-medium text-right">Kills</th>
+                                <th class="px-5 py-3 font-medium text-right">{{ __('Muertes') }}</th>
+                                <th class="px-5 py-3 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($axisRows->sortByDesc('kills') as $row)
                                 @php $kd = $row->deaths > 0 ? round($row->kills / $row->deaths, 2) : $row->kills; $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
                                 <tr class="border-b border-slate-800/60 last:border-0">
-                                    <td class="px-4 py-2 font-medium">
+                                    <td class="px-5 py-3 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                         <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                                         <x-player-icon :player="$row->player" />
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                    <td class="px-5 py-3 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">
                                             <button type="button" data-kills-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->kills }}</button>
                                             @if($row->teamkills > 0)
@@ -206,10 +206,10 @@
                                             @endif
                                         </span>
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">
+                                    <td class="px-5 py-3 text-right tabular-nums">
                             <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
                         </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
+                                    <td class="px-5 py-3 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
@@ -220,35 +220,35 @@
                 </div>
 
                 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-                    <div class="px-4 py-2 border-b border-slate-800 text-xs uppercase tracking-wide text-blue-400 font-medium flex items-center gap-2">
+                    <div class="px-5 py-3 border-b border-slate-800 text-sm uppercase tracking-wide text-blue-400 font-medium flex items-center gap-2">
                         Allies
                         @if($sideScores['allies'] !== null)
                             <span class="text-slate-400 normal-case">({{ $sideScores['allies'] }})</span>
                         @endif
                         @if($sideScores['winning'] === 'allies')
-                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-[10px] normal-case tracking-normal">{{ __('Ganador') }}</span>
+                            <span class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-900 text-xs normal-case tracking-normal">{{ __('Ganador') }}</span>
                         @endif
                     </div>
                     <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                    <table class="w-full text-base">
                         <thead>
-                            <tr class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-800">
-                                <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
-                                <th class="px-4 py-2 font-medium text-right">Kills</th>
-                                <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
-                                <th class="px-4 py-2 font-medium text-right">K/D</th>
+                            <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
+                                <th class="px-5 py-3 font-medium">{{ __('Jugador') }}</th>
+                                <th class="px-5 py-3 font-medium text-right">Kills</th>
+                                <th class="px-5 py-3 font-medium text-right">{{ __('Muertes') }}</th>
+                                <th class="px-5 py-3 font-medium text-right">K/D</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($alliesRows->sortByDesc('kills') as $row)
                                 @php $kd = $row->deaths > 0 ? round($row->kills / $row->deaths, 2) : $row->kills; $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
                                 <tr class="border-b border-slate-800/60 last:border-0">
-                                    <td class="px-4 py-2 font-medium">
+                                    <td class="px-5 py-3 font-medium">
                                         @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                         <a href="{{ route('players.show', [$row->player->guid, 'season' => $seasonId]) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                                         <x-player-icon :player="$row->player" />
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums text-cyan-300">
+                                    <td class="px-5 py-3 text-right tabular-nums text-cyan-300">
                                         <span class="relative inline-block">
                                             <button type="button" data-kills-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->kills }}</button>
                                             @if($row->teamkills > 0)
@@ -256,10 +256,10 @@
                                             @endif
                                         </span>
                                     </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">
+                                    <td class="px-5 py-3 text-right tabular-nums">
                             <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
                         </td>
-                                    <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
+                                    <td class="px-5 py-3 text-right tabular-nums">{{ $kd }}</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="4" class="px-4 py-4 text-center text-slate-500">{{ __('Sin datos.') }}</td></tr>
