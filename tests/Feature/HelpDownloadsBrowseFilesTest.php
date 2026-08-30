@@ -38,6 +38,37 @@ class HelpDownloadsBrowseFilesTest extends TestCase
         $response->assertSee(route('downloads.browse'));
     }
 
+    /**
+     * Pedido del dueño (2026-08-30): el boton "Download" de /descargas abria el
+     * explorador en la raiz (/cod2), que en la practica solo tiene una subcarpeta
+     * ("main/") -- un click extra sin utilidad. Ahora abre directo en /cod2/main;
+     * el breadcrumb "/cod2" (siempre presente, ver downloads-browse.blade.php)
+     * sigue siendo la forma de volver a la raiz.
+     */
+    public function test_the_download_button_opens_directly_inside_main(): void
+    {
+        $response = $this->get(route('downloads'));
+
+        $response->assertOk();
+        $response->assertSee(route('downloads.browse', ['path' => 'main']), false);
+    }
+
+    public function test_the_root_breadcrumb_link_goes_back_to_the_root_listing(): void
+    {
+        $dir = $this->makeRoot();
+
+        $response = $this->get(route('downloads.browse', ['path' => 'main']));
+
+        $response->assertOk();
+        $response->assertSee(route('downloads.browse'), false);
+
+        $rootResponse = $this->get(route('downloads.browse'));
+        $rootResponse->assertOk();
+        $rootResponse->assertSee('main/');
+
+        File::deleteDirectory($dir);
+    }
+
     public function test_root_lists_subdirectories(): void
     {
         $dir = $this->makeRoot();

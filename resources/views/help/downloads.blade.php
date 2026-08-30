@@ -42,7 +42,7 @@
             </div>
             <h2 class="text-lg font-semibold text-white">Mod Pack</h2>
             <p class="text-sm text-slate-400 mt-1.5 mb-5">{{ __('Mapas y mods personalizados para nuestro server') }}</p>
-            <a href="{{ route('downloads.browse') }}" target="_blank" rel="noopener"
+            <a href="{{ route('downloads.browse', ['path' => 'main']) }}" target="_blank" rel="noopener"
                 class="mt-auto inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold transition-colors">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                 Download
