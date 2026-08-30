@@ -405,7 +405,7 @@
                 <span class="text-base font-semibold flex items-center gap-2">📋 {{ __('Eventos de la partida') }}</span>
                 <button type="button" onclick="document.getElementById('cod2-events-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-lg leading-none">✕</button>
             </div>
-            <div class="px-5 py-4 overflow-y-auto flex flex-col gap-2.5 text-sm">
+            <div class="px-5 py-4 overflow-y-auto flex flex-col items-start gap-2.5 text-sm">
                 @if($matchStartKill)
                     <div class="px-3 py-2 rounded-lg border border-emerald-900 bg-emerald-950/40 text-emerald-300">
                         🏁 {{ __('Inicio de partida') }} ·
