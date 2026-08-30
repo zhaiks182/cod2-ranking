@@ -126,4 +126,28 @@ class PlayerMergerTest extends TestCase
         $mokosAlias = $target->aliases->firstWhere('name', 'MOKOS');
         $this->assertTrue($mokosAlias->last_seen_at->gt(now()->subMinute()));
     }
+
+    /**
+     * Bug real (2026-08-30): unique de player_aliases es (player_id, name_plain)
+     * desde la migracion dedupe_player_aliases (2026-08-10), pero mergeAliases()
+     * comparaba por `name` (con codigos de color) -- dos alias con el mismo
+     * name_plain pero distinto `name` (ej. un color de nombre distinto) no se
+     * detectaban como duplicados, y el intento de repuntar el player_id del
+     * source violaba la constraint real, tirando 500. Repro con guids reales
+     * 1175160678/1827284701 ("DESTINATION # ZHAIKS'<3" / "destination.zhaiks'").
+     */
+    public function test_merges_aliases_deduping_by_name_plain_even_when_raw_name_differs(): void
+    {
+        $target = $this->makePlayer();
+        $source = $this->makePlayer();
+
+        PlayerAlias::create(['player_id' => $target->id, 'name' => "^1destination^7.zhaiks'", 'name_plain' => "destination.zhaiks'", 'last_seen_at' => now()->subDays(3)]);
+        PlayerAlias::create(['player_id' => $source->id, 'name' => "DESTINATION ^3# ^7ZHAIKS'<3", 'name_plain' => "destination.zhaiks'", 'last_seen_at' => now()]);
+
+        PlayerMerger::merge([$source->id], $target->id);
+
+        $target->refresh();
+        $this->assertCount(1, $target->aliases);
+        $this->assertTrue($target->aliases->first()->last_seen_at->gt(now()->subMinute()));
+    }
 }

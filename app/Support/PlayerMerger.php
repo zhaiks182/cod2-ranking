@@ -109,13 +109,19 @@ class PlayerMerger
         }
     }
 
-    /** Unique de player_aliases es (player_id, name) -- ver create_player_aliases_table. */
+    /**
+     * Unique de player_aliases es (player_id, name_plain) desde 2026-08-10 (ver
+     * migracion dedupe_player_aliases), no (player_id, name) como en la creacion
+     * original -- comparar por `name` deja pasar dos alias que solo difieren en
+     * el codigo de color (^N) como si no fueran duplicados, y el intento de
+     * repuntar el player_id del source termina violando la unique real.
+     */
     private static function mergeAliases(int $sourceId, int $targetId): void
     {
         $aliases = DB::table('player_aliases')->where('player_id', $sourceId)->get();
 
         foreach ($aliases as $alias) {
-            $existing = DB::table('player_aliases')->where('player_id', $targetId)->where('name', $alias->name)->first();
+            $existing = DB::table('player_aliases')->where('player_id', $targetId)->where('name_plain', $alias->name_plain)->first();
 
             if ($existing) {
                 if ($alias->last_seen_at > $existing->last_seen_at) {
