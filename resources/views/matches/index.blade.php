@@ -37,7 +37,7 @@
             </h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
                 @foreach($backfilled as $match)
-                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
+                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[4rem_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
                         @if($mapImageUrl = \App\Support\MapImage::url($match->map))
                             <img src="{{ $mapImageUrl }}" alt="" class="h-16 w-16 rounded-lg object-cover shrink-0">
                         @else
@@ -63,7 +63,7 @@
             <h2 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{{ \Illuminate\Support\Carbon::parse($date)->translatedFormat('l j \d\e F, Y') }}</h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
                 @foreach($dayMatches as $match)
-                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
+                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[4rem_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
                         @if($mapImageUrl = \App\Support\MapImage::url($match->map))
                             <img src="{{ $mapImageUrl }}" alt="" class="h-16 w-16 rounded-lg object-cover shrink-0">
                         @else
