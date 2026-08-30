@@ -10,7 +10,7 @@
             <img src="{{ $mapImageUrl }}" alt="" class="h-20 w-20 rounded-lg object-cover shrink-0">
         @endif
         <div>
-            <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-slate-500 hover:text-slate-300">← {{ __('Volver a partidas') }}</a>
+            <a href="{{ route('matches.index', ['server' => $match->server?->slug]) }}" class="text-xs text-cyan-400 hover:text-cyan-300">← {{ __('Volver a partidas') }}</a>
             <h1 class="text-lg font-semibold mt-1">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</h1>
             <p class="text-xs text-slate-500 mt-0.5">
                 {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} ·
