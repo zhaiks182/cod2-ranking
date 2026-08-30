@@ -37,17 +37,17 @@
             </h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
                 @foreach($backfilled as $match)
-                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 hover:bg-slate-800/30">
+                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
                         @if($mapImageUrl = \App\Support\MapImage::url($match->map))
-                            <img src="{{ $mapImageUrl }}" alt="" class="h-12 w-12 rounded-lg object-cover shrink-0">
+                            <img src="{{ $mapImageUrl }}" alt="" class="h-16 w-16 rounded-lg object-cover shrink-0">
                         @else
-                            <div class="h-12 w-12"></div>
+                            <div class="h-16 w-16"></div>
                         @endif
                         <div>
-                            <div class="font-medium">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
-                            <div class="text-xs text-slate-500">{{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }}</div>
+                            <div class="text-base font-semibold text-white">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
+                            <div class="text-sm text-slate-500">{{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }}</div>
                         </div>
-                        <div class="flex items-center gap-1.5 text-sm shrink-0">
+                        <div class="flex items-center gap-2 text-base shrink-0">
                             <span class="text-cyan-300 font-medium tabular-nums">{{ $match->kills_count }}</span>
                             <span class="text-slate-500">{{ __('bajas') }}</span>
                             <span class="text-slate-600">→</span>
@@ -63,15 +63,15 @@
             <h2 class="text-xs uppercase tracking-wide text-slate-500 mb-2">{{ \Illuminate\Support\Carbon::parse($date)->translatedFormat('l j \d\e F, Y') }}</h2>
             <div class="rounded-xl border border-slate-800 bg-panel divide-y divide-slate-800/60">
                 @foreach($dayMatches as $match)
-                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-4 py-3 hover:bg-slate-800/30">
+                    <a href="{{ route('matches.show', $match) }}" class="grid grid-cols-[auto_1fr_auto] items-center gap-5 px-5 py-4 hover:bg-slate-800/30">
                         @if($mapImageUrl = \App\Support\MapImage::url($match->map))
-                            <img src="{{ $mapImageUrl }}" alt="" class="h-12 w-12 rounded-lg object-cover shrink-0">
+                            <img src="{{ $mapImageUrl }}" alt="" class="h-16 w-16 rounded-lg object-cover shrink-0">
                         @else
-                            <div class="h-12 w-12"></div>
+                            <div class="h-16 w-16"></div>
                         @endif
                         <div>
-                            <div class="font-medium">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
-                            <div class="text-xs text-slate-500">
+                            <div class="text-base font-semibold text-white">{{ \App\Support\MapCatalog::mapLabel($match->map) }}</div>
+                            <div class="text-sm text-slate-500">
                                 {{ \App\Support\MapCatalog::gametypeLabel($match->gametype) }} · {{ $match->started_at->format('H:i') }}@if($match->ended_at) – {{ $match->ended_at->format('H:i') }}@endif · {{ $match->duration_label }}
                                 @if($match->ended_at)
                                     · <span class="text-emerald-400">{{ __('Finalizado') }}</span>
@@ -80,11 +80,11 @@
                                 @endif
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 text-sm shrink-0">
+                        <div class="flex items-center gap-3 text-base shrink-0">
                             @if($match->final_score)
                                 <span class="flex items-center gap-1.5">
                                     @if($match->winning_side)
-                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {{ $match->winning_side === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }}">{{ ucfirst($match->winning_side) }}</span>
+                                        <span class="px-1.5 py-0.5 rounded text-xs font-medium {{ $match->winning_side === 'axis' ? 'bg-red-950/60 border border-red-800 text-red-300' : 'bg-blue-950/60 border border-blue-800 text-blue-300' }}">{{ ucfirst($match->winning_side) }}</span>
                                     @endif
                                     <span class="text-slate-300 font-medium tabular-nums">{{ $match->final_score }}</span>
                                 </span>
