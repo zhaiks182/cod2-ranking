@@ -42,6 +42,9 @@
                     @if(auth()->user()->hasModule('servers'))
                         <a href="{{ route('admin.servers.index') }}" class="text-slate-300 hover:text-gsaccent">Servidores</a>
                     @endif
+                    @if(auth()->user()->hasModule('hosted-servers'))
+                        <a href="{{ route('admin.hosted-servers.index') }}" class="text-slate-300 hover:text-gsaccent">Servidores temporales</a>
+                    @endif
 
                     {{-- Grupos con dropdown -- mismo patron que RANKING/ESPECIALISTA en el
                     nav publico (layouts/app.blade.php), agrupados asi (2026-08-24) porque

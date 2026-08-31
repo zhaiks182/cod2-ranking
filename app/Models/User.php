@@ -21,14 +21,26 @@ class User extends Authenticatable
      * Modulos del panel admin (2026-08-31, sistema de roles) -- clave usada
      * tanto en `users.permissions` como en el middleware `module:<clave>`
      * que gatea cada grupo de rutas (ver bootstrap/app.php y routes/web.php).
-     * "servers" incluye la consola RCON y la config de servidores temporales
-     * porque esas dos viven DENTRO de /adm_cod2/servers, no en pantallas
-     * propias -- separarlas hubiera sido granularidad sin caso de uso real.
+     *
+     * "servers" es SOLO consola RCON (kick/ban/mensaje/mapa/comando/reiniciar
+     * servicio) y ver la lista de servers reales -- crear/editar/borrar un
+     * server (toca la contraseña RCON de produccion) quedo reservado a
+     * super-admin desde el 2026-09-01, ver "Modulo servers no debe permitir
+     * editar/borrar el server" en CLAUDE.md: un modulo otorgable de un
+     * checkbox no debe poder tocar la config del gameserver real.
+     *
+     * "hosted-servers" (servidores temporales self-service) se separo de
+     * "servers" el mismo dia, a pedido del dueño -- antes vivian juntos
+     * porque la config de puertos estaba embebida en /adm_cod2/servers, pero
+     * son dos responsabilidades distintas (el gameserver real de Pug Latam
+     * vs. el feature publico de servers temporales) y alguien con acceso a
+     * uno no necesariamente debe tener el otro.
      *
      * @var array<string, string>
      */
     public const MODULES = [
-        'servers' => 'Servidores (incluye consola RCON)',
+        'servers' => 'Servidores (consola RCON de Pug Latam)',
+        'hosted-servers' => 'Servidores temporales (self-service)',
         'matches' => 'Partidas',
         'demos' => 'Demos',
         'maps' => 'Mapas',

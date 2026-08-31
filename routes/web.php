@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\ConsoleController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
 use App\Http\Controllers\Admin\DiscordSettingController;
+use App\Http\Controllers\Admin\HostedServerSettingController;
 use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
 use App\Http\Controllers\Admin\PasswordController;
@@ -140,13 +141,14 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::resource('usuarios', UserController::class)->except(['show'])->parameters(['usuarios' => 'user'])->names('users');
         });
 
-        // "servers" incluye la consola RCON y la config de servidores temporales
-        // (ambas viven DENTRO de /adm_cod2/servers, no en pantallas propias).
+        // "servers" es SOLO consola RCON de Pug Latam (kick/ban/mensaje/mapa/
+        // comando/reiniciar servicio) + ver la lista de servers reales. Crear,
+        // editar o borrar un server (toca la contraseña RCON de produccion)
+        // quedo reservado a super-admin (ver el grupo mas abajo) -- un modulo
+        // otorgable de un checkbox no debe poder tocar la config del
+        // gameserver real, solo operarlo. Ver User::MODULES.
         Route::middleware('module:servers')->group(function () {
-            Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
-            Route::put('/configuracion/servidores-temporales', [SettingController::class, 'updateHostedServers'])->name('settings.hosted-servers.update');
-
-            Route::resource('servers', ServerController::class)->except(['show']);
+            Route::get('/servers', [ServerController::class, 'index'])->name('servers.index');
 
             Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
             Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
@@ -160,6 +162,23 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');
         });
 
+        // Crear/editar/borrar servers reales -- ver el comentario de arriba.
+        Route::middleware('super-admin')->group(function () {
+            Route::get('/servers/create', [ServerController::class, 'create'])->name('servers.create');
+            Route::post('/servers', [ServerController::class, 'store'])->name('servers.store');
+            Route::get('/servers/{server}/edit', [ServerController::class, 'edit'])->name('servers.edit');
+            Route::put('/servers/{server}', [ServerController::class, 'update'])->name('servers.update');
+            Route::delete('/servers/{server}', [ServerController::class, 'destroy'])->name('servers.destroy');
+        });
+
+        // Servidores temporales self-service -- separado de "servers" (2026-09-01,
+        // ver User::MODULES): responsabilidad distinta (el feature publico de
+        // /servidores/crear, no el gameserver real de Pug Latam).
+        Route::middleware('module:hosted-servers')->group(function () {
+            Route::get('/servidores-temporales', [HostedServerSettingController::class, 'index'])->name('hosted-servers.index');
+            Route::put('/servidores-temporales', [HostedServerSettingController::class, 'update'])->name('hosted-servers.update');
+        });
+
         Route::middleware('module:discord')->group(function () {
             Route::get('/discord', [DiscordSettingController::class, 'edit'])->name('discord.edit');
             Route::put('/discord', [DiscordSettingController::class, 'update'])->name('discord.update');
@@ -170,7 +189,11 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::delete('/partidas/{match}', [AdminMatchController::class, 'destroy'])->name('matches.destroy');
         });
 
+        // "settings.update" es el form de retencion de demos embebido dentro de
+        // /adm_cod2/demos -- gateado por demos, no por servers (no tiene nada
+        // que ver con el gameserver).
         Route::middleware('module:demos')->group(function () {
+            Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
             Route::get('/demos', [AdminDemoController::class, 'index'])->name('demos.index');
             Route::delete('/demos/{demo}', [AdminDemoController::class, 'destroy'])->name('demos.destroy');
             Route::delete('/demos/match/{match}', [AdminDemoController::class, 'destroyByMatch'])->name('demos.destroy-match');

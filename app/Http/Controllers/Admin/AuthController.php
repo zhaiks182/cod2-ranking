@@ -12,7 +12,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect()->route('admin.servers.index');
+            return redirect()->route('admin.home');
         }
 
         return view('admin.login', ['turnstileSiteKey' => config('services.turnstile.site_key')]);
@@ -41,7 +41,11 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('admin.servers.index'));
+        // admin.home (el dashboard, sin gate de modulo) en vez de una pantalla
+        // especifica -- desde el sistema de roles (2026-08-31), no todo admin
+        // tiene el modulo "servers", asi que mandarlo ahi de entrada le tiraria
+        // un 403 al primer click despues de loguearse.
+        return redirect()->intended(route('admin.home'));
     }
 
     public function logout(Request $request)

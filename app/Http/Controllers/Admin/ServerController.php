@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\HostedServer;
 use App\Models\Server;
-use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -15,18 +13,7 @@ class ServerController extends Controller
     {
         $servers = Server::orderBy('name')->get();
 
-        $hostedServersActive = HostedServer::whereIn('status', ['starting', 'running'])->count();
-        $hostedServersPorts = Setting::current()->hostedServerPorts();
-        $hostedServersMaxConcurrent = Setting::maxConcurrent();
-        $turnstileConfigured = filled(config('services.turnstile.site_key')) && filled(config('services.turnstile.secret_key'));
-
-        return view('admin.servers.index', compact(
-            'servers',
-            'hostedServersActive',
-            'hostedServersPorts',
-            'hostedServersMaxConcurrent',
-            'turnstileConfigured',
-        ));
+        return view('admin.servers.index', compact('servers'));
     }
 
     public function create()

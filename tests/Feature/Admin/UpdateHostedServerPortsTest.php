@@ -47,7 +47,7 @@ class UpdateHostedServerPortsTest extends TestCase
         $admin = User::factory()->create();
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28970', '28980', '28990'],
             ])
             ->assertRedirect();
@@ -62,7 +62,7 @@ class UpdateHostedServerPortsTest extends TestCase
         Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28970', '28970'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
@@ -76,7 +76,7 @@ class UpdateHostedServerPortsTest extends TestCase
         Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['80', '28980'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
@@ -90,7 +90,7 @@ class UpdateHostedServerPortsTest extends TestCase
         Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => [],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
@@ -105,7 +105,7 @@ class UpdateHostedServerPortsTest extends TestCase
         $active = $this->activeHostedServer(28980);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28970', '28990'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
@@ -122,7 +122,7 @@ class UpdateHostedServerPortsTest extends TestCase
         $active = $this->activeHostedServer(28970);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28970'],
             ])
             ->assertRedirect();
@@ -138,7 +138,7 @@ class UpdateHostedServerPortsTest extends TestCase
         Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28960', '28980'],
             ])
             ->assertSessionHasErrors('hosted_servers_ports');
@@ -154,7 +154,7 @@ class UpdateHostedServerPortsTest extends TestCase
         Setting::current()->update(['hosted_servers_ports' => '28970,28980']);
 
         $this->actingAs($admin)
-            ->put(route('admin.settings.hosted-servers.update'), [
+            ->put(route('admin.hosted-servers.update'), [
                 'hosted_servers_ports' => ['28960', '28980'],
             ])
             ->assertRedirect();
