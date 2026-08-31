@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BanController;
 use App\Http\Controllers\Admin\ConsoleController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
 use App\Http\Controllers\Admin\DiscordSettingController;
 use App\Http\Controllers\Admin\MapImageController;
@@ -118,11 +119,11 @@ Route::post('/api/demos/upload/{hwid}/{demoName}', [DemoUploadController::class,
     ->name('demos.upload');
 
 Route::prefix('adm_cod2')->name('admin.')->group(function () {
-    Route::get('/', fn () => redirect()->route('admin.servers.index'))->name('home');
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 
     Route::middleware('auth')->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('home');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
         Route::get('/password', [PasswordController::class, 'edit'])->name('password.edit');

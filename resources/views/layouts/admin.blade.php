@@ -34,10 +34,11 @@
     @auth
         <header class="border-b border-slate-800 bg-panel/60">
             <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
-                <a href="{{ route('admin.servers.index') }}" class="flex items-center gap-2.5 shrink-0">
+                <a href="{{ route('admin.home') }}" class="flex items-center gap-2.5 shrink-0">
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
                 <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                    <a href="{{ route('admin.home') }}" class="text-slate-300 hover:text-gsaccent">Panel</a>
                     <a href="{{ route('admin.servers.index') }}" class="text-slate-300 hover:text-gsaccent">Servidores</a>
 
                     {{-- Grupos con dropdown -- mismo patron que RANKING/ESPECIALISTA en el
