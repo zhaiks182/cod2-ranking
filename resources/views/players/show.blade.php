@@ -76,6 +76,15 @@
         </div>
     @endif
 
+    @if($evolutionChart->isNotEmpty())
+        <section>
+            <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">{{ __('Evolución (últimas :n partidas)', ['n' => $evolutionChart->count()]) }}</h2>
+            <div class="rounded-xl border border-slate-800 bg-panel p-4">
+                <canvas id="cod2-evolution-chart" height="80"></canvas>
+            </div>
+        </section>
+    @endif
+
     <div class="grid md:grid-cols-2 gap-6 items-stretch">
         <section class="flex flex-col">
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">{{ __('Desempeño general por mapa') }}</h2>
@@ -397,5 +406,55 @@
             </div>
         </div>
     </div>
+@endif
+
+@if($evolutionChart->isNotEmpty())
+    {{-- Chart.js via CDN (2026-08-31) -- mismo criterio que Tailwind (CDN, sin
+    build step). Solo se carga en esta pagina, no en el layout global, para no
+    pesarle a paginas que no lo necesitan. --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        (function () {
+            const data = @json($evolutionChart);
+            const ctx = document.getElementById('cod2-evolution-chart');
+            if (!ctx || !window.Chart) return;
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.label),
+                    datasets: [
+                        {
+                            label: @json(__('Bajas')),
+                            data: data.map(d => d.kills),
+                            borderColor: '#22d3ee',
+                            backgroundColor: 'rgba(34, 211, 238, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 3,
+                        },
+                        {
+                            label: @json(__('Muertes')),
+                            data: data.map(d => d.deaths),
+                            borderColor: '#f87171',
+                            backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 3,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+                        y: { beginAtZero: true, ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } },
+                    },
+                },
+            });
+        })();
+    </script>
 @endif
 @endsection

@@ -96,6 +96,32 @@ class PlayerController extends Controller
         // historial partida por partida, no solo los totales agregados).
         $matchHistory = WinRateCalculator::matchHistoryForPlayer($player, $matchIds);
 
+        // Grafico de evolucion (2026-08-31, a pedido del dueño) -- kills/muertes/K-D
+        // de las ultimas 15 partidas DECIDIDAS de $matchHistory (mismo scope de
+        // temporada y "partida real" que el resto del perfil), orden cronologico
+        // (mas vieja a la izquierda) para que se lea como una linea de tiempo.
+        // Kills/deaths por partida en 2 queries agrupadas (no N+1) en vez de volver
+        // a llamar KillAggregator (que agrega por jugador, no por jugador+partida).
+        $chartMatchIds = $matchHistory->pluck('match.id');
+        $chartKills = Kill::whereIn('match_id', $chartMatchIds)
+            ->where('attacker_player_id', $player->id)->where('is_suicide', false)
+            ->selectRaw('match_id, count(*) as c')->groupBy('match_id')->pluck('c', 'match_id');
+        $chartDeaths = Kill::whereIn('match_id', $chartMatchIds)
+            ->where('victim_player_id', $player->id)
+            ->selectRaw('match_id, count(*) as c')->groupBy('match_id')->pluck('c', 'match_id');
+
+        $evolutionChart = $matchHistory->take(15)->reverse()->values()->map(function ($row) use ($chartKills, $chartDeaths) {
+            $k = (int) ($chartKills[$row->match->id] ?? 0);
+            $d = (int) ($chartDeaths[$row->match->id] ?? 0);
+
+            return [
+                'label' => $row->match->is_backfilled ? '—' : ($row->match->started_at?->format('d/m') ?? ''),
+                'kills' => $k,
+                'deaths' => $d,
+                'kd' => $d > 0 ? round($k / $d, 2) : $k,
+            ];
+        });
+
         // Reemplaza "Últimas bajas"/"Últimas muertes" (2026-08-29, a pedido del
         // dueño relayando feedback real de un jugador: esa lista cronologica era
         // "poco relevante", pedia algo mas util). Desglose COMPLETO de armas (no
@@ -130,6 +156,6 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon'));
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon', 'evolutionChart'));
     }
 }
