@@ -4,6 +4,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\EnsureHasModule;
+use App\Http\Middleware\EnsureIsSuperAdmin;
 use App\Http\Middleware\SetLocale;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,6 +16,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/adm_cod2/login');
+
+        // Sistema de roles del panel admin (2026-08-31) -- ver User::MODULES.
+        $middleware->alias([
+            'module' => EnsureHasModule::class,
+            'super-admin' => EnsureIsSuperAdmin::class,
+        ]);
 
         // Selector ES/EN del sitio publico (2026-08-29) -- lee la cookie "locale"
         // y activa App::setLocale('en') cuando corresponde. Solo en el grupo web

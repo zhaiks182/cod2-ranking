@@ -26,10 +26,19 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Super-admin por defecto (2026-08-31, sistema de roles) -- antes de
+            // que existiera este sistema, "un admin logueado" implicaba acceso
+            // total, y asi lo asumen decenas de tests ya escritos con
+            // User::factory()->create() sin pedir ningun modulo puntual. Los
+            // tests que SI quieren probar acceso restringido pisan esto
+            // explicito (->create(['is_super_admin' => false, 'permissions' => [...]])),
+            // ver UserRolesTest/UserControllerTest.
+            'is_super_admin' => true,
         ];
     }
 

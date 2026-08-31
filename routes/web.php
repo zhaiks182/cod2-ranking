@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
 use App\Http\Controllers\DemoUploadController;
@@ -126,68 +127,101 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('home');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+        // Cuenta propia -- cualquier admin autenticado puede cambiar su propia
+        // contraseña, sin importar que modulos tenga asignados.
         Route::get('/password', [PasswordController::class, 'edit'])->name('password.edit');
         Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
-        Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
-        Route::put('/configuracion/servidores-temporales', [SettingController::class, 'updateHostedServers'])->name('settings.hosted-servers.update');
+        // Usuarios y roles (2026-08-31) -- NUNCA un modulo de User::MODULES
+        // (ver esa constante), solo super-admins.
+        Route::middleware('super-admin')->group(function () {
+            Route::resource('usuarios', UserController::class)->except(['show'])->parameters(['usuarios' => 'user'])->names('users');
+        });
 
-        Route::get('/discord', [DiscordSettingController::class, 'edit'])->name('discord.edit');
-        Route::put('/discord', [DiscordSettingController::class, 'update'])->name('discord.update');
+        // "servers" incluye la consola RCON y la config de servidores temporales
+        // (ambas viven DENTRO de /adm_cod2/servers, no en pantallas propias).
+        Route::middleware('module:servers')->group(function () {
+            Route::put('/configuracion', [SettingController::class, 'update'])->name('settings.update');
+            Route::put('/configuracion/servidores-temporales', [SettingController::class, 'updateHostedServers'])->name('settings.hosted-servers.update');
 
-        Route::resource('servers', ServerController::class)->except(['show']);
+            Route::resource('servers', ServerController::class)->except(['show']);
 
-        Route::get('/partidas', [AdminMatchController::class, 'index'])->name('matches.index');
-        Route::delete('/partidas/{match}', [AdminMatchController::class, 'destroy'])->name('matches.destroy');
+            Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
+            Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
+            Route::post('/console/{server}/ban', [ConsoleController::class, 'ban'])->name('console.ban');
+            Route::post('/console/{server}/message', [ConsoleController::class, 'message'])->name('console.message');
+            Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
+            Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
+            Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
+            Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
+            Route::get('/console/{server}/resources', [ConsoleController::class, 'resources'])->name('console.resources');
+            Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');
+        });
 
-        Route::get('/demos', [AdminDemoController::class, 'index'])->name('demos.index');
-        Route::delete('/demos/{demo}', [AdminDemoController::class, 'destroy'])->name('demos.destroy');
-        Route::delete('/demos/match/{match}', [AdminDemoController::class, 'destroyByMatch'])->name('demos.destroy-match');
-        Route::get('/demos/{match}', [AdminDemoController::class, 'show'])->name('demos.show');
+        Route::middleware('module:discord')->group(function () {
+            Route::get('/discord', [DiscordSettingController::class, 'edit'])->name('discord.edit');
+            Route::put('/discord', [DiscordSettingController::class, 'update'])->name('discord.update');
+        });
 
-        Route::get('/maps', [MapImageController::class, 'index'])->name('maps.index');
-        Route::post('/maps/{code}', [MapImageController::class, 'store'])->name('maps.store');
-        Route::delete('/maps/{code}', [MapImageController::class, 'destroy'])->name('maps.destroy');
+        Route::middleware('module:matches')->group(function () {
+            Route::get('/partidas', [AdminMatchController::class, 'index'])->name('matches.index');
+            Route::delete('/partidas/{match}', [AdminMatchController::class, 'destroy'])->name('matches.destroy');
+        });
 
-        Route::get('/paises', [AdminPlayerController::class, 'index'])->name('players.index');
-        Route::delete('/paises/{player}', [AdminPlayerController::class, 'clearIp'])->name('players.clear-ip');
+        Route::middleware('module:demos')->group(function () {
+            Route::get('/demos', [AdminDemoController::class, 'index'])->name('demos.index');
+            Route::delete('/demos/{demo}', [AdminDemoController::class, 'destroy'])->name('demos.destroy');
+            Route::delete('/demos/match/{match}', [AdminDemoController::class, 'destroyByMatch'])->name('demos.destroy-match');
+            Route::get('/demos/{match}', [AdminDemoController::class, 'show'])->name('demos.show');
+        });
 
-        Route::get('/jugadores/fusionar', [PlayerMergeController::class, 'index'])->name('players.merge.index');
-        Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
+        Route::middleware('module:maps')->group(function () {
+            Route::get('/maps', [MapImageController::class, 'index'])->name('maps.index');
+            Route::post('/maps/{code}', [MapImageController::class, 'store'])->name('maps.store');
+            Route::delete('/maps/{code}', [MapImageController::class, 'destroy'])->name('maps.destroy');
+        });
 
-        Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
-        Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
-        Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
+        // "players" agrupa las 4 pantallas que administran identidad de jugador
+        // (países, fusionar, borrar, íconos) -- separarlas en 4 modulos hubiera
+        // sido granularidad sin caso de uso real, todas operan sobre lo mismo.
+        Route::middleware('module:players')->group(function () {
+            Route::get('/paises', [AdminPlayerController::class, 'index'])->name('players.index');
+            Route::delete('/paises/{player}', [AdminPlayerController::class, 'clearIp'])->name('players.clear-ip');
 
-        Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');
-        Route::post('/jugadores/iconos/{player}', [PlayerIconController::class, 'store'])->name('players.icons.store');
-        Route::delete('/jugadores/iconos/{player}', [PlayerIconController::class, 'destroy'])->name('players.icons.destroy');
+            Route::get('/jugadores/fusionar', [PlayerMergeController::class, 'index'])->name('players.merge.index');
+            Route::post('/jugadores/fusionar', [PlayerMergeController::class, 'store'])->name('players.merge.store');
 
-        Route::get('/console/{server}', [ConsoleController::class, 'show'])->name('console.show');
-        Route::post('/console/{server}/kick', [ConsoleController::class, 'kick'])->name('console.kick');
-        Route::post('/console/{server}/ban', [ConsoleController::class, 'ban'])->name('console.ban');
-        Route::post('/console/{server}/message', [ConsoleController::class, 'message'])->name('console.message');
-        Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
-        Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
-        Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
-        Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
-        Route::get('/console/{server}/resources', [ConsoleController::class, 'resources'])->name('console.resources');
-        Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');
+            Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
+            Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
+            Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
 
-        Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
+            Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');
+            Route::post('/jugadores/iconos/{player}', [PlayerIconController::class, 'store'])->name('players.icons.store');
+            Route::delete('/jugadores/iconos/{player}', [PlayerIconController::class, 'destroy'])->name('players.icons.destroy');
+        });
 
-        Route::get('/bans', [BanController::class, 'index'])->name('bans.index');
-        Route::delete('/bans/{ban}', [BanController::class, 'destroy'])->name('bans.destroy');
+        Route::middleware('module:audit')->group(function () {
+            Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
+        });
 
-        Route::get('/respaldos', [BackupController::class, 'index'])->name('backups.index');
-        Route::post('/respaldos', [BackupController::class, 'store'])->name('backups.store');
-        Route::post('/respaldos/importar', [BackupController::class, 'import'])->name('backups.import');
-        Route::get('/respaldos/{filename}/descargar', [BackupController::class, 'download'])->name('backups.download');
-        Route::post('/respaldos/{filename}/restaurar', [BackupController::class, 'restore'])->name('backups.restore');
-        Route::delete('/respaldos/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
+        Route::middleware('module:bans')->group(function () {
+            Route::get('/bans', [BanController::class, 'index'])->name('bans.index');
+            Route::delete('/bans/{ban}', [BanController::class, 'destroy'])->name('bans.destroy');
+        });
 
-        Route::get('/temporadas', [SeasonController::class, 'index'])->name('seasons.index');
-        Route::post('/temporadas', [SeasonController::class, 'store'])->name('seasons.store');
-        Route::post('/temporadas/{season}/reactivar', [SeasonController::class, 'reactivate'])->name('seasons.reactivate');
+        Route::middleware('module:backups')->group(function () {
+            Route::get('/respaldos', [BackupController::class, 'index'])->name('backups.index');
+            Route::post('/respaldos', [BackupController::class, 'store'])->name('backups.store');
+            Route::post('/respaldos/importar', [BackupController::class, 'import'])->name('backups.import');
+            Route::get('/respaldos/{filename}/descargar', [BackupController::class, 'download'])->name('backups.download');
+            Route::post('/respaldos/{filename}/restaurar', [BackupController::class, 'restore'])->name('backups.restore');
+            Route::delete('/respaldos/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
+        });
+
+        Route::middleware('module:seasons')->group(function () {
+            Route::get('/temporadas', [SeasonController::class, 'index'])->name('seasons.index');
+            Route::post('/temporadas', [SeasonController::class, 'store'])->name('seasons.store');
+            Route::post('/temporadas/{season}/reactivar', [SeasonController::class, 'reactivate'])->name('seasons.reactivate');
+        });
     });
 });
