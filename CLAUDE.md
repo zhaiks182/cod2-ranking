@@ -1058,6 +1058,91 @@ gameserver sin cambio real (1.12% durante la carga vs 1.20% en reposo), **cero**
 hitch warnings durante toda la ventana. La config protege al proceso de verdad, no
 solo en el papel.
 
+### Plan para cuando se agregue un segundo core: CPU affinity (no aplicado todavía)
+
+**Estado actual (2026-08-30): el VPS sigue en 1 solo core.** Ojo con `nproc --all`
+en este VPS — devuelve **128** (un artefacto de virtualización del proveedor, no
+el conteo real). La fuente confiable es `grep -c ^processor /proc/cpuinfo` (o
+`lscpu`), que sí confirma 1 core. Si se vuelve a dudar cuántos cores tiene la VM,
+usar `/proc/cpuinfo`, nunca `nproc` a secas, en este proveedor puntual.
+
+Si el dueño agrega un segundo core, la idea acordada es **CPU affinity** (pinning)
+vía systemd, no solo la prioridad relativa que ya existe hoy
+(`Nice=-20`/`CPUWeight=9500`, ver sección anterior) — affinity es aislamiento
+duro: un proceso pineado a un core nunca se ejecuta en el otro, sin importar la
+carga. Con `Nice`/`CPUWeight` el gameserver solo tiene *preferencia*, pero
+técnicamente puede correr en cualquier core; con `CPUAffinity` no puede, punto.
+
+**Resultado buscado:**
+
+| | Core 0 | Core 1 |
+|---|---|---|
+| Sistema operativo (kernel, systemd, cron, journald) | ✅ siempre | ❌ nunca |
+| LAMP (Apache, PHP-FPM, MariaDB, queue worker) | ✅ siempre | ❌ nunca |
+| Servidores temporales (`cod2-temp@.service`) | ✅ siempre | ❌ nunca |
+| `cod2server.service` (gameserver real) | ❌ nunca | ✅ siempre |
+
+**Importante: hacen falta las DOS mitades, no alcanza con pinear solo el
+gameserver.** Sin restringir también el resto del sistema, Apache/MySQL igual
+pueden terminar corriendo en el core 1 cuando el scheduler de Linux (CFS) decida
+mandarlos ahí — por defecto, sin `CPUAffinity` en ningún lado, cualquier proceso
+puede correr en cualquier core, se reparte dinámicamente. Fijar solo el
+gameserver protege al juego de que nada más lo invada, pero no garantiza que el
+core 1 quede *exclusivo* del juego a menos que el otro lado también esté pineado.
+
+**1. Sistema + LAMP → core 0**, en `/etc/systemd/system.conf`:
+```ini
+CPUAffinity=0
+```
+Aplica a PID 1 y a cualquier servicio que no lo sobreescriba explícitamente
+(Apache, PHP-FPM, MariaDB, queue worker, cron, journald, etc. de una sola vez).
+Requiere reiniciar el sistema (o `systemctl daemon-reexec` + reiniciar cada
+servicio) para tomar efecto.
+
+**2. `cod2server.service` → core 1**, agregar al bloque `[Service]` del archivo
+real en el VPS (`/etc/systemd/system/cod2server.service` — no vive en este repo,
+ver "Systemd + sudoers..." más abajo):
+```ini
+CPUAffinity=1
+```
+No reemplaza nada de lo que ya tiene (`Nice=-20`, `CPUWeight=9500`,
+`IOSchedulingClass=realtime` siguen intactos — `CPUAffinity` decide *en qué
+core* corre, esas otras directivas deciden *con qué prioridad* dentro de ese
+core). Los índices de core en systemd son 0-based, así que en una VM de 2 vCPUs
+`0`/`1` son los dos únicos disponibles.
+
+**Servidores temporales (`cod2-temp@.service`):** dejarlos en el core 0 (junto al
+LAMP, heredado del `CPUAffinity=0` de `system.conf`, sin agregarles nada propio)
+en vez de compartir el core 1 con la partida real — ya están pensados con menos
+prioridad (`CPUWeight=100`, sin `Nice` negativo, `MemoryMax=150M`), pinearlos al
+mismo core que el juego real competiría por CPU dentro de ese único núcleo sin
+necesidad.
+
+**Después de aplicar, verificar:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart cod2server.service
+systemctl show cod2server.service -p CPUAffinity
+taskset -pc $(pgrep cod2_lnxded)
+```
+y en vivo con `htop` (tecla `f` → mostrar por núcleo) o `mpstat -P ALL 1` para
+confirmar que el core 1 solo se mueve con el juego.
+
+**A tener en cuenta antes de aplicarlo:** con el LAMP stack completo comprimido
+en un solo core, un pico de tráfico real podría saturar ese núcleo más rápido que
+hoy (que reparte libremente entre los cores disponibles) — para el volumen actual
+de esta comunidad no debería ser problema, pero vale vigilarlo las primeras
+semanas. Tampoco es aislamiento 100% perfecto: las interrupciones/hilos del propio
+kernel (IRQs de red, etc.) no quedan afectados por `CPUAffinity=0` de
+`system.conf`, siguen repartiéndose donde el kernel decida — suficiente para este
+caso de uso (evitar que Apache/MySQL le compitan CPU al gameserver), no una
+partición perfecta.
+
+Como el resto de la config de systemd/sudoers de este proyecto, esto es un
+cambio de infraestructura del VPS, no de código — no viaja con git ni con
+`deploy.sh`. Si se reconstruye el VPS algún día, hay que volver a aplicarlo a
+mano con lo documentado acá.
+
 ### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
 
 `SSH_HOST="iptvwatch"` en `deploy.sh` sigue apuntando al VPS compartido viejo. Correr
