@@ -1195,8 +1195,101 @@ sesión:
 Los tres cambios son infraestructura del VPS, no código — mismo precedente
 que systemd/sudoers/CPU affinity: no viajan con git ni con `deploy.sh`, hay
 que rehacerlos a mano si el VPS se reconstruye (los paquetes se resuelven
-solos con `apt upgrade`, pero las reglas de `ufw` y `jail.local` de fail2ban
-sí hay que recrearlas — el contenido exacto queda documentado arriba).
+solos con `apt upgrade`, pero las reglas de firewall y `jail.local` de
+fail2ban sí hay que recrearlas — el contenido exacto queda documentado
+abajo, **`ufw` ya no es la herramienta real usada para esto**, ver la
+entrada siguiente).
+
+### Incidente real: `iptables -F` tumbó el firewall y cortó el acceso — `ufw` abandonado por `iptables` directo (2026-08-31)
+
+**Mismo día que se activó `ufw` (entrada anterior).** El dueño corrió
+`iptables -F` a mano en el VPS (sin relación con este proyecto, explorando
+el sistema) — y tumbó el sitio y el acceso SSH durante varios minutos.
+
+**Causa raíz:** `ufw default deny incoming` no es solo una lista de reglas
+— también fija la **política** del chain `INPUT` en `DROP` a nivel
+`iptables`. `iptables -F` borra las reglas de todos los chains pero *nunca*
+toca la política de los chains built-in (`INPUT`/`OUTPUT`/`FORWARD`) — así
+que después del flush, `INPUT` quedó con política `DROP` y **cero reglas**,
+osea bloqueando literalmente todo el tráfico entrante, SSH incluido. El
+sitio devolvía `522` (Cloudflare no podía llegar al origen).
+
+**Sin ningún acceso remoto posible** (SSH es el único camino que tiene esta
+sesión hacia el VPS, y era exactamente lo que estaba bloqueado) — la única
+via de recuperación fue la consola VNC/web del proveedor de hosting, que no
+pasa por la red del servidor y por lo tanto no la afecta el firewall.
+Recuperado a mano ahí con `iptables -P INPUT ACCEPT` (ver más abajo por qué
+no alcanzó con reiniciar `ufw`).
+
+**Segundo hallazgo, más grave: `ufw enable` (y `systemctl restart ufw`) es
+poco confiable en este VPS puntual para reconstruir el firewall desde cero
+via SSH.** Se intentó reconstruirlo dos veces distintas (`systemctl restart
+ufw` primero, `ufw disable && ufw --force enable` despues) y **las dos
+veces volvió a cortar el acceso SSH**, exactamente el mismo síntoma que el
+incidente original. Diagnóstico: el script de `ufw` aplica la política
+`DROP` en `INPUT` en algún punto de su secuencia interna *antes* de que la
+regla que conecta ese chain con las cadenas propias de `ufw`
+(`ufw-before-input`, `ufw-user-input`, etc., donde vive el `ACCEPT` de
+puerto 22) termine de insertarse — no es atómico. Si esa ventana coincide
+con tráfico real de la sesión SSH en curso, la conexión muere ahí mismo, y
+el resto del script nunca termina de aplicarse correctamente. Reproducido
+2 de 2 veces — no es una casualidad de una corrida puntual.
+
+**Técnica usada para recuperarse sin depender de la consola cada vez —
+"dead man's switch":** antes de cada intento de reconstruir el firewall,
+se armó un proceso en background en el propio VPS (`nohup bash -c 'sleep
+N && <comando que abre todo de nuevo>' & disown`) que se auto-ejecuta a los
+N segundos *sin importar si la sesión SSH sigue viva* — si el intento de
+reconstruir el firewall cortaba el acceso, el VPS se autocuraba solo
+minutos después sin volver a pedirle al dueño que entre a la consola. Se
+cancela (`kill` del PID guardado) si el intento salió bien. Vale la pena
+reusar este patrón para **cualquier cambio remoto que pueda cortar el
+acceso que se está usando para aplicarlo** (firewall, SSH config, reglas de
+red en general) — mucho más barato que una vuelta a la consola del
+proveedor.
+
+**Fix real, evitando el bug de `ufw` en vez de perseguirlo:** se abandonó
+`ufw` como mecanismo de aplicación (queda **deshabilitado y enmascarado**,
+`systemctl mask ufw`, para que nadie lo reactive sin querer y repita el
+bug) y se reconstruyó el firewall con `iptables` crudo, en un orden
+deliberadamente seguro para hacerlo por SSH sin riesgo de corte:
+
+1. Con la política todavía en `ACCEPT` (sin riesgo), agregar TODAS las
+   reglas `ACCEPT` necesarias primero: loopback, `RELATED,ESTABLISHED`,
+   `22/tcp`, `80/tcp`, `443/tcp`, `28960/28950/28970/28980/28990 udp`
+   (mismos puertos que ya se habían definido con `ufw`), `icmp`.
+2. **Recién al final**, con esas reglas ya en el chain, cambiar la
+   política: `iptables -P INPUT DROP` (y `-P FORWARD DROP`, no se usa
+   forwarding en este VPS; `OUTPUT` se deja en `ACCEPT`, el servidor
+   necesita salir libremente para `apt`/`geoip:update`/etc.). Para cuando
+   la política pasa a `DROP`, la regla `ACCEPT` de `22/tcp` ya existe y
+   matchea primero — no hay ninguna ventana sin cobertura.
+3. Persistido con `iptables-persistent`/`netfilter-persistent save` (paquete
+   nuevo, instalado en esta sesión) — sin esto, las reglas de `iptables`
+   puro no sobreviven un reinicio (a diferencia de `ufw`, que sí se
+   encarga de eso solo).
+
+Verificado con una conexión SSH **nueva** (no la misma sesión) después de
+aplicar la política `DROP` final — entró sin cortes. Sitio en `200`,
+los 6 servicios (`apache2`/`mariadb`/`php8.3-fpm`/`ssh`/`cod2server`/
+`fail2ban`) `active`, `fail2ban` ya baneando IPs reales (7 baneos totales
+a los pocos minutos).
+
+**IPv6 no se replicó a propósito** — `ip -6 addr show scope global` no
+devuelve ninguna dirección pública, este VPS no tiene conectividad IPv6
+real expuesta, así que no hay superficie que proteger ahí (quedaron
+cadenas `ufw6-*` viejas y vacías de la config anterior, inofensivas, no se
+tocaron).
+
+**Estado final:** mismo conjunto de puertos permitidos que la config de
+`ufw` que se había armado antes (22/80/443/juego), pero aplicado con
+`iptables` puro — `ufw` sigue instalado pero inactivo y enmascarado
+(`systemctl status ufw` muestra `masked`), **no usarlo para tocar el
+firewall de este VPS de nuevo** sin resolver primero el problema de orden
+de su script. Si en algún momento hace falta agregar/sacar un puerto,
+hacerlo con `iptables -A/-D INPUT ...` directo (respetando el mismo orden
+seguro: agregar ACCEPTs antes de que la política DROP los necesite, nunca
+al revés) + `netfilter-persistent save`, no reactivar `ufw`.
 
 ### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
 
