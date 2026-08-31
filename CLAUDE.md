@@ -1283,13 +1283,26 @@ tocaron).
 
 **Estado final:** mismo conjunto de puertos permitidos que la config de
 `ufw` que se había armado antes (22/80/443/juego), pero aplicado con
-`iptables` puro — `ufw` sigue instalado pero inactivo y enmascarado
-(`systemctl status ufw` muestra `masked`), **no usarlo para tocar el
-firewall de este VPS de nuevo** sin resolver primero el problema de orden
-de su script. Si en algún momento hace falta agregar/sacar un puerto,
+`iptables` puro.
+
+**`ufw` purgado del todo (2026-08-31, mismo día, a pedido del dueño)** —
+primero quedó deshabilitado/enmascarado como mitigación rápida, pero
+después se sacó por completo: `apt-get purge -y ufw` (paquete y config),
+más limpieza manual de lo que el purge no toca porque vive en runtime del
+kernel, no en archivos — las 18 cadenas `ufw-*` vacías que quedaron
+huérfanas en `iptables` (`iptables -X` una por una, todas con 0
+referencias, seguro) — y `/etc/ufw/` (solo quedaba `applications.d`, un
+punto de integración de otros paquetes tipo Apache, inerte sin `ufw`
+instalado). Verificado `dpkg -l | grep ufw` sin resultados, sitio en `200`
+y reglas de `iptables` intactas antes y después de cada paso.
+
+**No hay ningún firewall de alto nivel instalado en este VPS — solo
+`iptables` puro.** Si en algún momento hace falta agregar/sacar un puerto,
 hacerlo con `iptables -A/-D INPUT ...` directo (respetando el mismo orden
 seguro: agregar ACCEPTs antes de que la política DROP los necesite, nunca
-al revés) + `netfilter-persistent save`, no reactivar `ufw`.
+al revés) + `netfilter-persistent save` para que sobreviva un reinicio. No
+reinstalar `ufw` para esto sin resolver primero el problema de orden de su
+script documentado arriba.
 
 ### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
 
