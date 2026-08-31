@@ -1166,14 +1166,20 @@ sesión:
   explícitas ANTES de activar (nunca al revés, para no perder acceso SSH a
   mitad de camino): `22/tcp`, `80/tcp`, `443/tcp`, `28960/udp` (Pug Latam,
   `servers.connect_port`/`rcon_port`, mismo puerto para juego y RCON en el
-  motor id Tech 3), `28990/udp` (rango actual de `settings.hosted_servers_ports`
-  para servidores temporales) + default `deny incoming`/`allow outgoing`.
-  **Ya había reglas viejas cargadas sin activar** (`28970:28971/udp`, el
-  rango de servidores temporales previo a que se cambiara a `28990` — ver
-  "Servidores temporales self-service" más arriba) — se dejaron intactas
-  (no rompen nada, solo un rango que ya no se usa) en vez de tocarlas sin
-  necesidad. Verificado acceso SSH y sitio (`200`) con el firewall ya
-  activo antes de dar el cambio por terminado.
+  motor id Tech 3), `28990/udp` (rango de `settings.hosted_servers_ports` en
+  ese momento) + default `deny incoming`/`allow outgoing`. **Ya había reglas
+  viejas cargadas sin activar** (`28970:28971/udp`, un rango de servidores
+  temporales previo — ver "Servidores temporales self-service" más arriba)
+  — se dejaron intactas (no rompen nada) en vez de tocarlas sin necesidad.
+  Verificado acceso SSH y sitio (`200`) con el firewall ya activo antes de
+  dar el cambio por terminado.
+  **`hosted_servers_ports` cambiado el mismo día a `28950,28970,28980,28990`**
+  (pedido del dueño) — el primer intento pidió incluir `28960`, pero ese es
+  el puerto real de Pug Latam y el panel lo rechaza a propósito (validación
+  agregada 2026-08-25 tras un choque real, ver esa sección) — se reemplazó
+  por `28950`. Reglas de `ufw` ampliadas para cubrir los 4 puertos
+  (`28970` ya estaba cubierto por el rango viejo `28970:28971`, se agregaron
+  `28950/udp` y `28980/udp` sueltos).
 - **Sin fail2ban, pese a ~11.000 intentos de login SSH fallidos** en el
   `auth.log` vigente (scaneo constante de bots, esperable en cualquier IP
   pública, pero el volumen es alto). No era un riesgo real de intrusión
