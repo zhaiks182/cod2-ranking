@@ -3859,6 +3859,92 @@ jugadores con actividad real hoy, sobra margen antes de necesitar dividirlo
   `Content-Type: application/xml; charset=UTF-8` y las URLs esperadas,
   `/robots.txt` incluye la línea `Sitemap:`.
 
+## Usuarios y roles del panel admin (2026-08-31, ampliado 2026-08-31)
+
+Sistema de permisos por módulo para `/adm_cod2` — nunca se documentó en su
+momento (queda registrado ahora, de una, junto con el fix del mismo día que
+lo tocó).
+
+- **`users.is_super_admin`** (bool) — acceso total a todo, sin excepción.
+- **`users.permissions`** (json, array de claves de `User::MODULES`) — para
+  cualquier admin que no sea super-admin, la lista exacta de módulos a los
+  que tiene acceso. `User::hasModule($key)` es la única fuente de verdad:
+  `true` siempre si `is_super_admin`, si no `in_array($key, $permissions)`.
+- **Middleware `module:<clave>`** (`EnsureHasModule`) gatea cada grupo de
+  rutas en `routes/web.php` — sin el módulo, 403 (ni el link aparece en el
+  nav, `layouts/admin.blade.php`, cada `@if(auth()->user()->hasModule(...))`).
+- **Middleware `super-admin`** (`EnsureIsSuperAdmin`) — reservado para
+  `/adm_cod2/usuarios` (gestionar otros admins) y para lo que se agregue
+  después que sea igual de sensible. **Nunca** es un módulo otorgable via
+  `permissions` — mezclar los dos sistemas sería dejar que un usuario se
+  auto-otorgue poderes de super-admin editando su propio JSON.
+- Protecciones en `Admin\UserController`: no podés borrar tu propia cuenta
+  logueada, no se puede sacarle super-admin (ni borrarlo) al último
+  super-admin que queda — para no quedar nunca sin nadie con acceso total.
+
+### Bug real: el módulo "servers" permitía editar/borrar el server real (2026-08-31)
+
+El dueño creó un usuario (`zhaiks`) con el rol "servidores" para operar la
+consola RCON del día a día, y notó que también podía editar/eliminar el
+registro del server real (Pug Latam) — incluida su contraseña RCON — desde
+`/adm_cod2/servers`. Reportado explícitamente como incorrecto: un módulo
+pensado para operación diaria (kick, mensajes, cambio de mapa, reiniciar el
+servicio) no debería poder tocar la configuración de producción del
+gameserver.
+
+**Causa:** el diseño original de "servers" (2026-08-31) bundleaba
+`Route::resource('servers', ...)` completo (index/create/store/edit/
+update/destroy) junto con la consola RCON bajo el mismo middleware
+`module:servers` — no había forma de otorgar solo la parte operativa.
+
+**Fix:** el módulo `servers` ahora es solo `index` (ver la lista) + las
+rutas de `console.*` (RCON). `create`/`store`/`edit`/`update`/`destroy` de
+`ServerController` se movieron a un grupo gateado por `super-admin` —
+mismo criterio que `/adm_cod2/usuarios`, un cambio de esta sensibilidad
+(credenciales de producción) no debe quedar detrás de un checkbox
+otorgable por otro admin, solo el super-admin puede tocarlo. La vista
+`admin/servers/index.blade.php` esconde "+ Agregar servidor" y los links
+Editar/Eliminar de cada fila con `@if(auth()->user()->is_super_admin)`.
+
+**De paso, "servidores temporales" (self-service) se separó a su propio
+módulo `hosted-servers`**, a pedido explícito del dueño — antes vivía
+embebido en la misma página `/adm_cod2/servers` y bajo el mismo checkbox
+"servers" que la consola RCON del server real, pese a ser una
+responsabilidad completamente distinta (el feature público de
+`/servidores/crear`, no Pug Latam). Nuevo controller
+`Admin\HostedServerSettingController`, nueva página propia
+`/adm_cod2/servidores-temporales`, nuevo link de nav — el contenido (la
+tarjeta de config de puertos) es el mismo que ya existía, solo se movió de
+lugar. Ver `User::MODULES` para el detalle completo de cada módulo.
+
+**Bug relacionado encontrado en el camino, mismo problema de fondo:** el
+form de retención de demos (`demo_retention_days`, embebido dentro de
+`/adm_cod2/demos`, `SettingController::update()`) posteaba a una ruta
+gateada por `module:servers` en vez de `module:demos` — un admin con el
+módulo "demos" pero sin "servers" no podía guardar ese form, aunque la
+página entera de demos sí le cargaba. Movido al grupo correcto (`demos`).
+
+**Segundo bug relacionado, más urgente:** `AuthController` redirigía tras
+un login exitoso a `/adm_cod2/servers` (tanto `login()` como
+`showLogin()` si ya había sesión) — con "servers" ahora un módulo
+otorgable como cualquier otro, un admin sin ese módulo específico hubiera
+recibido un **403 al primer segundo de loguearse**, antes de poder hacer
+nada. Redirige a `admin.home` (el dashboard, sin gate de módulo) en su
+lugar.
+
+TDD: `tests/Feature/Admin/ServerModuleRestrictionsTest.php` (8 casos — un
+usuario con solo "servers" puede ver la lista y la consola pero no puede
+crear/editar/borrar un server ni tocar servidores temporales ni la
+retención de demos; un super-admin sí puede todo; la vista esconde los
+links de Editar/Eliminar para un no-super-admin). Reescritos
+`ServerIndexShowsHostedServerPortsTest.php`/`UpdateHostedServerPortsTest.php`
+para apuntar a la página/ruta nueva de servidores temporales en vez de la
+vieja embebida. Verificado junto a la suite completa en el clone
+descartable del VPS: 270/278 tests, mismos 8 fallos preexistentes sin
+relación (baseline de siempre). Desplegado a producción sin migración —
+`permissions` de `zhaiks` sigue siendo `["servers"]`, ahora con el alcance
+correcto sin necesidad de tocar su fila.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
