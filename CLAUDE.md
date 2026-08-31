@@ -1143,6 +1143,55 @@ cambio de infraestructura del VPS, no de código — no viaja con git ni con
 `deploy.sh`. Si se reconstruye el VPS algún día, hay que volver a aplicarlo a
 mano con lo documentado acá.
 
+### Endurecimiento de seguridad del VPS (2026-08-31)
+
+Auditoría a pedido del dueño ("qué mejoras podemos aplicar a la VM") — sin
+hallazgos graves en backups/logs/memoria/MySQL (ya cubiertos en otras
+secciones), pero tres gaps reales de seguridad, los tres aplicados en la misma
+sesión:
+
+- **37 paquetes desactualizados (28 de seguridad).** `unattended-upgrades`
+  está activo y corriendo bien (confirmado en su log, cubre el pocket
+  `noble-security`), pero no había llegado a aplicarlos todavía — cerrado a
+  mano con `apt-get upgrade` (+ `libgd3` del repo de terceros de PHP, que
+  unattended-upgrades nunca toca a propósito por no ser origen oficial de
+  Ubuntu). `apache2`/`mariadb`/`php8.3-fpm`/`ssh` se reiniciaron solos
+  (`needrestart`) — verificado sitio en `200` y los 4 servicios `active`
+  después. **0 paquetes pendientes** al cierre.
+- **Sin firewall (`ufw` estaba instalado pero `inactive`).** Solo SSH
+  (22), Apache (80/443) y el puerto UDP del juego estaban realmente
+  expuestos, y MySQL ya estaba bien atado a `127.0.0.1` — pero sin `ufw`
+  cualquier servicio que en el futuro quede mal expuesto (un puerto de
+  debug, un bind a `0.0.0.0` por error) no tiene ninguna barrera. Reglas
+  explícitas ANTES de activar (nunca al revés, para no perder acceso SSH a
+  mitad de camino): `22/tcp`, `80/tcp`, `443/tcp`, `28960/udp` (Pug Latam,
+  `servers.connect_port`/`rcon_port`, mismo puerto para juego y RCON en el
+  motor id Tech 3), `28990/udp` (rango actual de `settings.hosted_servers_ports`
+  para servidores temporales) + default `deny incoming`/`allow outgoing`.
+  **Ya había reglas viejas cargadas sin activar** (`28970:28971/udp`, el
+  rango de servidores temporales previo a que se cambiara a `28990` — ver
+  "Servidores temporales self-service" más arriba) — se dejaron intactas
+  (no rompen nada, solo un rango que ya no se usa) en vez de tocarlas sin
+  necesidad. Verificado acceso SSH y sitio (`200`) con el firewall ya
+  activo antes de dar el cambio por terminado.
+- **Sin fail2ban, pese a ~11.000 intentos de login SSH fallidos** en el
+  `auth.log` vigente (scaneo constante de bots, esperable en cualquier IP
+  pública, pero el volumen es alto). No era un riesgo real de intrusión
+  (`PasswordAuthentication no` ya en `sshd_config`, solo entra quien tenga
+  la clave privada), pero sí ruido/consumo constante — coincide con el
+  volumen de `auth.log`/`btmp` ya detectado en la sección de espacio en
+  disco más abajo. Instalado con una sola jaula (`[sshd]`,
+  `/etc/fail2ban/jail.local`): **5 intentos fallidos en 10 minutos → ban de
+  1 hora**, backend `systemd` (lee el journal directo, no el archivo de
+  log). No afecta el acceso normal por clave — solo cuenta intentos
+  *fallidos*, y una conexión válida por clave nunca cuenta como uno.
+
+Los tres cambios son infraestructura del VPS, no código — mismo precedente
+que systemd/sudoers/CPU affinity: no viajan con git ni con `deploy.sh`, hay
+que rehacerlos a mano si el VPS se reconstruye (los paquetes se resuelven
+solos con `apt upgrade`, pero las reglas de `ufw` y `jail.local` de fail2ban
+sí hay que recrearlas — el contenido exacto queda documentado arriba).
+
 ### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
 
 `SSH_HOST="iptvwatch"` en `deploy.sh` sigue apuntando al VPS compartido viejo. Correr
