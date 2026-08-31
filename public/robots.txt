@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://cod2.4livepro.com/sitemap.xml

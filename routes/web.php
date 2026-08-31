@@ -30,11 +30,13 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\TeamBalanceController;
 use App\Http\Controllers\TeamkillController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/widget/live-status', [DashboardController::class, 'liveStatusWidget'])->name('dashboard.live-status');
 Route::get('/widget/discord', [DashboardController::class, 'discordWidget'])->name('dashboard.discord-widget');
