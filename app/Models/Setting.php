@@ -13,6 +13,7 @@ class Setting extends Model
         'discord_description',
         'discord_benefits',
         'hosted_servers_ports',
+        'discord_match_webhook_url',
     ];
 
     /** @return array<int, string> Un item de beneficio por linea, vacios descartados. */

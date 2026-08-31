@@ -40,6 +40,12 @@
             <p class="text-xs text-slate-600 mt-1">Un ítem por línea. Se muestran como lista con ícono en la sección de Discord de la página de inicio.</p>
         </div>
 
+        <div class="pt-4 border-t border-slate-800">
+            <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Webhook de resultados de partidas</label>
+            <input type="url" name="discord_match_webhook_url" value="{{ old('discord_match_webhook_url', $setting->discord_match_webhook_url) }}" placeholder="https://discord.com/api/webhooks/xxxxxxxxxxxx/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 font-mono text-sm">
+            <p class="text-xs text-slate-600 mt-1">Cuando una partida de Search &amp; Destroy termina, se postea el resultado (mapa, marcador, MVP) al canal dueño de este webhook. Se crea desde Discord: Configuración del canal → Integraciones → Webhooks → Nuevo Webhook → Copiar URL. Dejar vacío para desactivar.</p>
+        </div>
+
         <button type="submit" class="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium">Guardar</button>
     </form>
 </div>

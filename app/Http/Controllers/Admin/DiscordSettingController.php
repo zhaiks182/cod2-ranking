@@ -23,6 +23,7 @@ class DiscordSettingController extends Controller
             'discord_invite_url' => ['nullable', 'url', 'max:255'],
             'discord_description' => ['nullable', 'string', 'max:500'],
             'discord_benefits' => ['nullable', 'string', 'max:2000'],
+            'discord_match_webhook_url' => ['nullable', 'url', 'max:500', 'starts_with:https://discord.com/api/webhooks/,https://discordapp.com/api/webhooks/'],
         ]);
 
         Setting::current()->update($validated);
