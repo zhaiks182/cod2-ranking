@@ -1022,11 +1022,13 @@ de upload) va a fallar igual.
 
 ### Otros ajustes de PHP/Apache que hay que replicar si se reinstala desde cero
 
-- `post_max_size`/`upload_max_filesize` en `25M` (default de PHP es `8M` — muy chico
-  para demos reales de 10-12MB). El viejo ya lo tenía así en su `php.ini` de
-  `mod_php`; se perdió al pasar a FPM porque son archivos `php.ini` distintos
-  (`/etc/php/8.3/apache2/php.ini` vs `/etc/php/8.3/fpm/php.ini`) y no hay ninguna
-  automatización que los mantenga sincronizados.
+- **`post_max_size`/`upload_max_filesize` en `60M`** (subido de `25M` el
+  2026-08-31, ver "Bug real: demos grandes rechazados con 413" más abajo —
+  el default de PHP es `8M`, insuficiente ya desde el arranque). El viejo VPS
+  ya lo tenía en `25M` en su `php.ini` de `mod_php`; se perdió al pasar a FPM
+  porque son archivos `php.ini` distintos (`/etc/php/8.3/apache2/php.ini` vs
+  `/etc/php/8.3/fpm/php.ini`) y no hay ninguna automatización que los
+  mantenga sincronizados.
 - `pm.max_children` del pool de FPM: arrancó en `6` (conservador, calcado del viejo)
   pero ya disparó `WARNING: server reached pm.max_children setting` bajo carga
   liviana de pruebas — subido a `10` (con `~40MB` promedio medido por worker, dentro
@@ -1042,6 +1044,58 @@ de upload) va a fallar igual.
   horas desalineadas 100% consistentes con el offset real del datacenter (confirmado
   en vivo: `Europe/London` por default del proveedor, 6 horas de diferencia con
   Guayaquil).
+
+### Bug real: demos grandes rechazados con 413 (2026-08-31)
+
+El dueño reportó que jugadores no lograban subir demos de una partida de
+Burgundy jugada el domingo 30 de agosto — el error real era un **413**
+(Request Entity Too Large), no algo específico de Burgundy: el mismo error
+pegaba en cualquier mapa cuya partida fuera lo bastante larga.
+
+**Causa raíz confirmada en `cod2-error.log`:**
+```
+PHP Request Startup: POST Content-Length of 27691731 bytes exceeds the
+limit of 26214400 bytes
+```
+`post_max_size`/`upload_max_filesize` seguían en `25M` (`26,214,400` bytes
+exactos) desde la migración al VPS nuevo — ver la entrada de arriba, calcado
+del valor que ya tenía el VPS viejo en 2026-08-19 cuando los demos reales
+rondaban 10-12MB. Los partidos de esta comunidad se alargaron desde
+entonces (partidas 8v8/9v9/11v11 de muchas rondas) y varios demos reales ya
+estaban rozando el límite antes de romperlo del todo — confirmado en
+`demos` de esa misma noche: dos demos de la partida 122 (Dawnville, St.
+Mere Eglise) entraron justo por debajo (`25,843,363` y `25,924,602` bytes,
+a menos de 300KB del límite) mientras que el resto de los ~11 jugadores de
+esa partida (11v11) quedaron con demos de 26-28MB que rebotaron con 413 en
+cada uno de sus 3 reintentos automáticos — de ahí que la partida solo
+tenga "2 demo(s)" en `/partidas` en vez de una por jugador. Mismo patrón
+confirmado también para un demo de Burgundy (`re_Genuine_bg`) y uno de
+Toujane (`re_Genuine_tj`) esa misma noche, en sesiones de juego
+posteriores (el contador de 3 reintentos vive en memoria del proceso del
+juego — ver "Cómo funciona el contrato de subida" más abajo — así que
+volvió a fallar 3 veces más cada vez que esos jugadores reabrieron CoD2).
+
+**Fix:** `post_max_size`/`upload_max_filesize` subidos de `25M` a `60M` en
+`/etc/php/8.3/fpm/php.ini` (más del doble del pico real visto, `~28MB`, para
+no volver a rozar el límite con partidas todavía más largas) +
+`systemctl reload php8.3-fpm`. Verificado en vivo con un POST real de 30MB
+en chunked (mismo patrón que usa el cliente CoD2x, ver "El gotcha de
+`mod_proxy_fcgi` con bodies chunked" más arriba) contra el endpoint real de
+producción: `413` antes del cambio → `201` después. Registro/archivo de
+la subida sintética de prueba borrados a mano después de confirmar.
+
+**Los demos que ya se perdieron esa noche (los que rebotaron con 413 antes
+del fix) no se pueden recuperar desde este servidor** — nunca llegaron a
+escribirse en `storage/`, así que no hay ninguna copia server-side de la
+que reconstruirlos (a diferencia de un kill perdido por una condición de
+carrera, que sigue en el log de texto plano y se puede reprocesar, ver la
+bitácora de bugs más arriba, entrada 16). El único lugar donde podrían
+seguir existiendo es el disco del propio jugador, si CoD2x no borra el
+`.dm_1` local tras agotar los 3 reintentos (sin confirmar — el código
+fuente de CoD2x solo documenta que borra el *marcador* `.dm_1.upload` al
+confirmar éxito, no qué hace con el demo en sí tras un fallo definitivo).
+Nada que hacer retroactivamente del lado del servidor para esa partida
+puntual; el fix solo previene que vuelva a pasar.
 
 ### Prioridad del gameserver vs. la carga del panel — verificado con carga real, no solo config
 
