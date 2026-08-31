@@ -3759,6 +3759,52 @@ cantidad de bajas).
   webhook desde `/adm_cod2/discord`** — sin eso el comando sigue
   saliendo sin hacer nada, tal como se lo dejó verificado.
 
+## sitemap.xml (2026-08-31)
+
+`/sitemap.xml` (`SitemapController`, `resources/views/sitemap.blade.php`) —
+para que Google indexe el sitio sin depender de rastrear cada link a mano.
+Un solo archivo sin paginación (dataset chico: ~70 partidas reales, ~40
+jugadores con actividad real hoy, sobra margen antes de necesitar dividirlo
+— el límite real de un sitemap es 50.000 URLs).
+
+- **Páginas estáticas**: dashboard, ranking, rango, equipos, `/partidas`,
+  `/demos`, las ~24 páginas de `/especialidades`, FAQ, descargas — lista fija
+  en el controller, con `priority`/`changefreq` a mano según qué tan seguido
+  cambia cada una.
+- **Partidas**: mismo criterio que `/partidas` (`scopeVisibleInListing()` +
+  `gametype=sd` + `is_backfilled=false`) — solo partidas SD reales que
+  llegaron a un resultado, nada fantasma/abandonado/histórico-sin-fecha.
+- **Jugadores**: `kills_total > 0 OR deaths_total > 0` — excluye las filas
+  fantasma de guid corrupto (ver la bitácora de bugs más arriba, el mismo
+  criterio que ya usa el borrado en masa del admin).
+- **Excluido a propósito**: todo `/adm_cod2/*`, `/servidores/{id}/{token}`
+  (la URL ES la credencial del dueño de ese server temporal — indexarla
+  sería publicar el control de un server ajeno), `/idioma/{locale}`
+  (acción, no contenido), `/descargas/archivos/*` (navegador de archivos).
+- Cacheado 1 hora (`Cache::remember('sitemap.xml', ...)`) — un crawler no
+  necesita datos al segundo, y evita que cada hit repita las mismas
+  queries.
+- **`robots.txt`** (`public/robots.txt`, ya existía permisivo) ganó una
+  línea `Sitemap: https://cod2.4livepro.com/sitemap.xml` al final. El
+  bloque grande de reglas por user-agent que aparece antes de eso al
+  visitarlo en producción (`Content-Signal:`, bloqueo de `GPTBot`/
+  `ClaudeBot`/etc) **no es parte de este repo** — Cloudflare lo inyecta a
+  nivel de borde ("Managed content", activable/desactivable desde su
+  dashboard) por encima del archivo real que sirve este VPS, mismo
+  precedente que cualquier otra config a nivel Cloudflare (no
+  administrable desde acá sin sus credenciales).
+- TDD: `tests/Feature/SitemapControllerTest.php` (10 casos — XML con
+  content-type correcto, incluye las páginas estáticas principales, nunca
+  incluye rutas admin/servidores-temporales/cambio-de-idioma, incluye una
+  partida SD real concluida, excluye backfilled/no-SD/abandonada, incluye
+  un jugador con actividad real, excluye uno fantasma de 0 kills/deaths,
+  la respuesta queda cacheada). Verificado junto a la suite completa en el
+  clone descartable del VPS: 261/269 tests, mismos 8 fallos preexistentes
+  sin relación (mismo baseline de siempre). Desplegado a producción sin
+  migración — verificado con `curl`: `/sitemap.xml` responde `200` con
+  `Content-Type: application/xml; charset=UTF-8` y las URLs esperadas,
+  `/robots.txt` incluye la línea `Sitemap:`.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
