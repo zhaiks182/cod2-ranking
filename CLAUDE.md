@@ -3693,6 +3693,72 @@ ambiente de testing donde se probaron ya no existe (ver arriba) — para
 volver a ver cualquiera de las tres en vivo hay que rearmar el ambiente y
 desplegar la rama correspondiente.
 
+## Webhook de Discord con resultado de partida (2026-08-31)
+
+`cod2:notify-discord-matches` (cron cada minuto, `routes/console.php`, mismo
+ritmo que `cod2:parse-log`) postea a un webhook de Discord el resultado de
+cada partida SD real que llegó a un resultado desde la última corrida —
+mapa, marcador (rojo si ganó axis, azul si ganó allies), duración y MVP
+(`KillAggregator::aggregate()` sobre los kills de esa partida, mayor
+cantidad de bajas).
+
+- **`settings.discord_match_webhook_url`** (nullable, editable desde
+  `/adm_cod2/discord` junto al resto de la config de Discord ya existente) —
+  mientras esté vacío, el comando se sale sin hacer nada (`blank(...)`
+  check al principio de `handle()`). La URL se genera desde Discord mismo
+  (Configuración del canal → Integraciones → Webhooks), no hay forma de
+  crearla desde este repo.
+- **`matches.discord_notified_at`** (nullable timestamp) — se marca apenas
+  se postea con éxito, para no volver a notificar la misma partida en la
+  corrida siguiente. Un `POST` fallido (Discord caído, URL inválida) NO
+  marca la partida — reintenta en la próxima corrida automáticamente.
+- **Mismo criterio de "partida real" que `/partidas`**:
+  `GameMatch::scopeVisibleInListing()` (ya excluye partidas
+  fantasma/abandonadas, ver la bitácora de bugs más arriba) + `gametype=sd`
+  (el pug prioriza Search & Destroy) + `is_backfilled=false` (el historial
+  importado no tiene fecha real).
+- `app/Services/DiscordMatchNotifier.php` — construye el embed y hace el
+  `POST`; usa `TeamSideAnalyzer::winningSideForMatch()` (la versión liviana
+  ya usada por `/partidas` para el badge Axis/Allies del listado, no
+  `sideScores()`, que pide construir el leaderboard completo).
+- **Bug real encontrado en el propio test de esta feature, no en el código
+  de producción:** el fixture (`NotifyDiscordMatchesTest::realMatch()`)
+  colgaba el evento `match_end` de la PRIMERA ronda creada
+  (`$match->rounds()->first()`) en vez de la última —
+  `TeamSideAnalyzer::clusterRoundWinners()` recorta las rondas a
+  `id <= round_id del match_end`, así que con el evento en la ronda 1 solo
+  quedaba 1 ronda visible (`final_score` necesita mínimo 2) y el marcador
+  desaparecía del embed en el test. Sin relación con el bug real de
+  producción (ronda 386 de una partida real, ver la bitácora de bugs) —
+  acá era simplemente el fixture de prueba mal armado.
+- **Segundo bug real, de infraestructura, no de lógica:** la migración que
+  agrega `discord_match_webhook_url` pasó los tests (SQLite en el entorno
+  aislado ignora `->after()` silenciosamente) pero falló contra el MySQL
+  real de producción — apuntaba a `->after('hosted_servers_max_concurrent')`,
+  una columna renombrada a `hosted_servers_ports` el 2026-08-25 (ver
+  "Servidores temporales self-service" más arriba). Falló limpio antes de
+  tocar la tabla (confirmado con `information_schema.COLUMNS` antes de
+  reintentar) — corregido y redesplegado sin dejar la base en un estado
+  intermedio. **Lección:** una migración con `->after('columna_vieja')`
+  puede pasar la suite igual si el motor de test no valida FKs/orden de
+  columnas como MySQL sí lo hace — no asumir que "pasó en el clon aislado"
+  cubre este tipo de error, tenerlo en cuenta si se repite el patrón.
+- TDD: `tests/Feature/NotifyDiscordMatchesTest.php` (7 casos — sin webhook
+  configurado no postea nada; postea una partida real y la marca; no la
+  postea dos veces; no postea partidas que no son SD; no postea el
+  histórico importado; no postea una partida abandonada sin resultado
+  real; una respuesta fallida de Discord no marca la partida). Verificado
+  junto a la suite completa en el clone descartable del VPS: 251/259
+  tests, mismos 8 fallos preexistentes sin relación (ExampleTest,
+  LocaleSwitcherTest ×3, MatchRoundDetailsTest, CountriesSeasonTest,
+  ExtrasSeasonTest, RivalriesGrenadesTest — mismo baseline ya confirmado
+  durante el despliegue de Usuarios y roles, el mismo día). Desplegado a
+  producción con `php artisan migrate --force`, verificado con `curl`
+  (sitio `200`) y `schedule:list` (el comando nuevo aparece registrado
+  cada minuto). **Pendiente: el dueño todavía tiene que cargar la URL del
+  webhook desde `/adm_cod2/discord`** — sin eso el comando sigue
+  saliendo sin hacer nada, tal como se lo dejó verificado.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
