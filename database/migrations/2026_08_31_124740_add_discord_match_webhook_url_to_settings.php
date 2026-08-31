@@ -14,7 +14,7 @@ return new class extends Migration
             // que el admin lo cargue desde adm_cod2/discord (la URL sale de crear
             // un webhook en la config de un canal de Discord, no se puede generar
             // desde este repo).
-            $table->string('discord_match_webhook_url')->nullable()->after('hosted_servers_max_concurrent');
+            $table->string('discord_match_webhook_url')->nullable()->after('hosted_servers_ports');
         });
     }
 
