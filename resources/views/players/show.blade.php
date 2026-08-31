@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('title', $player->last_name_plain)
+@section('og_title', $player->last_name_plain.' — CoD2 Stats')
+@section('og_description', __(':kills bajas · :deaths muertes · K/D :kd — Pug Latam', ['kills' => $player->kills_total, 'deaths' => $player->deaths_total, 'kd' => $player->kd_ratio]))
 
 @section('content')
 <div class="space-y-6">

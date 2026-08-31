@@ -4,6 +4,25 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'CoD2 Stats')</title>
+    {{-- Open Graph / Twitter Card (2026-08-31) -- para que un link del sitio
+    compartido en Discord (donde vive la comunidad, ver settings.discord_*) se
+    vea con titulo/descripcion/imagen en vez de una URL pelada. Defaults acá,
+    cualquier pagina puede pisarlos con @section('og_title'|'og_description'|'og_image'). --}}
+    @php
+        $ogTitle = trim($__env->yieldContent('og_title')) ?: trim($__env->yieldContent('title', 'CoD2 Stats — Pug Latam'));
+        $ogDescription = trim($__env->yieldContent('og_description')) ?: __('Rankings, estadísticas y partidas del servidor de Call of Duty 2 Pug Latam.');
+        $ogImage = trim($__env->yieldContent('og_image')) ?: asset('logo_cod2.webp');
+    @endphp
+    <meta property="og:site_name" content="CoD2 Stats — Pug Latam">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $ogTitle }}">
+    <meta property="og:description" content="{{ $ogDescription }}">
+    <meta property="og:image" content="{{ $ogImage }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $ogTitle }}">
+    <meta name="twitter:description" content="{{ $ogDescription }}">
+    <meta name="twitter:image" content="{{ $ogImage }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -171,6 +190,24 @@
                         <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
                     </div>
                 </div>
+                {{-- Buscador de jugadores (2026-08-31) -- icono que expande un input,
+                resultados en vivo vía /jugadores/buscar (debounce 250ms), clickear un
+                resultado navega directo al perfil. Cierra con el mismo listener global
+                de "click afuera" que ya usan los otros dropdowns del nav. --}}
+                <div class="relative">
+                    <button type="button" data-search-toggle onclick="cod2ToggleSearch()"
+                        class="p-1.5 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
+                        aria-label="{{ __('Buscar jugador') }}">
+                        <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="search-dropdown" class="hidden absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-panel shadow-xl z-50 normal-case tracking-normal font-normal">
+                        <div class="p-2 border-b border-slate-800">
+                            <input type="text" id="cod2-search-input" oninput="cod2SearchPlayers(this.value)" placeholder="{{ __('Buscar jugador...') }}"
+                                class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500">
+                        </div>
+                        <div id="cod2-search-results" class="max-h-80 overflow-y-auto"></div>
+                    </div>
+                </div>
                 {{-- Selector ES/EN (2026-08-29, a pedido del dueño, referencia
                 hostgamer.net/es) -- solo icono de bandera + chevron en el trigger,
                 banderas via GeoIp::flagIconHtml() (flagcdn.com, reusado del mismo
@@ -223,12 +260,66 @@
             kills: @json(__('Bajas')),
             youKilledThem: @json(__('Lo mataste')),
             theyKilledYou: @json(__('Te mató')),
+            searchNoResults: @json(__('Sin resultados.')),
+            searchHint: @json(__('Escribí al menos 2 letras...')),
+            kills: @json(__('bajas')),
         };
 
         function toggleSpecGroup(btn) {
             const submenu = btn.nextElementSibling;
             submenu.classList.toggle('hidden');
             btn.querySelector('svg').classList.toggle('rotate-180');
+        }
+
+        // Buscador de jugadores del nav (2026-08-31) -- debounce de 250ms para no
+        // pegarle a /jugadores/buscar en cada tecla, mismo patron de "un fetch,
+        // descartar si ya no es la ultima query" que ya usa openDetailsPopover()
+        // mas abajo para no pisar resultados con una respuesta vieja que llega tarde.
+        function cod2ToggleSearch() {
+            const dropdown = document.getElementById('search-dropdown');
+            dropdown.classList.toggle('hidden');
+            if (!dropdown.classList.contains('hidden')) {
+                document.getElementById('cod2-search-input').focus();
+            }
+        }
+
+        let cod2SearchTimer = null;
+        let cod2SearchSeq = 0;
+
+        function cod2SearchPlayers(query) {
+            clearTimeout(cod2SearchTimer);
+            const results = document.getElementById('cod2-search-results');
+            const q = query.trim();
+
+            if (q.length < 2) {
+                results.innerHTML = q.length === 0 ? '' : `<div class="px-3 py-3 text-xs text-slate-500">${window.cod2I18n.searchHint}</div>`;
+                return;
+            }
+
+            cod2SearchTimer = setTimeout(async () => {
+                const seq = ++cod2SearchSeq;
+                try {
+                    const res = await fetch(`{{ route('players.search') }}?q=${encodeURIComponent(q)}`);
+                    const players = await res.json();
+                    if (seq !== cod2SearchSeq) return;
+
+                    if (!players.length) {
+                        results.innerHTML = `<div class="px-3 py-3 text-xs text-slate-500">${window.cod2I18n.searchNoResults}</div>`;
+                        return;
+                    }
+
+                    results.innerHTML = players.map(p => `
+                        <a href="/jugadores/${encodeURIComponent(p.guid)}" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent border-b border-slate-800/60 last:border-0">
+                            ${p.icon_url ? `<img src="${p.icon_url}" alt="" class="w-5 h-5 shrink-0 object-contain">` : ''}
+                            <span class="truncate flex-1">${escapeHtml(p.name)}</span>
+                            <span class="text-slate-500 text-xs shrink-0">${p.kills} ${window.cod2I18n.kills}</span>
+                        </a>
+                    `).join('');
+                } catch (e) {
+                    if (seq !== cod2SearchSeq) return;
+                    results.innerHTML = `<div class="px-3 py-3 text-xs text-red-400">${window.cod2I18n.errorLoading}</div>`;
+                }
+            }, 250);
         }
 
         // Antes vivia dentro de partials/live-status.blade.php (dentro de un bloque
@@ -499,6 +590,11 @@
             if (langDropdown && !langDropdown.contains(e.target) && !e.target.closest('[data-lang-toggle]')) {
                 langDropdown.classList.add('hidden');
             }
+
+            const searchDropdown = document.getElementById('search-dropdown');
+            if (searchDropdown && !searchDropdown.contains(e.target) && !e.target.closest('[data-search-toggle]')) {
+                searchDropdown.classList.add('hidden');
+            }
         });
 
         // ESC cierra cualquier popup abierto (2026-08-29, a pedido del dueño) --
@@ -512,6 +608,7 @@
             if (e.key !== 'Escape') return;
 
             document.getElementById('teamkill-popover')?.classList.add('hidden');
+            document.getElementById('search-dropdown')?.classList.add('hidden');
             document.querySelectorAll('[id*="-modal"]').forEach((m) => m.classList.add('hidden'));
         });
     </script>

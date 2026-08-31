@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('title', \App\Support\MapCatalog::mapLabel($match->map))
+@section('og_title', \App\Support\MapCatalog::mapLabel($match->map).($finalScore ? ' — '.$finalScore : ''))
+@section('og_description', __('Search and Destroy · :date — Pug Latam', ['date' => $match->is_backfilled ? __('historial importado') : $match->started_at->translatedFormat('j \d\e F, Y')]))
+@if($mapImageUrl = \App\Support\MapImage::url($match->map))
+    @section('og_image', $mapImageUrl)
+@endif
 
 @section('content')
 <div class="space-y-6">

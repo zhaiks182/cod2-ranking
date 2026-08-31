@@ -27,6 +27,7 @@ use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\PlayerSearchController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\TeamBalanceController;
 use App\Http\Controllers\TeamkillController;
@@ -43,6 +44,7 @@ Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');
 Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name('demos.download');
 Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
+Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
 Route::get('/teamkills/{player:guid}', [TeamkillController::class, 'index'])->name('teamkills.index');
 Route::get('/kills/{player:guid}', [KillDetailController::class, 'index'])->name('kills.detail');
