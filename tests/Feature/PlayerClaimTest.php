@@ -71,4 +71,28 @@ class PlayerClaimTest extends TestCase
         $this->assertNull($siteUser->claim_code);
         $this->assertNull($siteUser->claim_code_expires_at);
     }
+
+    public function test_the_nav_shows_a_pending_claim_countdown_on_any_page(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create([
+            'discord_id' => '1', 'discord_username' => 'a',
+            'pending_claim_player_id' => $player->id, 'claim_code' => 'ABCDEFGH',
+            'claim_code_expires_at' => now()->addMinutes(15),
+        ]);
+
+        $this->actingAs($siteUser, 'site')->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('global-claim-countdown', false)
+            ->assertSee(__('Reclamo de perfil pendiente'));
+    }
+
+    public function test_the_nav_does_not_show_a_countdown_without_a_pending_claim(): void
+    {
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $this->actingAs($siteUser, 'site')->get(route('dashboard'))
+            ->assertOk()
+            ->assertDontSee('global-claim-countdown', false);
+    }
 }

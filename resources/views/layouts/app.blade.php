@@ -88,6 +88,37 @@
                         </span>
                     </a>
                 @endif
+                {{-- Mini-temporizador flotante de reclamo pendiente (2026-09-01, a pedido
+                del dueño) -- mismo lugar/estilo que el icono de "servidor temporal activo"
+                de arriba, para no perder de vista cuanto tiempo queda mientras se navega
+                a otra pagina del sitio (no solo desde /mi-cuenta). --}}
+                @auth('site')
+                    @if(auth('site')->user()->hasPendingClaim())
+                        <a href="{{ route('account.show') }}"
+                            class="flex items-center gap-1 p-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 transition-colors normal-case tracking-normal"
+                            title="{{ __('Reclamo de perfil pendiente') }}"
+                            data-claim-expires="{{ auth('site')->user()->claim_code_expires_at->toIso8601String() }}">
+                            <svg class="w-4 h-4 shrink-0 motion-safe:animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span id="global-claim-countdown" class="text-xs font-mono"></span>
+                        </a>
+                        <script>
+                            (function () {
+                                var el = document.currentScript.previousElementSibling;
+                                var expiresAt = new Date(el.dataset.claimExpires).getTime();
+                                var label = document.getElementById('global-claim-countdown');
+                                function tick() {
+                                    var remaining = Math.max(0, expiresAt - Date.now());
+                                    var mins = Math.floor(remaining / 60000);
+                                    var secs = Math.floor((remaining % 60000) / 1000);
+                                    label.textContent = mins + ':' + String(secs).padStart(2, '0');
+                                    if (remaining <= 0) clearInterval(timer);
+                                }
+                                var timer = setInterval(tick, 1000);
+                                tick();
+                            })();
+                        </script>
+                    @endif
+                @endauth
                 <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Inicio') }}</a>
                 <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Crear servidor') }}</a>
                 <div class="relative">
