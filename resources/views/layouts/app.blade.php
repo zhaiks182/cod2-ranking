@@ -226,8 +226,8 @@
                         <div class="relative">
                             <button type="button" data-account-toggle onclick="document.getElementById('account-dropdown').classList.toggle('hidden')"
                                 class="flex items-center gap-1.5 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal">
-                                @if(auth('site')->user()->discord_avatar_url)
-                                    <img src="{{ auth('site')->user()->discord_avatar_url }}" alt="" class="w-5 h-5 rounded-full">
+                                @if(auth('site')->user()->avatar_url)
+                                    <img src="{{ auth('site')->user()->avatar_url }}" alt="" class="w-5 h-5 rounded-full">
                                 @endif
                                 {{ auth('site')->user()->discord_username }}
                             </button>

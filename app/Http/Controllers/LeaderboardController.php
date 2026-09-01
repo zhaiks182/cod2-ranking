@@ -7,6 +7,7 @@ use App\Models\Kill;
 use App\Models\Round;
 use App\Models\Season;
 use App\Models\Server;
+use App\Models\SiteUser;
 use App\Support\KillAggregator;
 use App\Support\MapCatalog;
 use App\Support\PlaytimeCalculator;
@@ -74,6 +75,14 @@ class LeaderboardController extends Controller
         }
 
         $rows = $server ? $this->aggregateFromKills($server->id, $mapCodes, $tableMatchIds) : collect();
+
+        // Preferencia real del jugador (2026-09-01, /mi-cuenta, "Mostrar mi
+        // perfil en el ranking") -- antes de la division axis/allies de mas
+        // abajo, para que un jugador oculto tampoco aparezca ahi.
+        $hiddenPlayerIds = SiteUser::where('show_on_ranking', false)->whereNotNull('player_id')->pluck('player_id');
+        if ($hiddenPlayerIds->isNotEmpty()) {
+            $rows = $rows->reject(fn ($row) => $hiddenPlayerIds->contains($row->player->id))->values();
+        }
 
         // Horas jugadas / kills por hora (reemplaza "dias jugados", 2026-08-29, a
         // pedido del dueño: "mas preciso"). Mismo calculo que /horas-jugadas

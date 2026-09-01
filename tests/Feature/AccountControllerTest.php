@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Player;
 use App\Models\SiteUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AccountControllerTest extends TestCase
@@ -107,5 +109,83 @@ class AccountControllerTest extends TestCase
     public function test_a_guest_cannot_hit_the_status_endpoint(): void
     {
         $this->get(route('account.status'))->assertRedirect(route('login'));
+    }
+
+    public function test_a_claimed_user_can_update_the_gaming_identity_fields(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')->post(route('account.update'), [
+            'clan_tag' => 'Destino',
+            'country' => 'EC',
+            'language' => 'es',
+            'preferred_role' => 'Asalto',
+            'youtube_url' => 'https://youtube.com/@destino',
+            'twitter_url' => 'https://x.com/destino',
+            'website_url' => 'https://destino.gg',
+        ])->assertRedirect();
+
+        $siteUser->refresh();
+        $this->assertSame('Destino', $siteUser->clan_tag);
+        $this->assertSame('EC', $siteUser->country);
+        $this->assertSame('es', $siteUser->language);
+        $this->assertSame('Asalto', $siteUser->preferred_role);
+        $this->assertSame('https://youtube.com/@destino', $siteUser->youtube_url);
+        $this->assertSame('https://x.com/destino', $siteUser->twitter_url);
+        $this->assertSame('https://destino.gg', $siteUser->website_url);
+    }
+
+    public function test_language_must_be_a_supported_locale(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('account.update'), ['language' => 'fr'])
+            ->assertSessionHasErrors('language');
+    }
+
+    public function test_unchecking_show_on_ranking_hides_the_player_and_checking_it_shows_again(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+        $this->assertTrue($siteUser->fresh()->show_on_ranking);
+
+        // Un checkbox sin marcar no manda el campo en el POST -- tiene que
+        // resolverse a false igual, no quedarse en true por default.
+        $this->actingAs($siteUser, 'site')->post(route('account.update'), []);
+        $this->assertFalse($siteUser->fresh()->show_on_ranking);
+
+        $this->actingAs($siteUser, 'site')->post(route('account.update'), ['show_on_ranking' => '1']);
+        $this->assertTrue($siteUser->fresh()->show_on_ranking);
+    }
+
+    public function test_a_claimed_user_can_upload_a_profile_photo(): void
+    {
+        Storage::fake('public');
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')->post(route('account.update'), [
+            'avatar' => UploadedFile::fake()->image('foto.jpg', 300, 300),
+        ])->assertRedirect();
+
+        $siteUser->refresh();
+        $this->assertNotNull($siteUser->avatar_path);
+        Storage::disk('public')->assertExists($siteUser->avatar_path);
+    }
+
+    public function test_a_non_image_file_is_rejected_as_the_avatar(): void
+    {
+        Storage::fake('public');
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('account.update'), ['avatar' => UploadedFile::fake()->create('archivo.pdf', 100)])
+            ->assertSessionHasErrors('avatar');
+
+        $this->assertNull($siteUser->fresh()->avatar_path);
     }
 }

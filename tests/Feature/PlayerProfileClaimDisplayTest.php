@@ -11,6 +11,16 @@ class PlayerProfileClaimDisplayTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_shows_the_clan_tag_next_to_the_name_when_set(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id, 'clan_tag' => 'Destino']);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertSee('[Destino]');
+    }
+
     public function test_shows_bio_and_socials_when_the_player_is_claimed(): void
     {
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
