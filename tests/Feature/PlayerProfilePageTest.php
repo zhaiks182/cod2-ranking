@@ -24,7 +24,7 @@ class PlayerProfilePageTest extends TestCase
             'discord_id' => '221538919068467200', 'discord_username' => 'zhaiks', 'player_id' => $player->id,
             'bio' => 'Jugador desde 2003.', 'steam_url' => 'https://steamcommunity.com/id/zhaiks',
             'pc_cpu' => 'Ryzen 5600X', 'clan_tag' => 'Destino', 'role' => 'Fundador', 'preferred_role' => 'Asalto',
-            'country' => 'EC', 'language' => 'es',
+            'country' => 'ec', 'language' => 'es',
         ]);
 
         $this->get(route('players.profile', $player))
@@ -32,11 +32,16 @@ class PlayerProfilePageTest extends TestCase
             ->assertSee('Jugador desde 2003.')
             ->assertSee('https://steamcommunity.com/id/zhaiks', false)
             ->assertSee('Ryzen 5600X')
-            ->assertSee('[Destino]')
+            ->assertSee(__('Clan').': Destino')
             ->assertSee('Fundador')
             ->assertSee('Asalto')
-            ->assertSee('EC')
+            ->assertSee('Ecuador')
             ->assertSee('Español')
+            // Banderas reales (2026-09-01) -- una para el pais (Ecuador), otra
+            // para el idioma (es -> bandera de España, mismo criterio que ya
+            // usa el selector de idioma del nav).
+            ->assertSee('flagcdn.com/ec.svg', false)
+            ->assertSee('flagcdn.com/es.svg', false)
             ->assertSee('https://discord.com/users/221538919068467200', false);
     }
 

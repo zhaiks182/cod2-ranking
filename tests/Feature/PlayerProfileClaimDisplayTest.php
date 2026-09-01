@@ -11,14 +11,16 @@ class PlayerProfileClaimDisplayTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_shows_the_clan_tag_next_to_the_name_when_set(): void
+    public function test_the_clan_tag_no_longer_appears_next_to_the_name_on_the_stats_page(): void
     {
+        // 2026-09-01, a pedido del dueño ("el clan no debe aparecer al lado
+        // del nombre") -- se movio a su propia linea en players.profile.
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
         SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id, 'clan_tag' => 'Destino']);
 
         $this->get(route('players.show', $player))
             ->assertOk()
-            ->assertSee('[Destino]');
+            ->assertDontSee('[Destino]');
     }
 
     public function test_shows_a_link_to_the_full_profile_page_when_claimed(): void

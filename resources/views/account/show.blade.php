@@ -60,7 +60,12 @@
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">{{ __('País') }}</label>
-                            <input type="text" name="country" value="{{ old('country', $siteUser->country) }}" maxlength="2" placeholder="ej. EC, AR, MX..." class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 uppercase">
+                            <select name="country" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                                <option value="">{{ __('Sin definir') }}</option>
+                                @foreach(\App\Support\CountryCatalog::OPTIONS as $code => $name)
+                                    <option value="{{ $code }}" @selected(old('country', $siteUser->country) === $code)>{{ $name }}</option>
+                                @endforeach
+                            </select>
                             @error('country')<p class="text-xs text-red-400 mt-1">{{ $message }}</p>@enderror
                         </div>
                         <div>

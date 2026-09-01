@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\SetLocale;
+use App\Support\CountryCatalog;
 use App\Support\SiteUserAvatar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +28,10 @@ class AccountController extends Controller
         $data = $request->validate([
             'bio' => ['nullable', 'string', 'max:400'],
             'clan_tag' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'size:2', 'alpha'],
+            // Elegido de una lista (2026-09-01, antes texto libre) -- asi
+            // GeoIp::flagIconHtml() siempre tiene un codigo real con el que
+            // dibujar una bandera de verdad.
+            'country' => ['nullable', 'string', 'in:'.implode(',', array_keys(CountryCatalog::OPTIONS))],
             'language' => ['nullable', 'string', 'in:'.implode(',', SetLocale::SUPPORTED)],
             'preferred_role' => ['nullable', 'string', 'max:40'],
             // Solo http(s) -- sin esto, un jugador podria guardar un esquema

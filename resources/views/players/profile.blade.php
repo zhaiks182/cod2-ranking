@@ -17,11 +17,11 @@
             @endif
 
             <div class="min-w-0">
-                <h1 class="text-xl font-semibold">
-                    {!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}
-                    @if($player->siteUser->clan_tag)<span class="text-slate-500">[{{ $player->siteUser->clan_tag }}]</span>@endif
-                </h1>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
+                @if($player->siteUser->clan_tag)
+                    <p class="text-sm text-slate-400 mt-0.5">{{ __('Clan') }}: {{ $player->siteUser->clan_tag }}</p>
+                @endif
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                     <a href="https://discord.com/users/{{ $player->siteUser->discord_id }}" target="_blank" rel="noopener"
                         class="inline-flex items-center gap-1 rounded-full bg-[#5865F2]/15 text-[#5865F2] px-2 py-0.5 text-xs font-medium hover:bg-[#5865F2]/25 transition-colors">
                         Discord: {{ $player->siteUser->discord_username }}
@@ -37,9 +37,19 @@
                         </span>
                     @endif
                 </div>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-slate-500">
-                    @if($player->siteUser->country)<span>{{ __('País') }}: {{ strtoupper($player->siteUser->country) }}</span>@endif
-                    @if($player->siteUser->language)<span>{{ __('Idioma') }}: {{ $player->siteUser->language === 'es' ? 'Español' : 'English' }}</span>@endif
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
+                    @if($player->siteUser->country)
+                        <span class="inline-flex items-center gap-1.5">
+                            {!! \App\Services\GeoIp::flagIconHtml($player->siteUser->country, 18, 13) !!}
+                            {{ \App\Support\CountryCatalog::OPTIONS[$player->siteUser->country] ?? strtoupper($player->siteUser->country) }}
+                        </span>
+                    @endif
+                    @if($player->siteUser->language)
+                        <span class="inline-flex items-center gap-1.5">
+                            {!! \App\Services\GeoIp::flagIconHtml($player->siteUser->language === 'es' ? 'es' : 'us', 18, 13) !!}
+                            {{ $player->siteUser->language === 'es' ? 'Español' : 'English' }}
+                        </span>
+                    @endif
                 </div>
             </div>
         </div>
@@ -49,16 +59,36 @@
         @endif
     </div>
 
-    @if($player->siteUser->steam_url || $player->siteUser->twitch_url || $player->siteUser->instagram_url || $player->siteUser->youtube_url || $player->siteUser->twitter_url || $player->siteUser->website_url)
+    @php
+        // Un solo icono (flecha "abrir en otra pestaña") reusado para las 6 redes,
+        // diferenciadas por su color de marca -- mas seguro que reproducir 6 logos
+        // exactos a mano (un path SVG mal armado rompe/desaparece el icono).
+        $socialLinks = [
+            ['url' => $player->siteUser->steam_url, 'label' => 'Steam', 'color' => '#66c0f4'],
+            ['url' => $player->siteUser->twitch_url, 'label' => 'Twitch', 'color' => '#9146FF'],
+            ['url' => $player->siteUser->instagram_url, 'label' => 'Instagram', 'color' => '#E1306C'],
+            ['url' => $player->siteUser->youtube_url, 'label' => 'YouTube', 'color' => '#FF0000'],
+            ['url' => $player->siteUser->twitter_url, 'label' => 'Twitter / X', 'color' => '#1DA1F2'],
+            ['url' => $player->siteUser->website_url, 'label' => __('Sitio web'), 'color' => '#94a3b8'],
+        ];
+        $hasSocialLinks = collect($socialLinks)->contains(fn ($s) => $s['url']);
+    @endphp
+    @if($hasSocialLinks)
         <div class="rounded-xl border border-slate-800 bg-panel px-6 py-5">
             <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-3">{{ __('Redes sociales') }}</h2>
-            <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                @if($player->siteUser->steam_url)<a href="{{ $player->siteUser->steam_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">Steam</a>@endif
-                @if($player->siteUser->twitch_url)<a href="{{ $player->siteUser->twitch_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">Twitch</a>@endif
-                @if($player->siteUser->instagram_url)<a href="{{ $player->siteUser->instagram_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">Instagram</a>@endif
-                @if($player->siteUser->youtube_url)<a href="{{ $player->siteUser->youtube_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">YouTube</a>@endif
-                @if($player->siteUser->twitter_url)<a href="{{ $player->siteUser->twitter_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">Twitter / X</a>@endif
-                @if($player->siteUser->website_url)<a href="{{ $player->siteUser->website_url }}" target="_blank" rel="noopener" class="text-slate-300 hover:text-gsaccent">{{ __('Sitio web') }}</a>@endif
+            <div class="flex flex-wrap gap-3">
+                @foreach($socialLinks as $social)
+                    @if($social['url'])
+                        <a href="{{ $social['url'] }}" target="_blank" rel="noopener"
+                            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+                            style="background-color: {{ $social['color'] }}26; color: {{ $social['color'] }};">
+                            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            {{ $social['label'] }}
+                        </a>
+                    @endif
+                @endforeach
             </div>
         </div>
     @endif

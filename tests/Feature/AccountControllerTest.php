@@ -118,7 +118,7 @@ class AccountControllerTest extends TestCase
 
         $this->actingAs($siteUser, 'site')->post(route('account.update'), [
             'clan_tag' => 'Destino',
-            'country' => 'EC',
+            'country' => 'ec',
             'language' => 'es',
             'preferred_role' => 'Asalto',
             'youtube_url' => 'https://youtube.com/@destino',
@@ -128,12 +128,22 @@ class AccountControllerTest extends TestCase
 
         $siteUser->refresh();
         $this->assertSame('Destino', $siteUser->clan_tag);
-        $this->assertSame('EC', $siteUser->country);
+        $this->assertSame('ec', $siteUser->country);
         $this->assertSame('es', $siteUser->language);
         $this->assertSame('Asalto', $siteUser->preferred_role);
         $this->assertSame('https://youtube.com/@destino', $siteUser->youtube_url);
         $this->assertSame('https://x.com/destino', $siteUser->twitter_url);
         $this->assertSame('https://destino.gg', $siteUser->website_url);
+    }
+
+    public function test_country_must_be_from_the_predefined_list(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('account.update'), ['country' => 'zz'])
+            ->assertSessionHasErrors('country');
     }
 
     public function test_language_must_be_a_supported_locale(): void
