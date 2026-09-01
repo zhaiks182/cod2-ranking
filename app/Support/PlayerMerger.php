@@ -47,6 +47,16 @@ class PlayerMerger
                 DB::table('bans')->where('player_id', $source->id)->update(['player_id' => $target->id]);
                 DB::table('chat_messages')->where('player_id', $source->id)->update(['player_id' => $target->id]);
 
+                // Vinculo de cuenta de Discord (2026-09-01) -- si el jugador fuente tenia un
+                // reclamo confirmado, tiene que seguir al destino: la fila fuente se borra al
+                // final de este metodo, y el nullOnDelete de la FK NO alcanza aca (perderia el
+                // reclamo en silencio en vez de trasladarlo). Defensivo: nunca pisa un
+                // site_user que el destino ya tuviera (no deberia poder pasar dado el 1:1,
+                // pero se verifica igual).
+                if (! DB::table('site_users')->where('player_id', $target->id)->exists()) {
+                    DB::table('site_users')->where('player_id', $source->id)->update(['player_id' => $target->id]);
+                }
+
                 // unique es (player_id, server_id, map) desde 2026-08-10 (multi-server),
                 // no solo (player_id, map) como en la migracion original de la tabla.
                 self::mergeAggregateRows('player_map_stats', ['server_id', 'map'], $source->id, $target->id,

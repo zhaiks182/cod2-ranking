@@ -15,7 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->redirectGuestsTo('/adm_cod2/login');
+        // Dos guards, dos pantallas de login: /adm_cod2/* (guard `web`, panel
+        // admin) sigue yendo a /adm_cod2/login; cualquier otra ruta protegida
+        // por auth:site (login publico con Discord) va a /login.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('adm_cod2', 'adm_cod2/*')
+            ? route('admin.login')
+            : route('login'));
 
         // Sistema de roles del panel admin (2026-08-31) -- ver User::MODULES.
         $middleware->alias([

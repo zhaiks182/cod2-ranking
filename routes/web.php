@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BackupController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\SiteUserController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
@@ -29,8 +31,10 @@ use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
+use App\Http\Controllers\PlayerClaimController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
+use App\Http\Controllers\SiteAuthController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\TeamBalanceController;
@@ -51,6 +55,7 @@ Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name
 Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
+Route::post('/jugadores/{player:guid}/reclamar', [PlayerClaimController::class, 'store'])->name('players.claim.store')->middleware('auth:site');
 Route::get('/teamkills/{player:guid}', [TeamkillController::class, 'index'])->name('teamkills.index');
 Route::get('/kills/{player:guid}', [KillDetailController::class, 'index'])->name('kills.detail');
 Route::get('/granadas', [SpecialtyController::class, 'grenades'])->name('specialties.grenades');
@@ -85,6 +90,17 @@ Route::get('/descargas/archivos/{path?}', [HelpController::class, 'browseFiles']
     ->name('downloads.browse');
 
 Route::get('/idioma/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
+
+// Login publico con Discord (2026-09-01) -- guard `site`, separado del login
+// admin. Ver docs/superpowers/specs/2026-09-01-login-discord-reclamo-perfil-design.md.
+Route::get('/login', [SiteAuthController::class, 'redirect'])->name('login');
+Route::get('/auth/discord/callback', [SiteAuthController::class, 'callback'])->name('auth.discord.callback');
+Route::post('/logout', [SiteAuthController::class, 'logout'])->name('logout')->middleware('auth:site');
+
+// Mi cuenta -- ver estado del reclamo y editar bio/redes/specs de PC (Task 5).
+Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('account.show')->middleware('auth:site');
+Route::post('/mi-cuenta', [AccountController::class, 'update'])->name('account.update')->middleware('auth:site');
+Route::post('/mi-cuenta/reclamo/cancelar', [PlayerClaimController::class, 'cancel'])->name('account.claim.cancel')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
 // es una ruta de Laravel -- ver public/ping (archivo estatico vacio) y public/.htaccess
@@ -220,6 +236,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
             Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
             Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
+
+            Route::get('/jugadores/cuentas-discord', [SiteUserController::class, 'index'])->name('players.discord-accounts.index');
+            Route::delete('/jugadores/cuentas-discord/{siteUser}', [SiteUserController::class, 'unlink'])->name('players.discord-accounts.unlink');
 
             Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');
             Route::post('/jugadores/iconos/{player}', [PlayerIconController::class, 'store'])->name('players.icons.store');

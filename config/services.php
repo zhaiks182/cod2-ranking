@@ -30,6 +30,14 @@ return [
         // un link que puede cambiar sin tocar codigo.
         'guild_id' => env('DISCORD_GUILD_ID'),
         'invite_url' => env('DISCORD_INVITE_URL'),
+
+        // OAuth "Iniciar sesion con Discord" (2026-09-01) -- credenciales de
+        // developer.discord.com/applications, DISTINTAS del guild_id de
+        // arriba (ese es publico, esto es secreto). El boton de login se
+        // oculta si client_id falta -- mismo patron que TurnstileVerifier.
+        'client_id' => env('DISCORD_CLIENT_ID'),
+        'client_secret' => env('DISCORD_CLIENT_SECRET'),
+        'redirect' => env('DISCORD_REDIRECT_URI'),
     ],
 
     'turnstile' => [

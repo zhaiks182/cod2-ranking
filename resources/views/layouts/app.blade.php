@@ -230,6 +230,28 @@
                         </a>
                     </div>
                 </div>
+                @if (config('services.discord.client_id'))
+                    @auth('site')
+                        <div class="relative">
+                            <button type="button" data-account-toggle onclick="document.getElementById('account-dropdown').classList.toggle('hidden')"
+                                class="flex items-center gap-1.5 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal">
+                                @if(auth('site')->user()->discord_avatar_url)
+                                    <img src="{{ auth('site')->user()->discord_avatar_url }}" alt="" class="w-5 h-5 rounded-full">
+                                @endif
+                                {{ auth('site')->user()->discord_username }}
+                            </button>
+                            <div id="account-dropdown" class="hidden absolute right-0 mt-2 w-44 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                                <a href="{{ route('account.show') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Mi cuenta') }}</a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Cerrar sesión') }}</button>
+                                </form>
+                            </div>
+                        </div>
+                    @else
+                        <a href="{{ route('login') }}" class="text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal">{{ __('Iniciar sesión') }}</a>
+                    @endauth
+                @endif
             </nav>
         </div>
     </header>
@@ -594,6 +616,11 @@
             const searchDropdown = document.getElementById('search-dropdown');
             if (searchDropdown && !searchDropdown.contains(e.target) && !e.target.closest('[data-search-toggle]')) {
                 searchDropdown.classList.add('hidden');
+            }
+
+            const accountDropdown = document.getElementById('account-dropdown');
+            if (accountDropdown && !accountDropdown.contains(e.target) && !e.target.closest('[data-account-toggle]')) {
+                accountDropdown.classList.add('hidden');
             }
         });
 

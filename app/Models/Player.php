@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class Player extends Model
@@ -45,6 +46,11 @@ class Player extends Model
     public function bans(): HasMany
     {
         return $this->hasMany(Ban::class);
+    }
+
+    public function siteUser(): HasOne
+    {
+        return $this->hasOne(SiteUser::class);
     }
 
     public function getKdRatioAttribute(): float
