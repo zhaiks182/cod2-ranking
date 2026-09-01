@@ -32,7 +32,7 @@
                         </span>
                     @endif
                     @if($player->siteUser->preferred_role)
-                        <span class="inline-flex items-center gap-1 rounded-full bg-panel2 border border-slate-700 text-slate-300 px-2.5 py-1 text-sm">
+                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-1 text-sm font-medium">
                             {{ \App\Support\WeaponCatalog::label($player->siteUser->preferred_role) }}
                         </span>
                     @endif
