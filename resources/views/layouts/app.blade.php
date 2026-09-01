@@ -271,6 +271,15 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-6">
+        {{-- Banner global de status/error (2026-09-01) -- antes solo /mi-cuenta
+        mostraba esto, asi que un flash desde otra pagina (ej. login de Discord
+        fallido, que redirige a /) se perdia en silencio. --}}
+        @if(session('status'))
+            <div class="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/40 text-emerald-300 text-sm px-4 py-2">{{ session('status') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="mb-4 rounded-lg border border-red-800 bg-red-950/40 text-red-300 text-sm px-4 py-2">{{ session('error') }}</div>
+        @endif
         @yield('content')
     </main>
 

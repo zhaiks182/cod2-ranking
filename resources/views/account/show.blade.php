@@ -93,6 +93,7 @@
         <div id="claim-confirmed-toast" class="hidden fixed bottom-6 right-6 z-50 max-w-xs rounded-xl border border-emerald-800 bg-emerald-950 text-emerald-200 px-4 py-3 shadow-xl" style="animation: cod2-pop 0.3s ease-out;">
             <p class="font-semibold text-sm">✅ {{ __('¡Reclamo confirmado!') }}</p>
             <p class="text-xs text-emerald-300 mt-1" id="claim-confirmed-name"></p>
+            <button type="button" onclick="location.reload()" class="mt-2 text-xs text-emerald-300 hover:text-emerald-100 hover:underline">{{ __('Editar mi perfil →') }}</button>
         </div>
 
         <script>
@@ -122,7 +123,10 @@
                             clearInterval(barInterval);
                             document.getElementById('claim-confirmed-name').textContent = data.player_name || '';
                             document.getElementById('claim-confirmed-toast').classList.remove('hidden');
-                            setTimeout(function () { location.reload(); }, 2500);
+                            // Se queda visible hasta que el jugador navegue por su cuenta --
+                            // antes recargaba solo a los 2.5s, a pedido del dueño se saco
+                            // (el aviso desaparecia demasiado rapido). El link de arriba
+                            // ("Editar mi perfil") lo lleva al form cuando el quiera.
                         })
                         .catch(function () {});
                 }
