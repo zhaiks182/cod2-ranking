@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\PlayerMergeController;
 use App\Http\Controllers\Admin\SeasonController;
 use App\Http\Controllers\Admin\ServerController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\SiteUserController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
@@ -235,6 +236,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::get('/jugadores/borrar', [PlayerDeleteController::class, 'index'])->name('players.delete.index');
             Route::delete('/jugadores/borrar/masivo-sin-actividad', [PlayerDeleteController::class, 'destroyZeroActivity'])->name('players.delete.bulk-zero-activity');
             Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
+
+            Route::get('/jugadores/cuentas-discord', [SiteUserController::class, 'index'])->name('players.discord-accounts.index');
+            Route::delete('/jugadores/cuentas-discord/{siteUser}', [SiteUserController::class, 'unlink'])->name('players.discord-accounts.unlink');
 
             Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');
             Route::post('/jugadores/iconos/{player}', [PlayerIconController::class, 'store'])->name('players.icons.store');

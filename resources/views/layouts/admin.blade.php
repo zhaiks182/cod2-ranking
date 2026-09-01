@@ -80,6 +80,7 @@
                                     <a href="{{ route('admin.players.merge.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Fusionar jugadores</a>
                                     <a href="{{ route('admin.players.delete.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Borrar jugadores</a>
                                     <a href="{{ route('admin.players.icons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Íconos de jugadores</a>
+                                    <a href="{{ route('admin.players.discord-accounts.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Cuentas de Discord</a>
                                 @endif
                                 @if(auth()->user()->hasModule('audit'))<a href="{{ route('admin.audit.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Auditoría</a>@endif
                             </div>
