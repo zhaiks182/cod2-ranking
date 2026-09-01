@@ -9,8 +9,8 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-xl font-semibold">
-                @if($player->siteUser?->clan_tag)<span class="text-slate-500">[{{ $player->siteUser->clan_tag }}]</span>@endif
                 {!! \App\Support\Cod2Colors::toHtml($player->last_name) !!} <x-player-icon :player="$player" />
+                @if($player->siteUser?->clan_tag)<span class="text-slate-500">[{{ $player->siteUser->clan_tag }}]</span>@endif
             </h1>
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
                 <span class="text-xs font-mono text-cyan-400" title="{{ __('Identificador único derivado del HWID del jugador') }}">Guid: {{ $player->guid }}</span>
