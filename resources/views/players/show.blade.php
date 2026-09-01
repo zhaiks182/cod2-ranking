@@ -10,6 +10,12 @@
         <div>
             <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!} <x-player-icon :player="$player" /></h1>
             <div class="text-xs font-mono text-cyan-400 mt-0.5" title="{{ __('Identificador único derivado del HWID del jugador') }}">Guid: {{ $player->guid }}</div>
+            @if($canClaim)
+                <form method="POST" action="{{ route('players.claim.store', $player) }}" class="mt-1">
+                    @csrf
+                    <button type="submit" class="text-xs text-cyan-400 hover:text-cyan-300 hover:underline">{{ __('¿Sos vos? Reclamá este perfil') }}</button>
+                </form>
+            @endif
         </div>
 
         @include('partials.season-selector', [
@@ -18,6 +24,34 @@
             'seasonBaseParams' => [$player->guid],
         ])
     </div>
+
+    @if($player->siteUser)
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-3">
+            @if($player->siteUser->bio)
+                <p class="text-sm text-slate-300">{{ $player->siteUser->bio }}</p>
+            @endif
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                <span>Discord: {{ $player->siteUser->discord_username }}</span>
+                @if($player->siteUser->steam_url)
+                    <a href="{{ $player->siteUser->steam_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Steam</a>
+                @endif
+                @if($player->siteUser->twitch_url)
+                    <a href="{{ $player->siteUser->twitch_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Twitch</a>
+                @endif
+                @if($player->siteUser->instagram_url)
+                    <a href="{{ $player->siteUser->instagram_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Instagram</a>
+                @endif
+            </div>
+            @if($player->siteUser->pc_cpu || $player->siteUser->pc_gpu || $player->siteUser->pc_ram || $player->siteUser->pc_peripherals)
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                    @if($player->siteUser->pc_cpu)<span>CPU: {{ $player->siteUser->pc_cpu }}</span>@endif
+                    @if($player->siteUser->pc_gpu)<span>GPU: {{ $player->siteUser->pc_gpu }}</span>@endif
+                    @if($player->siteUser->pc_ram)<span>RAM: {{ $player->siteUser->pc_ram }}</span>@endif
+                    @if($player->siteUser->pc_peripherals)<span>{{ __('Periféricos') }}: {{ $player->siteUser->pc_peripherals }}</span>@endif
+                </div>
+            @endif
+        </div>
+    @endif
 
     <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-3">

@@ -18,7 +18,7 @@ class PlayerController extends Controller
 {
     public function show(Request $request, Player $player)
     {
-        $player->load(['aliases' => fn ($q) => $q->orderByDesc('last_seen_at')]);
+        $player->load(['aliases' => fn ($q) => $q->orderByDesc('last_seen_at'), 'siteUser']);
 
         $seasons = Season::orderByDesc('started_at')->get();
         $seasonParam = $request->query('season');
@@ -156,6 +156,12 @@ class PlayerController extends Controller
             ->orderByDesc('picks')
             ->first();
 
-        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon', 'evolutionChart'));
+        // Boton "¿Sos vos?" (2026-09-01) -- solo si hay sesion, ese jugador
+        // todavia no fue reclamado por nadie, y el visitante mismo no tiene ya
+        // un reclamo confirmado propio (cardinalidad 1:1).
+        $viewer = auth('site')->user();
+        $canClaim = $viewer !== null && $player->siteUser === null && $viewer->player_id === null;
+
+        return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon', 'evolutionChart', 'canClaim'));
     }
 }

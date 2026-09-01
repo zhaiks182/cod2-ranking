@@ -67,4 +67,16 @@ class AccountControllerTest extends TestCase
             ->post(route('account.update'), ['bio' => str_repeat('x', 401)])
             ->assertSessionHasErrors('bio');
     }
+
+    public function test_a_non_http_url_scheme_is_rejected(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('account.update'), ['steam_url' => 'javascript:alert(1)'])
+            ->assertSessionHasErrors('steam_url');
+
+        $this->assertNull($siteUser->fresh()->steam_url);
+    }
 }
