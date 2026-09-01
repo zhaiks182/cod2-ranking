@@ -12,12 +12,24 @@ use Illuminate\Console\Command;
  * ultima corrida (2026-08-31) -- cron cada minuto, mismo ritmo que
  * cod2:parse-log/cod2:recalculate-stats (routes/console.php).
  *
- * "Termino de verdad" = mismo criterio que /partidas (scopeVisibleInListing,
- * ya excluye partidas fantasma/abandonadas sin resultado real, ver
- * GameMatch::scopeStillCurrent() y la bitacora de bugs en CLAUDE.md) + SD
- * (el pug prioriza Search & Destroy, mismo filtro que ya usa el listado
- * publico) + no backfilled (el "Historial importado" no tiene fecha real,
- * no tiene sentido notificar algo que no paso "ahora").
+ * "Termino de verdad" = GameMatch::scopeReadyToNotify() (2026-09-01, fix de
+ * un bug real: la version original usaba scopeVisibleInListing(), que
+ * tambien matchea partidas TODAVIA en curso -- ver esa fecha en CLAUDE.md,
+ * "Bug real: notificaba partidas antes de tiempo") + SD (el pug prioriza
+ * Search & Destroy) + no backfilled (el "Historial importado" no tiene
+ * fecha real).
+ *
+ * `->where('ended_at', '>=', now()->subHours(2))` es un segundo seguro
+ * independiente de readyToNotify(): la primera vez que se carga la URL del
+ * webhook, TODAS las partidas historicas con discord_notified_at aun null
+ * matchearian readyToNotify() de una -- confirmado en vivo (2026-08-31), 61
+ * partidas mandadas de golpe en una rafaga de 2 minutos apenas se configuro
+ * la URL. Sin este corte, cualquier futuro "apagar y prender de nuevo" el
+ * webhook (o agregar un webhook nuevo) volveria a inundar el canal con todo
+ * el historial. Una partida real siempre se procesa dentro del minuto de
+ * terminar (mismo cron cada minuto de siempre) -- 2 horas es generoso para
+ * cubrir un cron que se salteo alguna corrida, nunca para alcanzar a
+ * "recuperar" partidas viejas.
  */
 class NotifyDiscordMatches extends Command
 {
@@ -31,11 +43,12 @@ class NotifyDiscordMatches extends Command
             return self::SUCCESS;
         }
 
-        $matches = GameMatch::visibleInListing()
+        $matches = GameMatch::readyToNotify()
             ->where('gametype', 'sd')
             ->where('is_backfilled', false)
+            ->where('ended_at', '>=', now()->subHours(2))
             ->whereNull('discord_notified_at')
-            ->with('rounds')
+            ->with(['rounds', 'server'])
             ->get();
 
         foreach ($matches as $match) {

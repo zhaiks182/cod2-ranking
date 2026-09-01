@@ -128,6 +128,27 @@ class GameMatch extends Model
     }
 
     /**
+     * "Ya terminó de verdad, notificala" — más estricto que reachedConclusion()
+     * sola (2026-09-01, bug real: cod2:notify-discord-matches notificaba una
+     * partida a los 2 segundos de arrancar, con "Duración: 0 min", porque
+     * reachedConclusion() solo mira cantidad de rondas/evento match_end, sin
+     * mirar si el parser todavía la sigue jugando — una partida que va a
+     * overtime (empate 12-12) sigue repartiendo winner_guids reales pasada la
+     * ronda 13 mientras SIGUE en curso, así que "13+ rondas" sola no alcanza
+     * como señal de "esto ya terminó". stillCurrent() (el mismo puntero de
+     * log_parser_state.current_match_id que ya usa abandonedWithoutConclusion())
+     * es la señal real de "el parser la sigue rastreando" — mientras lo sea,
+     * nunca se notifica, sin importar cuántas rondas lleve.
+     */
+    public function scopeReadyToNotify($query)
+    {
+        $currentMatchIds = LogParserState::whereNotNull('current_match_id')->pluck('current_match_id');
+
+        return $query->whereNotIn('id', $currentMatchIds)
+            ->where(fn ($q) => $q->reachedConclusion());
+    }
+
+    /**
      * Que partidas cuentan para una temporada dada -- $seasonId es un id real o el
      * string literal 'all' (todas las temporadas juntas). Las partidas abandonadas
      * sin resultado real se excluyen SIEMPRE, sin importar la temporada (incluido
