@@ -84,4 +84,51 @@ class CheckPlayerClaimsCommandTest extends TestCase
     {
         $this->artisan('players:check-claims')->assertSuccessful();
     }
+
+    public function test_does_not_crash_when_two_pending_claims_target_the_same_player(): void
+    {
+        // site_users.player_id es unique -- PlayerClaimController::store() solo
+        // bloquea contra un jugador YA confirmado a otra cuenta, no contra otro
+        // reclamo pendiente sobre el mismo jugador (dos cuentas Discord distintas,
+        // o una carrera real). Si ambos codigos aparecen en el chat en la misma
+        // corrida, el segundo update() choca con la unique constraint -- el
+        // comando no debe abortar por eso.
+        $player = Player::create(['guid' => 111, 'last_name' => 'P111', 'last_name_plain' => 'P111']);
+
+        $siteUserA = SiteUser::create([
+            'discord_id' => 'a111', 'discord_username' => 'userA',
+            'pending_claim_player_id' => $player->id, 'claim_code' => 'CODEAAAA',
+            'claim_code_expires_at' => now()->addMinutes(10),
+        ]);
+        $siteUserB = SiteUser::create([
+            'discord_id' => 'b111', 'discord_username' => 'userB',
+            'pending_claim_player_id' => $player->id, 'claim_code' => 'CODEBBBB',
+            'claim_code_expires_at' => now()->addMinutes(10),
+        ]);
+
+        ChatMessage::create([
+            'server_id' => $this->server->id, 'guid' => 111, 'name' => 'P111',
+            'message' => 'CODEAAAA', 'occurred_at' => now(),
+        ]);
+        ChatMessage::create([
+            'server_id' => $this->server->id, 'guid' => 111, 'name' => 'P111',
+            'message' => 'CODEBBBB', 'occurred_at' => now(),
+        ]);
+
+        $this->artisan('players:check-claims')->assertSuccessful();
+
+        $siteUserA->refresh();
+        $siteUserB->refresh();
+
+        // Exactamente uno de los dos gano la carrera y quedo confirmado -- el otro
+        // no crasheo el comando ni quedo con datos corruptos (ej. player_id de
+        // otro jugador, o ambos campos a medio limpiar).
+        $confirmed = collect([$siteUserA, $siteUserB])->filter(fn ($u) => $u->player_id === $player->id);
+        $this->assertCount(1, $confirmed);
+
+        $loser = $confirmed->isEmpty() ? null : collect([$siteUserA, $siteUserB])->first(fn ($u) => $u->id !== $confirmed->first()->id);
+        $this->assertNotNull($loser);
+        $this->assertNull($loser->player_id);
+        $this->assertSame($player->id, $loser->pending_claim_player_id);
+    }
 }

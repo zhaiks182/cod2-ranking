@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ChatMessage;
 use App\Models\SiteUser;
 use Illuminate\Console\Command;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 class CheckPlayerClaims extends Command
 {
@@ -35,13 +36,28 @@ class CheckPlayerClaims extends Command
                 fn ($m) => $m->guid === $targetGuid && str_contains($m->message, $siteUser->claim_code)
             );
 
-            if ($match) {
+            if (! $match) {
+                continue;
+            }
+
+            try {
                 $siteUser->update([
                     'player_id' => $siteUser->pending_claim_player_id,
                     'pending_claim_player_id' => null,
                     'claim_code' => null,
                     'claim_code_expires_at' => null,
                 ]);
+            } catch (UniqueConstraintViolationException) {
+                // Dos SiteUser distintos pueden tener un reclamo pendiente sobre el
+                // MISMO jugador todavia sin confirmar (PlayerClaimController::store()
+                // solo bloquea contra un jugador ya confirmado a otra cuenta, no
+                // contra otro reclamo pendiente) -- si el codigo de ambos aparece en
+                // el chat dentro de la misma corrida, el segundo update() choca con
+                // el unique real de site_users.player_id. No dejar que esto aborte
+                // el resto de la corrida -- mismo patron que
+                // HostedServerPortAllocator::allocate(). El reclamo perdedor queda
+                // pendiente tal cual (sin tocar), se resuelve solo cuando expire.
+                continue;
             }
         }
     }
