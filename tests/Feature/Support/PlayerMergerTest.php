@@ -150,4 +150,28 @@ class PlayerMergerTest extends TestCase
         $this->assertCount(1, $target->aliases);
         $this->assertTrue($target->aliases->first()->last_seen_at->gt(now()->subMinute()));
     }
+
+    public function test_merging_moves_a_claimed_discord_account_link_to_the_target(): void
+    {
+        $source = $this->makePlayer();
+        $target = $this->makePlayer();
+        $siteUser = \App\Models\SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $source->id]);
+
+        PlayerMerger::merge([$source->id], $target->id);
+
+        $this->assertSame($target->id, $siteUser->fresh()->player_id);
+    }
+
+    public function test_merging_does_not_overwrite_a_discord_link_the_target_already_has(): void
+    {
+        $source = $this->makePlayer();
+        $target = $this->makePlayer();
+        $sourceSiteUser = \App\Models\SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $source->id]);
+        $targetSiteUser = \App\Models\SiteUser::create(['discord_id' => '2', 'discord_username' => 'b', 'player_id' => $target->id]);
+
+        PlayerMerger::merge([$source->id], $target->id);
+
+        $this->assertSame($target->id, $targetSiteUser->fresh()->player_id);
+        $this->assertNull($sourceSiteUser->fresh()->player_id);
+    }
 }
