@@ -1358,16 +1358,26 @@ al revés) + `netfilter-persistent save` para que sobreviva un reinicio. No
 reinstalar `ufw` para esto sin resolver primero el problema de orden de su
 script documentado arriba.
 
-### `deploy.sh` apunta al VPS viejo — pendiente de actualizar
+### `deploy.sh` apuntaba al VPS viejo — corregido (2026-08-31)
 
-`SSH_HOST="iptvwatch"` en `deploy.sh` sigue apuntando al VPS compartido viejo. Correr
-`./deploy.sh` hoy despliega al respaldo, no al VPS nuevo en producción
-(`151.245.32.43`). No se cambió en esta sesión porque el alias que use `deploy.sh`
-depende de qué máquina de desarrollo lo corra (cada una tiene su propio
-`~/.ssh/config`) — decidir con el dueño si conviene un alias nuevo estandarizado
-(ej. `cod2-vps`) que cada dev configure igual, o hardcodear `root@151.245.32.43`
-directo en el script. Mientras tanto, cualquier deploy real hay que hacerlo a mano
-apuntando al VPS nuevo.
+`SSH_HOST="iptvwatch"` en `deploy.sh` apuntaba al VPS compartido viejo
+(respaldo, ya no es producción) en vez del VPS nuevo (`151.245.32.43`).
+Cambiado a `SSH_HOST="cod2-vps"` — cada máquina de desarrollo necesita esa
+entrada en su `~/.ssh/config` (`HostName 151.245.32.43`, `User root`,
+`IdentityFile` a la clave correspondiente) para que `./deploy.sh` funcione.
+
+**Ojo con esta sección si se la vuelve a leer en el futuro:** en algún
+momento del 2026-08-31 el `CLAUDE.md` copiado a mano en el VPS
+(`/var/www/cod2.4livepro.com/CLAUDE.md`, no el de este repo) decía que este
+fix ya estaba aplicado con un alias `cod2-vps-new` — pero `deploy.sh` en
+git nunca había cambiado (confirmado: seguía con `iptvwatch`, sin tocar
+desde el commit inicial del repo, y sin commits nuevos en GitHub). Alguien
+hizo (o dijo haber hecho) el cambio directo en el VPS, sin pasar por git —
+mismo patrón ya documentado en "Alguien puede desplegar desde otra máquina
+sin pasar por esta conversación" más abajo. El dueño lo notó comparando
+este archivo contra lo que había en el VPS. Esta vez el fix se hizo de
+verdad en el repo (este commit), así que viaja con git y no depende de que
+cada máquina lo reaplique a mano.
 
 ## Auditoría de admin y reinicio de servicio (2026-08-19)
 

@@ -11,7 +11,7 @@
 #
 set -euo pipefail
 
-SSH_HOST="iptvwatch"
+SSH_HOST="cod2-vps"
 REMOTE_PATH="/var/www/cod2.4livepro.com"
 DOMAIN="https://cod2.4livepro.com"
 
