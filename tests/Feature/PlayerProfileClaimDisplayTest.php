@@ -21,28 +21,39 @@ class PlayerProfileClaimDisplayTest extends TestCase
             ->assertSee('[Destino]');
     }
 
-    public function test_shows_bio_and_socials_when_the_player_is_claimed(): void
-    {
-        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
-        SiteUser::create([
-            'discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id,
-            'bio' => 'Jugador desde 2003.', 'steam_url' => 'https://steamcommunity.com/id/zhaiks',
-        ]);
-
-        $this->get(route('players.show', $player))
-            ->assertOk()
-            ->assertSee('Jugador desde 2003.')
-            ->assertSee('https://steamcommunity.com/id/zhaiks', false);
-    }
-
-    public function test_hides_the_empty_profile_card_when_the_player_has_no_bio_socials_or_specs_yet(): void
+    public function test_shows_a_link_to_the_full_profile_page_when_claimed(): void
     {
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
         SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id]);
 
         $this->get(route('players.show', $player))
             ->assertOk()
-            ->assertDontSee('id="player-profile-card"', false);
+            ->assertSee(__('Ver perfil completo'))
+            ->assertSee(route('players.profile', $player), false);
+    }
+
+    public function test_hides_the_profile_link_when_not_claimed(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertDontSee(__('Ver perfil completo'));
+    }
+
+    public function test_bio_no_longer_appears_inline_on_the_stats_page(): void
+    {
+        // 2026-09-01, a pedido del dueño ("no me gusta mezclado con las stats")
+        // -- bio/redes/specs se movieron a su propia pagina, players.profile.
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create([
+            'discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id,
+            'bio' => 'Jugador desde 2003.',
+        ]);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertDontSee('Jugador desde 2003.');
     }
 
     public function test_shows_a_clickable_discord_badge_next_to_the_name_when_claimed(): void

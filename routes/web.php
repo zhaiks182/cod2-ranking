@@ -55,6 +55,7 @@ Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name
 Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
+Route::get('/jugadores/{player:guid}/perfil', [PlayerController::class, 'profile'])->name('players.profile');
 Route::post('/jugadores/{player:guid}/reclamar', [PlayerClaimController::class, 'store'])->name('players.claim.store')->middleware('auth:site');
 Route::get('/teamkills/{player:guid}', [TeamkillController::class, 'index'])->name('teamkills.index');
 Route::get('/kills/{player:guid}', [KillDetailController::class, 'index'])->name('kills.detail');

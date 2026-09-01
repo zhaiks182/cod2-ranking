@@ -164,4 +164,20 @@ class PlayerController extends Controller
 
         return view('players.show', compact('player', 'seasons', 'seasonId', 'hoursPlayed', 'winRate', 'mapPerformance', 'matchHistory', 'weaponBreakdown', 'favoriteWeapon', 'teamkillCount', 'mostEquippedWeapon', 'evolutionChart', 'canClaim'));
     }
+
+    /**
+     * Pagina de perfil separada (2026-09-01, a pedido del dueño) -- bio/redes/
+     * specs/identidad gaming vivian como una tarjeta dentro de /jugadores/{guid}
+     * (la pagina de stats), mezclado con kills/muertes/graficos. Se separo a su
+     * propia pagina para que el perfil "gaming" tenga su propio espacio,
+     * mismo criterio visual que /mi-cuenta (donde se carga esta info).
+     */
+    public function profile(Player $player)
+    {
+        abort_unless($player->siteUser !== null, 404);
+
+        $player->load('siteUser');
+
+        return view('players.profile', compact('player'));
+    }
 }

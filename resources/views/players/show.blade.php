@@ -43,36 +43,13 @@
         ])
     </div>
 
-    @if($player->siteUser && ($player->siteUser->bio || $player->siteUser->steam_url || $player->siteUser->twitch_url || $player->siteUser->instagram_url || $player->siteUser->pc_cpu || $player->siteUser->pc_gpu || $player->siteUser->pc_ram || $player->siteUser->pc_peripherals))
-        {{-- Solo se muestra si hay algo cargado -- sin esto, un jugador recien
-        reclamado (sin bio/redes/specs todavia) mostraba una caja vacia entre
-        el header y la grilla de stats. --}}
-        <div id="player-profile-card" class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-3">
-            @if($player->siteUser->bio)
-                <p class="text-sm text-slate-300">{{ $player->siteUser->bio }}</p>
-            @endif
-            @if($player->siteUser->steam_url || $player->siteUser->twitch_url || $player->siteUser->instagram_url)
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                    @if($player->siteUser->steam_url)
-                        <a href="{{ $player->siteUser->steam_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Steam</a>
-                    @endif
-                    @if($player->siteUser->twitch_url)
-                        <a href="{{ $player->siteUser->twitch_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Twitch</a>
-                    @endif
-                    @if($player->siteUser->instagram_url)
-                        <a href="{{ $player->siteUser->instagram_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Instagram</a>
-                    @endif
-                </div>
-            @endif
-            @if($player->siteUser->pc_cpu || $player->siteUser->pc_gpu || $player->siteUser->pc_ram || $player->siteUser->pc_peripherals)
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                    @if($player->siteUser->pc_cpu)<span>CPU: {{ $player->siteUser->pc_cpu }}</span>@endif
-                    @if($player->siteUser->pc_gpu)<span>GPU: {{ $player->siteUser->pc_gpu }}</span>@endif
-                    @if($player->siteUser->pc_ram)<span>RAM: {{ $player->siteUser->pc_ram }}</span>@endif
-                    @if($player->siteUser->pc_peripherals)<span>{{ __('Periféricos') }}: {{ $player->siteUser->pc_peripherals }}</span>@endif
-                </div>
-            @endif
-        </div>
+    @if($player->siteUser)
+        {{-- Bio/redes/specs vivian acá mismo hasta 2026-09-01 (a pedido del
+        dueño, "no me gusta mezclado con las stats") -- ahora tienen su propia
+        pagina (players.profile), esto es solo el link de entrada. --}}
+        <a href="{{ route('players.profile', $player) }}" class="inline-flex items-center gap-1 text-sm text-cyan-400 hover:text-cyan-300 hover:underline">
+            {{ __('Ver perfil completo') }} →
+        </a>
     @endif
 
     <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
