@@ -99,7 +99,7 @@
         </div>
     </div>
 
-    @include('partials.team-balance', ['teamBalance' => $teamBalance])
+    @include('partials.team-balance', ['teamBalance' => $teamBalance, 'showDiscordButton' => true])
 
     <div class="rounded-xl border border-slate-800 bg-panel p-4 space-y-3">
         <h2 class="text-xs uppercase tracking-wide text-slate-400">Mensaje a todos</h2>

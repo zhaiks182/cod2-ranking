@@ -1,13 +1,26 @@
 {{-- Espera $teamBalance en scope (TeamBalancer::suggest(), o null si el
      server no respondio por RCON) -- compartido entre admin/console.blade.php
-     y partials/live-status.blade.php (pagina publica) para no duplicar el
-     marcado. Ver CLAUDE.md, "Balanceador de equipos por rango". --}}
+     y team-balance.blade.php (pagina publica /equipos) para no duplicar el
+     marcado. Ver CLAUDE.md, "Balanceador de equipos por rango".
+
+     $showDiscordButton (opcional, default false) muestra el boton
+     "Notificar Discord" -- solo lo pasa admin/console.blade.php. La pagina
+     publica NUNCA lo pasa: postear al canal es una accion administrativa,
+     no algo que cualquier visitante deba poder disparar. --}}
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
         <span class="text-xs uppercase tracking-wide text-slate-400">{{ __('Balanceo sugerido de equipos') }}</span>
-        @if($teamBalance && $teamBalance->enough)
-            <span class="text-[11px] text-slate-500">{{ __('Score total') }}: <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreA }}</span> vs <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreB }}</span></span>
-        @endif
+        <div class="flex items-center gap-3">
+            @if($teamBalance && $teamBalance->enough)
+                <span class="text-[11px] text-slate-500">{{ __('Score total') }}: <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreA }}</span> vs <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreB }}</span></span>
+            @endif
+            @if(($showDiscordButton ?? false) && $teamBalance && $teamBalance->enough)
+                <form method="POST" action="{{ route('admin.console.notify-teams', $server) }}" onsubmit="return confirm('¿Notificar estos equipos al canal de Discord?')">
+                    @csrf
+                    <button type="submit" class="text-[11px] text-cyan-400 hover:underline">📣 {{ __('Notificar Discord') }}</button>
+                </form>
+            @endif
+        </div>
     </div>
     <div class="p-4">
         @if(!$teamBalance)

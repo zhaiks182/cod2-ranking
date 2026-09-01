@@ -9,6 +9,7 @@ use App\Models\Player;
 use App\Models\Server;
 use App\Models\ServerResourceSample;
 use App\Services\Cod2RconClient;
+use App\Services\DiscordTeamsNotifier;
 use App\Support\PlayerRankCalculator;
 use App\Support\TeamBalancer;
 use Illuminate\Http\Request;
@@ -31,6 +32,37 @@ class ConsoleController extends Controller
             : null;
 
         return view('admin.console', compact('server', 'status', 'teamBalance'));
+    }
+
+    /**
+     * Boton "Notificar Discord" del balanceo sugerido (2026-09-01) --
+     * termina de conectar DiscordTeamsNotifier, que ya existia (servicio +
+     * test) pero nunca habia quedado disparable desde el sitio, ver
+     * CLAUDE.md. Recalcula el balance en el momento del click (RCON en
+     * vivo, no confia en lo que la pagina tenia renderizado unos segundos
+     * antes) para no notificar un roster que ya cambio.
+     */
+    public function notifyTeams(Server $server)
+    {
+        $status = Cod2RconClient::forServer($server)->status();
+
+        if (! $status) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
+        }
+
+        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server));
+
+        if (! $teamBalance->enough) {
+            return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');
+        }
+
+        if (! DiscordTeamsNotifier::notify($server, $teamBalance->teamA, $teamBalance->teamB)) {
+            return back()->with('error', 'No se pudo postear a Discord — revisá que el webhook de equipos esté configurado en /adm_cod2/discord.');
+        }
+
+        AdminAction::record('console.notify-teams', "Notificó los equipos armados de {$server->name} a Discord");
+
+        return back()->with('status', 'Equipos notificados a Discord.');
     }
 
     /**

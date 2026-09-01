@@ -157,6 +157,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
             Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
             Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
+            Route::post('/console/{server}/notify-teams', [ConsoleController::class, 'notifyTeams'])->name('console.notify-teams');
             Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
             Route::get('/console/{server}/resources', [ConsoleController::class, 'resources'])->name('console.resources');
             Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');
