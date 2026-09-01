@@ -3897,14 +3897,41 @@ que ya se usaba para el MVP, ordenada por `kills`/`headshots`/
 migración + el logo), igual que se hizo con `deploy.sh` — agregado
 `discord_teams_webhook_url` a `Setting::$fillable` y un campo nuevo en
 `/adm_cod2/discord` para poder cargar esa URL desde el panel (antes solo
-se podía setear por SQL/tinker directo, nunca desde la UI). **Ojo: el
-botón "Notificar Discord" en `/equipos` que el docblock de la clase daba
-por hecho que existía NUNCA se construyó** (`grep` sin resultados en toda
-la vista/controller de `/equipos`) — el servicio y sus tests están listos
-y pasan, pero no hay forma real de dispararlo desde el sitio todavía. Si
-se quiere terminar esta feature, falta: el botón en
-`partials/team-balance.blade.php`, la ruta, y el controller que lo reciba
-y llame a `DiscordTeamsNotifier::notify()`.
+se podía setear por SQL/tinker directo, nunca desde la UI). En su momento
+se dejó registrado que el botón "Notificar Discord" que el docblock de la
+clase daba por hecho que existía nunca se había construido — **completado
+el mismo día** (2026-09-01), ver la entrada siguiente.
+
+### Botón "Notificar Discord" del balanceo de equipos (2026-09-01)
+
+Seguimiento directo de la entrada anterior. `ConsoleController::notifyTeams()`
+(nuevo, `POST /adm_cod2/console/{server}/notify-teams`, módulo `servers`)
+recalcula el balance con RCON **en vivo en el momento del click**
+(`Cod2RconClient::status()` + `TeamBalancer::suggest()` + `PlayerRankCalculator`)
+en vez de confiar en el HTML ya renderizado — el roster conectado pudo
+haber cambiado entre que se cargó la página y que se apretó el botón. Si
+sale bien, llama a `DiscordTeamsNotifier::notify($server, $teamBalance->teamA, $teamBalance->teamB)`
+(el mismo servicio rescatado, sin tocar) y audita vía `AdminAction::record('console.notify-teams', ...)`.
+
+**El botón solo aparece en la consola admin, nunca en la página pública
+`/equipos`** — `partials/team-balance.blade.php` (compartido entre las
+dos) ahora acepta `$showDiscordButton` (default `false`), que solo
+`admin/console.blade.php` pasa en `true`. Postear al canal de Discord es
+una acción administrativa con efecto visible para toda la comunidad — no
+tiene sentido que cualquier visitante anónimo de `/equipos` pueda
+dispararla.
+
+TDD: `tests/Feature/Admin/ConsoleNotifyTeamsTest.php` (2 casos — guest
+redirigido a login, un admin sin el módulo `servers` recibe 403). Sin más
+cobertura automatizada a propósito: `ConsoleController::notifyTeams()`
+toca RCON real (`fsockopen` UDP) igual que el resto de
+`ConsoleController` (`kick`/`ban`/`message`/`map`/`command`/`service`),
+que deliberadamente no tiene tests de feature por el mismo motivo (cero
+tests existentes para esos otros endpoints, mismo criterio ya establecido
+en este proyecto) — se verifica en vivo contra el server real en vez de
+mockear un socket UDP. Verificado junto a la suite completa en el clone
+descartable del VPS: 281/289 tests, mismos 8 fallos preexistentes sin
+relación. Desplegado a producción, ruta confirmada con `route:list`.
 
 Se reseteó a mano `discord_notified_at = NULL` de la partida 125 (Toujane,
 la única de las dos recién afectadas que realmente terminó — 21 rondas +
