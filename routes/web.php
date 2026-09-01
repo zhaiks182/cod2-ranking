@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BackupController;
@@ -95,10 +96,9 @@ Route::get('/login', [SiteAuthController::class, 'redirect'])->name('login');
 Route::get('/auth/discord/callback', [SiteAuthController::class, 'callback'])->name('auth.discord.callback');
 Route::post('/logout', [SiteAuthController::class, 'logout'])->name('logout')->middleware('auth:site');
 
-// Mi cuenta -- placeholder de ruta, el controlador real se agrega en la Task 5.
-// Se deja la ruta acá porque DiscordLoginTest ya necesita que exista para
-// probar el redirect de invitados.
-Route::get('/mi-cuenta', fn () => redirect()->route('dashboard'))->name('account.show')->middleware('auth:site');
+// Mi cuenta -- ver estado del reclamo y editar bio/redes/specs de PC (Task 5).
+Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('account.show')->middleware('auth:site');
+Route::post('/mi-cuenta', [AccountController::class, 'update'])->name('account.update')->middleware('auth:site');
 Route::post('/mi-cuenta/reclamo/cancelar', [PlayerClaimController::class, 'cancel'])->name('account.claim.cancel')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
