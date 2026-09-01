@@ -29,6 +29,7 @@ use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
+use App\Http\Controllers\PlayerClaimController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
 use App\Http\Controllers\SiteAuthController;
@@ -52,6 +53,7 @@ Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name
 Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
+Route::post('/jugadores/{player:guid}/reclamar', [PlayerClaimController::class, 'store'])->name('players.claim.store')->middleware('auth:site');
 Route::get('/teamkills/{player:guid}', [TeamkillController::class, 'index'])->name('teamkills.index');
 Route::get('/kills/{player:guid}', [KillDetailController::class, 'index'])->name('kills.detail');
 Route::get('/granadas', [SpecialtyController::class, 'grenades'])->name('specialties.grenades');
@@ -97,6 +99,7 @@ Route::post('/logout', [SiteAuthController::class, 'logout'])->name('logout')->m
 // Se deja la ruta acá porque DiscordLoginTest ya necesita que exista para
 // probar el redirect de invitados.
 Route::get('/mi-cuenta', fn () => redirect()->route('dashboard'))->name('account.show')->middleware('auth:site');
+Route::post('/mi-cuenta/reclamo/cancelar', [PlayerClaimController::class, 'cancel'])->name('account.claim.cancel')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
 // es una ruta de Laravel -- ver public/ping (archivo estatico vacio) y public/.htaccess
