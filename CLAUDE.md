@@ -4092,6 +4092,99 @@ relación (baseline de siempre). Desplegado a producción sin migración —
 `permissions` de `zhaiks` sigue siendo `["servers"]`, ahora con el alcance
 correcto sin necesidad de tocar su fila.
 
+## Login público con Discord + reclamo de perfil + biografía (2026-09-01)
+
+Sub-proyecto 1 de 2 (el bot que mueva jugadores entre canales de voz de
+Discord al generar equipos, en `/equipos`, queda para una sesión futura —
+ver "Fuera de alcance" en el spec). Spec completa:
+`docs/superpowers/specs/2026-09-01-login-discord-reclamo-perfil-design.md`.
+
+Cualquier visitante puede iniciar sesión con su cuenta de Discord (botón
+"Iniciar sesión con Discord" en el nav — solo aparece si
+`DISCORD_CLIENT_ID` está cargado, mismo patrón de ocultamiento que ya usa
+Turnstile), reclamar el perfil de jugador (`players`) que le corresponde
+por HWID/guid, y cargar biografía, redes (Steam/Twitch/Instagram) y specs
+de PC — todo visible en `/jugadores/{guid}`.
+
+- **Guard y tabla completamente separados del panel admin.** Nueva tabla
+  `site_users` + guard `site` (`config/auth.php`), sin ningún vínculo con
+  la tabla `users`/guard `web` que usa `/adm_cod2`. `bootstrap/app.php`
+  reemplazó el `redirectGuestsTo('/adm_cod2/login')` fijo por un closure
+  que diferencia por path (`/adm_cod2/*` sigue yendo al login admin,
+  cualquier otra ruta protegida por `auth:site` va a `/login`) — con eso
+  se encontró y corrigió un bug real de paso: `is('adm_cod2/*')` no
+  matcheaba la ruta raíz `/adm_cod2` (sin barra final), lo que hubiera
+  roto el redirect de invitados del dashboard admin. Login vía
+  `laravel/socialite` + `socialiteproviders/discord` (Discord no es un
+  driver oficial de Socialite).
+- **Reclamo por código de chat, sin aprobación manual.** Al tocar "¿Sos
+  vos? Reclamá este perfil" en `/jugadores/{guid}`, se genera un código de
+  8 caracteres válido 15 minutos (`SiteUser.pending_claim_player_id`/
+  `claim_code`/`claim_code_expires_at`). El jugador lo escribe en el chat
+  del servidor; `players:check-claims` (comando nuevo, cron cada minuto
+  junto a `cod2:parse-log`) revisa `chat_messages` de los últimos 20
+  minutos buscando ese código viniendo del `guid` real del jugador
+  reclamado — si aparece, confirma (`SiteUser.player_id`, único a nivel de
+  esquema, cardinalidad 1:1). Un código vencido nunca se confirma aunque
+  aparezca tarde.
+  - **Hallazgo real en revisión, corregido antes de desplegar:** dos
+    cuentas distintas pueden legítimamente tener un reclamo *pendiente*
+    sobre el mismo jugador todavía sin confirmar (el `store()` del reclamo
+    solo bloquea contra un jugador ya *confirmado*, no contra otro
+    pendiente) — si ambas llegaran a confirmarse en la misma corrida, la
+    segunda `update()` chocaría contra el `unique` de `site_users.player_id`
+    y tiraría una `QueryException` sin capturar, abortando el resto de la
+    corrida del comando (los demás reclamos pendientes de ese minuto
+    quedaban sin procesar, aunque se autocuraba al minuto siguiente).
+    Corregido con el mismo patrón ya usado en
+    `HostedServerPortAllocator`: `try/catch(UniqueConstraintViolationException){continue;}`
+    alrededor de cada `update()` del loop, en vez de dejarlo propagar.
+- **Perfil ampliado, solo una vez reclamado.** Desde `/mi-cuenta`: bio
+  (texto plano, máx. 400 caracteres), Steam/Twitch/Instagram (validados
+  contra `regex:/^https?:\/\//i` — sin esto, alguien podía guardar un
+  esquema `javascript:` que el perfil público renderiza como `<a href>`
+  real, un XSS almacenado real detectado en revisión y corregido antes de
+  que la vista pública llegara a renderizar esos campos), y specs de PC en
+  4 campos (CPU/GPU/RAM/Periféricos). El de Discord se muestra solo
+  (viene del login, no se pide de nuevo). Editar solo funciona si
+  `player_id` ya está seteado — `AccountController::update()` devuelve 403
+  antes de tocar la base si no.
+- **`PlayerMerger` traslada el vínculo al fusionar jugadores.** Caso real
+  y frecuente en este proyecto (HWID que cambia entre sesiones, ver la
+  bitácora de bugs más arriba) — sin este ajuste, fusionar un jugador con
+  un reclamo confirmado lo perdía en silencio (la fila fuente se borra al
+  final de `merge()`, el `nullOnDelete` de la FK no alcanza para
+  *trasladar* el vínculo, solo para limpiarlo). Defensivo: nunca pisa un
+  `site_user` que el destino ya tuviera.
+- **Admin**: `/adm_cod2/jugadores/cuentas-discord` (módulo `players`,
+  mismo lugar que fusionar/borrar/íconos — es la misma responsabilidad de
+  "identidad de jugador") lista qué cuenta de Discord está vinculada a qué
+  jugador, con botón para desvincular un reclamo equivocado — auditado
+  con `AdminAction`.
+- TDD en las 8 tareas de código (modelo, login, reclamo, confirmación,
+  Mi cuenta, perfil público, `PlayerMerger`, admin) + las dos correcciones
+  encontradas en revisión (bug del redirect admin, colisión de reclamos
+  pendientes, validación de esquema de URL). Verificado en un clon
+  descartable del VPS (`/root/sdd_login_discord_reclamo_perfil/`, mismo
+  patrón de siempre) antes de cada commit: suite completa 313/321 tests,
+  mismos 8 fallos preexistentes sin relación (`ExampleTest`,
+  `LocaleSwitcherTest` ×3, `MatchRoundDetailsTest`, `CountriesSeasonTest`,
+  `ExtrasSeasonTest`, `RivalriesGrenadesTest`).
+
+**Pendiente antes de que esto funcione en producción:** el dueño tiene que
+crear la aplicación en el Discord Developer Portal
+(developer.discord.com/applications), configurar el redirect URI
+(`https://cod2.4livepro.com/auth/discord/callback`) y cargar
+`DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET`/`DISCORD_REDIRECT_URI` en el
+`.env` del VPS — sin esto el botón de login queda oculto (no rompe el
+resto del sitio).
+
+**Deja lista la base para el sub-proyecto 2 (a futuro, bot de Discord +
+botón "Mover a canales de voz" en `/equipos`):** cada `site_users` ya
+guarda `discord_id` (el snowflake real de Discord), el dato exacto que un
+bot con permiso "Mover miembros" necesita para saber a quién mover, una
+vez que el jugador reclamó su perfil.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
