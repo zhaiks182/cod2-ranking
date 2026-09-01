@@ -16,7 +16,7 @@ class SiteUser extends Authenticatable
     use Notifiable;
 
     protected $fillable = [
-        'discord_id', 'discord_username', 'discord_avatar_url',
+        'discord_id', 'discord_username', 'discord_avatar_url', 'role',
         'player_id', 'pending_claim_player_id', 'claim_code', 'claim_code_expires_at',
         'bio', 'steam_url', 'twitch_url', 'instagram_url',
         'pc_cpu', 'pc_gpu', 'pc_ram', 'pc_peripherals',

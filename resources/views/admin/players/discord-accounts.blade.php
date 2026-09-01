@@ -16,6 +16,7 @@
                 <tr class="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-800">
                     <th class="px-4 py-2">Discord</th>
                     <th class="px-4 py-2">Jugador vinculado</th>
+                    <th class="px-4 py-2">Rol</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -30,6 +31,15 @@
                                 <span class="text-slate-500">Sin reclamar</span>
                             @endif
                         </td>
+                        <td class="px-4 py-2">
+                            <form method="POST" action="{{ route('admin.players.discord-accounts.update-role', $siteUser) }}" class="flex items-center gap-2">
+                                @csrf
+                                @method('PUT')
+                                <input type="text" name="role" value="{{ $siteUser->role }}" placeholder="ej. Staff, VIP..." maxlength="40"
+                                    class="w-32 bg-panel2 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 placeholder:text-slate-600">
+                                <button type="submit" class="text-xs text-cyan-400 hover:underline">Guardar</button>
+                            </form>
+                        </td>
                         <td class="px-4 py-2 text-right">
                             @if($siteUser->player)
                                 <form method="POST" action="{{ route('admin.players.discord-accounts.unlink', $siteUser) }}" onsubmit="return confirm('¿Desvincular esta cuenta del jugador?');">
@@ -41,7 +51,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="3" class="px-4 py-6 text-center text-slate-500">Todavía no hay ninguna cuenta de Discord registrada.</td></tr>
+                    <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">Todavía no hay ninguna cuenta de Discord registrada.</td></tr>
                 @endforelse
             </tbody>
         </table>

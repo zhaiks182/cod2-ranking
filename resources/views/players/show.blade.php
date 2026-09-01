@@ -16,6 +16,13 @@
                         class="inline-flex items-center gap-1 rounded-full bg-[#5865F2]/15 text-[#5865F2] px-2 py-0.5 text-xs font-medium hover:bg-[#5865F2]/25 transition-colors">
                         Discord: {{ $player->siteUser->discord_username }}
                     </a>
+                    @if($player->siteUser->role)
+                        {{-- Insignia de comunidad (2026-09-01) -- puramente cosmetica,
+                        cargada a mano por un admin desde Cuentas de Discord. --}}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-violet-500/15 text-violet-300 px-2 py-0.5 text-xs font-medium">
+                            {{ $player->siteUser->role }}
+                        </span>
+                    @endif
                 @endif
             </div>
             @if($canClaim)

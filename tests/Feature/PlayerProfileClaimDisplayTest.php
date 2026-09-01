@@ -46,6 +46,25 @@ class PlayerProfileClaimDisplayTest extends TestCase
             ->assertSee('Discord: zhaiks');
     }
 
+    public function test_shows_the_community_role_badge_when_set(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id, 'role' => 'Staff']);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertSee('Staff');
+    }
+
+    public function test_hides_the_role_badge_when_not_set(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id]);
+
+        $this->get(route('players.show', $player))->assertOk();
+        $this->assertNull($player->siteUser?->role);
+    }
+
     public function test_shows_the_claim_button_to_a_logged_in_visitor_without_a_claim_of_their_own(): void
     {
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);

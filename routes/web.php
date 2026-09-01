@@ -239,6 +239,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::delete('/jugadores/borrar/{player}', [PlayerDeleteController::class, 'destroy'])->name('players.delete.destroy');
 
             Route::get('/jugadores/cuentas-discord', [SiteUserController::class, 'index'])->name('players.discord-accounts.index');
+            Route::put('/jugadores/cuentas-discord/{siteUser}/rol', [SiteUserController::class, 'updateRole'])->name('players.discord-accounts.update-role');
             Route::delete('/jugadores/cuentas-discord/{siteUser}', [SiteUserController::class, 'unlink'])->name('players.discord-accounts.unlink');
 
             Route::get('/jugadores/iconos', [PlayerIconController::class, 'index'])->name('players.icons.index');

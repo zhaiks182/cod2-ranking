@@ -47,4 +47,39 @@ class SiteUserControllerTest extends TestCase
         $this->assertNull($siteUser->fresh()->player_id);
         $this->assertDatabaseHas('admin_actions', ['action' => 'site-users.unlink']);
     }
+
+    public function test_update_role_sets_the_role_and_audits(): void
+    {
+        $admin = User::factory()->create(['is_super_admin' => true]);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks']);
+
+        $this->actingAs($admin)
+            ->put(route('admin.players.discord-accounts.update-role', $siteUser), ['role' => 'Staff'])
+            ->assertRedirect();
+
+        $this->assertSame('Staff', $siteUser->fresh()->role);
+        $this->assertDatabaseHas('admin_actions', ['action' => 'site-users.update-role']);
+    }
+
+    public function test_update_role_can_clear_the_role(): void
+    {
+        $admin = User::factory()->create(['is_super_admin' => true]);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks', 'role' => 'VIP']);
+
+        $this->actingAs($admin)->put(route('admin.players.discord-accounts.update-role', $siteUser), ['role' => '']);
+
+        $this->assertNull($siteUser->fresh()->role);
+    }
+
+    public function test_update_role_requires_the_players_module(): void
+    {
+        $admin = User::factory()->create(['is_super_admin' => false, 'permissions' => []]);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks']);
+
+        $this->actingAs($admin)
+            ->put(route('admin.players.discord-accounts.update-role', $siteUser), ['role' => 'Staff'])
+            ->assertForbidden();
+
+        $this->assertNull($siteUser->fresh()->role);
+    }
 }
