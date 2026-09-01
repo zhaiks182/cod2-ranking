@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Middleware\SetLocale;
+use App\Models\Kill;
 use App\Support\CountryCatalog;
 use App\Support\SiteUserAvatar;
+use App\Support\WeaponCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,7 +16,21 @@ class AccountController extends Controller
     {
         $siteUser = Auth::guard('site')->user()->load('player', 'pendingClaimPlayer');
 
-        return view('account.show', compact('siteUser'));
+        // "Rol preferido" (2026-09-01, antes texto libre) -- se elige entre
+        // las armas con las que el jugador REALMENTE tiene bajas, no
+        // cualquier cosa tipeada a mano. Ordenadas por mas usada primero.
+        $usedWeapons = collect();
+        if ($siteUser->player_id) {
+            $usedWeapons = Kill::where('attacker_player_id', $siteUser->player_id)
+                ->where('is_suicide', false)
+                ->selectRaw('weapon, count(*) as kills')
+                ->groupBy('weapon')
+                ->orderByDesc('kills')
+                ->pluck('weapon')
+                ->map(fn ($code) => ['code' => $code, 'label' => WeaponCatalog::label($code)]);
+        }
+
+        return view('account.show', compact('siteUser', 'usedWeapons'));
     }
 
     public function update(Request $request)
@@ -33,6 +49,12 @@ class AccountController extends Controller
             // dibujar una bandera de verdad.
             'country' => ['nullable', 'string', 'in:'.implode(',', array_keys(CountryCatalog::OPTIONS))],
             'language' => ['nullable', 'string', 'in:'.implode(',', SetLocale::SUPPORTED)],
+            // Guarda el CODIGO del arma (ej. "weapon_mp44"), no el texto libre
+            // que tenia antes -- se resuelve a nombre bonito con
+            // WeaponCatalog::label() donde se muestra. Sin validar contra una
+            // lista fija: el selector en el form ya limita a las armas
+            // reales del jugador, y forzar coincidencia exacta aca
+            // duplicaria esa misma query sin necesidad real.
             'preferred_role' => ['nullable', 'string', 'max:40'],
             // Solo http(s) -- sin esto, un jugador podria guardar un esquema
             // javascript:/data: y el perfil publico (que renderiza estos campos
@@ -48,14 +70,8 @@ class AccountController extends Controller
             'pc_gpu' => ['nullable', 'string', 'max:120'],
             'pc_ram' => ['nullable', 'string', 'max:120'],
             'pc_peripherals' => ['nullable', 'string', 'max:120'],
-            'show_on_ranking' => ['nullable', 'boolean'],
             'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
-
-        // Checkbox ausente en el POST = desmarcado, no "no cambiar" -- HTML no
-        // manda nada para un checkbox sin marcar, hay que resolverlo a false
-        // explicito en vez de dejar el valor anterior sin tocar.
-        $data['show_on_ranking'] = $request->boolean('show_on_ranking');
 
         if ($request->hasFile('avatar')) {
             SiteUserAvatar::store($siteUser, $request->file('avatar'));

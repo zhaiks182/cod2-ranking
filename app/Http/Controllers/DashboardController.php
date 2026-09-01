@@ -100,9 +100,6 @@ class DashboardController extends Controller
             ->where(fn ($q) => $q->where('kills', '>', 0)->orWhere('deaths', '>', 0))
             ->with('player')
             ->whereHas('player')
-            // Preferencia real del jugador (2026-09-01, /mi-cuenta) -- no solo
-            // cosmetica, se respeta oculto de verdad en la home y en /ranking.
-            ->whereDoesntHave('player.siteUser', fn ($q) => $q->where('show_on_ranking', false))
             ->orderByDesc('kills')
             ->limit(10)
             ->get();

@@ -21,12 +21,11 @@ class SiteUser extends Authenticatable
         'player_id', 'pending_claim_player_id', 'claim_code', 'claim_code_expires_at',
         'bio', 'clan_tag', 'country', 'language', 'preferred_role',
         'steam_url', 'twitch_url', 'instagram_url', 'youtube_url', 'twitter_url', 'website_url',
-        'pc_cpu', 'pc_gpu', 'pc_ram', 'pc_peripherals', 'show_on_ranking',
+        'pc_cpu', 'pc_gpu', 'pc_ram', 'pc_peripherals',
     ];
 
     protected $casts = [
         'claim_code_expires_at' => 'datetime',
-        'show_on_ranking' => 'boolean',
     ];
 
     public function player(): BelongsTo

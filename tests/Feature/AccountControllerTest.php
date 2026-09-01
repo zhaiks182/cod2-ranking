@@ -2,7 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\GameMatch;
+use App\Models\Kill;
 use App\Models\Player;
+use App\Models\Round;
+use App\Models\Server;
 use App\Models\SiteUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -120,7 +124,7 @@ class AccountControllerTest extends TestCase
             'clan_tag' => 'Destino',
             'country' => 'ec',
             'language' => 'es',
-            'preferred_role' => 'Asalto',
+            'preferred_role' => 'weapon_mp44',
             'youtube_url' => 'https://youtube.com/@destino',
             'twitter_url' => 'https://x.com/destino',
             'website_url' => 'https://destino.gg',
@@ -130,10 +134,59 @@ class AccountControllerTest extends TestCase
         $this->assertSame('Destino', $siteUser->clan_tag);
         $this->assertSame('ec', $siteUser->country);
         $this->assertSame('es', $siteUser->language);
-        $this->assertSame('Asalto', $siteUser->preferred_role);
+        $this->assertSame('weapon_mp44', $siteUser->preferred_role);
         $this->assertSame('https://youtube.com/@destino', $siteUser->youtube_url);
         $this->assertSame('https://x.com/destino', $siteUser->twitter_url);
         $this->assertSame('https://destino.gg', $siteUser->website_url);
+    }
+
+    /**
+     * "Rol preferido" (2026-09-01) se elige entre las armas con las que el
+     * jugador REALMENTE tiene bajas -- no texto libre inventado. Confirma
+     * que el listado que arma AccountController::show() viene de kills
+     * reales, ordenado por la mas usada primero.
+     */
+    public function test_the_account_page_lists_the_players_real_weapons_most_used_first(): void
+    {
+        $server = Server::create([
+            'name' => 'Test Server', 'slug' => 'test-server', 'log_path' => '/tmp/games_mp.log',
+            'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true,
+        ]);
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+        $match = GameMatch::create(['server_id' => $server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now(), 'ended_at' => now()]);
+        $round = Round::create(['server_id' => $server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd', 'started_at' => now(), 'ended_at' => now()]);
+
+        $makeKill = fn (string $weapon) => Kill::create([
+            'round_id' => $round->id, 'match_id' => $match->id,
+            'attacker_player_id' => $player->id, 'attacker_guid' => $player->guid, 'attacker_name' => $player->last_name, 'attacker_team' => 'allies',
+            'victim_player_id' => $victim->id, 'victim_guid' => $victim->guid, 'victim_name' => $victim->last_name, 'victim_team' => 'axis',
+            'weapon' => $weapon, 'damage' => 100, 'mod' => 'MOD_RIFLE_BULLET', 'hitloc' => 'head',
+            'is_headshot' => false, 'is_grenade' => false, 'is_suicide' => false, 'is_teamkill' => false, 'occurred_at' => now(),
+        ]);
+        $makeKill('weapon_kar98k'); // 1 baja
+        $makeKill('weapon_mp44'); // 2 bajas -- la mas usada
+        $makeKill('weapon_mp44');
+
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $response = $this->actingAs($siteUser, 'site')->get(route('account.show'));
+
+        $response->assertOk();
+        $codes = collect($response->viewData('usedWeapons'))->pluck('code');
+        $this->assertSame(['weapon_mp44', 'weapon_kar98k'], $codes->all());
+    }
+
+    public function test_the_account_page_shows_no_weapons_without_any_real_kills(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $response = $this->actingAs($siteUser, 'site')->get(route('account.show'));
+
+        $response->assertOk();
+        $this->assertTrue(collect($response->viewData('usedWeapons'))->isEmpty());
     }
 
     public function test_country_must_be_from_the_predefined_list(): void
@@ -154,21 +207,6 @@ class AccountControllerTest extends TestCase
         $this->actingAs($siteUser, 'site')
             ->post(route('account.update'), ['language' => 'fr'])
             ->assertSessionHasErrors('language');
-    }
-
-    public function test_unchecking_show_on_ranking_hides_the_player_and_checking_it_shows_again(): void
-    {
-        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
-        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
-        $this->assertTrue($siteUser->fresh()->show_on_ranking);
-
-        // Un checkbox sin marcar no manda el campo en el POST -- tiene que
-        // resolverse a false igual, no quedarse en true por default.
-        $this->actingAs($siteUser, 'site')->post(route('account.update'), []);
-        $this->assertFalse($siteUser->fresh()->show_on_ranking);
-
-        $this->actingAs($siteUser, 'site')->post(route('account.update'), ['show_on_ranking' => '1']);
-        $this->assertTrue($siteUser->fresh()->show_on_ranking);
     }
 
     public function test_a_claimed_user_can_upload_a_profile_photo(): void

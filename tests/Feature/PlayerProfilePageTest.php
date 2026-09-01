@@ -23,7 +23,7 @@ class PlayerProfilePageTest extends TestCase
         SiteUser::create([
             'discord_id' => '221538919068467200', 'discord_username' => 'zhaiks', 'player_id' => $player->id,
             'bio' => 'Jugador desde 2003.', 'steam_url' => 'https://steamcommunity.com/id/zhaiks',
-            'pc_cpu' => 'Ryzen 5600X', 'clan_tag' => 'Destino', 'role' => 'Fundador', 'preferred_role' => 'Asalto',
+            'pc_cpu' => 'Ryzen 5600X', 'clan_tag' => 'Destino', 'role' => 'Fundador', 'preferred_role' => 'weapon_mp44',
             'country' => 'ec', 'language' => 'es',
         ]);
 
@@ -34,7 +34,9 @@ class PlayerProfilePageTest extends TestCase
             ->assertSee('Ryzen 5600X')
             ->assertSee(__('Clan').': Destino')
             ->assertSee('Fundador')
-            ->assertSee('Asalto')
+            // "Rol preferido" ahora es un codigo de arma real, resuelto a
+            // nombre bonito con WeaponCatalog::label() al mostrarse.
+            ->assertSee(\App\Support\WeaponCatalog::label('weapon_mp44'))
             ->assertSee('Ecuador')
             ->assertSee('Español')
             // Banderas reales (2026-09-01) -- una para el pais (Ecuador), otra

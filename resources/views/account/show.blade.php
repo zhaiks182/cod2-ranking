@@ -55,7 +55,16 @@
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">{{ __('Rol preferido') }}</label>
-                            <input type="text" name="preferred_role" value="{{ old('preferred_role', $siteUser->preferred_role) }}" maxlength="40" placeholder="ej. Asalto, Francotirador..." class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                            @if($usedWeapons->isEmpty())
+                                <p class="text-xs text-slate-600 py-2">{{ __('Todavía no hay bajas registradas para elegir un arma.') }}</p>
+                            @else
+                                <select name="preferred_role" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                                    <option value="">{{ __('Sin definir') }}</option>
+                                    @foreach($usedWeapons as $weapon)
+                                        <option value="{{ $weapon['code'] }}" @selected(old('preferred_role', $siteUser->preferred_role) === $weapon['code'])>{{ $weapon['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
                             @error('preferred_role')<p class="text-xs text-red-400 mt-1">{{ $message }}</p>@enderror
                         </div>
                         <div>
@@ -143,16 +152,6 @@
                         @error('website_url')<p class="text-xs text-red-400 mt-1">{{ $message }}</p>@enderror
                     </div>
                 </div>
-            </div>
-
-            {{-- Preferencias --}}
-            <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-2">
-                <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">{{ __('Preferencias') }}</h2>
-                <label class="flex items-center gap-2 text-sm text-slate-300">
-                    <input type="checkbox" name="show_on_ranking" value="1" @checked(old('show_on_ranking', $siteUser->show_on_ranking))
-                        class="rounded border-slate-700 bg-panel2 text-gsprimary focus:ring-gsprimary">
-                    {{ __('Mostrar mi perfil en el ranking') }}
-                </label>
             </div>
 
             <div class="flex items-center gap-3">
