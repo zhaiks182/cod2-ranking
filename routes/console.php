@@ -19,3 +19,4 @@ Schedule::command('cod2:prune-resource-samples')->daily();
 Schedule::command('backup:run')->dailyAt('03:00');
 Schedule::command('hosted-servers:poll')->everyMinute();
 Schedule::command('hosted-servers:expire')->everyMinute()->withoutOverlapping();
+Schedule::command('players:check-claims')->everyMinute()->withoutOverlapping();
