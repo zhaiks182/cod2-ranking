@@ -190,46 +190,6 @@
                         <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
                     </div>
                 </div>
-                {{-- Buscador de jugadores (2026-08-31) -- icono que expande un input,
-                resultados en vivo vía /jugadores/buscar (debounce 250ms), clickear un
-                resultado navega directo al perfil. Cierra con el mismo listener global
-                de "click afuera" que ya usan los otros dropdowns del nav. --}}
-                <div class="relative">
-                    <button type="button" data-search-toggle onclick="cod2ToggleSearch()"
-                        class="p-1.5 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
-                        aria-label="{{ __('Buscar jugador') }}">
-                        <svg class="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" /></svg>
-                    </button>
-                    <div id="search-dropdown" class="hidden absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-panel shadow-xl z-50 normal-case tracking-normal font-normal">
-                        <div class="p-2 border-b border-slate-800">
-                            <input type="text" id="cod2-search-input" oninput="cod2SearchPlayers(this.value)" placeholder="{{ __('Buscar jugador...') }}"
-                                class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500">
-                        </div>
-                        <div id="cod2-search-results" class="max-h-80 overflow-y-auto"></div>
-                    </div>
-                </div>
-                {{-- Selector ES/EN (2026-08-29, a pedido del dueño, referencia
-                hostgamer.net/es) -- solo icono de bandera + chevron en el trigger,
-                banderas via GeoIp::flagIconHtml() (flagcdn.com, reusado del mismo
-                helper que ya usan las tablas de jugadores -- ver "GeoIp y banderas
-                de país" en CLAUDE.md, nunca emoji de bandera por el problema de
-                render en Windows ya documentado ahí). --}}
-                <div class="relative">
-                    <button type="button" data-lang-toggle onclick="document.getElementById('lang-dropdown').classList.toggle('hidden')"
-                        class="flex items-center gap-1 p-1 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
-                        aria-label="Cambiar idioma / Change language">
-                        {!! \App\Services\GeoIp::flagIconHtml(app()->getLocale() === 'en' ? 'us' : 'es', 20, 14) !!}
-                        <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
-                    </button>
-                    <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
-                        <a href="{{ route('locale.switch', 'es') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'es' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
-                            {!! \App\Services\GeoIp::flagIconHtml('es', 18, 13) !!} Español
-                        </a>
-                        <a href="{{ route('locale.switch', 'en') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'en' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
-                            {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!} English
-                        </a>
-                    </div>
-                </div>
                 @if (config('services.discord.client_id'))
                     @auth('site')
                         <div class="relative">
@@ -252,6 +212,29 @@
                         <a href="{{ route('login') }}" class="text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal">{{ __('Iniciar sesión') }}</a>
                     @endauth
                 @endif
+                {{-- Selector ES/EN (2026-08-29, a pedido del dueño, referencia
+                hostgamer.net/es) -- solo icono de bandera + chevron en el trigger,
+                banderas via GeoIp::flagIconHtml() (flagcdn.com, reusado del mismo
+                helper que ya usan las tablas de jugadores -- ver "GeoIp y banderas
+                de país" en CLAUDE.md, nunca emoji de bandera por el problema de
+                render en Windows ya documentado ahí). Al final del nav (2026-09-01,
+                a pedido del dueño). --}}
+                <div class="relative">
+                    <button type="button" data-lang-toggle onclick="document.getElementById('lang-dropdown').classList.toggle('hidden')"
+                        class="flex items-center gap-1 p-1 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal"
+                        aria-label="Cambiar idioma / Change language">
+                        {!! \App\Services\GeoIp::flagIconHtml(app()->getLocale() === 'en' ? 'us' : 'es', 20, 14) !!}
+                        <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
+                    </button>
+                    <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                        <a href="{{ route('locale.switch', 'es') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'es' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
+                            {!! \App\Services\GeoIp::flagIconHtml('es', 18, 13) !!} Español
+                        </a>
+                        <a href="{{ route('locale.switch', 'en') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'en' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
+                            {!! \App\Services\GeoIp::flagIconHtml('us', 18, 13) !!} English
+                        </a>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -291,57 +274,6 @@
             const submenu = btn.nextElementSibling;
             submenu.classList.toggle('hidden');
             btn.querySelector('svg').classList.toggle('rotate-180');
-        }
-
-        // Buscador de jugadores del nav (2026-08-31) -- debounce de 250ms para no
-        // pegarle a /jugadores/buscar en cada tecla, mismo patron de "un fetch,
-        // descartar si ya no es la ultima query" que ya usa openDetailsPopover()
-        // mas abajo para no pisar resultados con una respuesta vieja que llega tarde.
-        function cod2ToggleSearch() {
-            const dropdown = document.getElementById('search-dropdown');
-            dropdown.classList.toggle('hidden');
-            if (!dropdown.classList.contains('hidden')) {
-                document.getElementById('cod2-search-input').focus();
-            }
-        }
-
-        let cod2SearchTimer = null;
-        let cod2SearchSeq = 0;
-
-        function cod2SearchPlayers(query) {
-            clearTimeout(cod2SearchTimer);
-            const results = document.getElementById('cod2-search-results');
-            const q = query.trim();
-
-            if (q.length < 2) {
-                results.innerHTML = q.length === 0 ? '' : `<div class="px-3 py-3 text-xs text-slate-500">${window.cod2I18n.searchHint}</div>`;
-                return;
-            }
-
-            cod2SearchTimer = setTimeout(async () => {
-                const seq = ++cod2SearchSeq;
-                try {
-                    const res = await fetch(`{{ route('players.search') }}?q=${encodeURIComponent(q)}`);
-                    const players = await res.json();
-                    if (seq !== cod2SearchSeq) return;
-
-                    if (!players.length) {
-                        results.innerHTML = `<div class="px-3 py-3 text-xs text-slate-500">${window.cod2I18n.searchNoResults}</div>`;
-                        return;
-                    }
-
-                    results.innerHTML = players.map(p => `
-                        <a href="/jugadores/${encodeURIComponent(p.guid)}" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent border-b border-slate-800/60 last:border-0">
-                            ${p.icon_url ? `<img src="${p.icon_url}" alt="" class="w-5 h-5 shrink-0 object-contain">` : ''}
-                            <span class="truncate flex-1">${escapeHtml(p.name)}</span>
-                            <span class="text-slate-500 text-xs shrink-0">${p.kills} ${window.cod2I18n.kills}</span>
-                        </a>
-                    `).join('');
-                } catch (e) {
-                    if (seq !== cod2SearchSeq) return;
-                    results.innerHTML = `<div class="px-3 py-3 text-xs text-red-400">${window.cod2I18n.errorLoading}</div>`;
-                }
-            }, 250);
         }
 
         // Antes vivia dentro de partials/live-status.blade.php (dentro de un bloque
@@ -613,11 +545,6 @@
                 langDropdown.classList.add('hidden');
             }
 
-            const searchDropdown = document.getElementById('search-dropdown');
-            if (searchDropdown && !searchDropdown.contains(e.target) && !e.target.closest('[data-search-toggle]')) {
-                searchDropdown.classList.add('hidden');
-            }
-
             const accountDropdown = document.getElementById('account-dropdown');
             if (accountDropdown && !accountDropdown.contains(e.target) && !e.target.closest('[data-account-toggle]')) {
                 accountDropdown.classList.add('hidden');
@@ -635,7 +562,6 @@
             if (e.key !== 'Escape') return;
 
             document.getElementById('teamkill-popover')?.classList.add('hidden');
-            document.getElementById('search-dropdown')?.classList.add('hidden');
             document.querySelectorAll('[id*="-modal"]').forEach((m) => m.classList.add('hidden'));
         });
     </script>

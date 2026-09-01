@@ -25,6 +25,17 @@ class PlayerProfileClaimDisplayTest extends TestCase
             ->assertSee('https://steamcommunity.com/id/zhaiks', false);
     }
 
+    public function test_shows_a_clickable_discord_badge_next_to_the_name_when_claimed(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create(['discord_id' => '221538919068467200', 'discord_username' => 'zhaiks', 'player_id' => $player->id]);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertSee('https://discord.com/users/221538919068467200', false)
+            ->assertSee('Discord: zhaiks');
+    }
+
     public function test_shows_the_claim_button_to_a_logged_in_visitor_without_a_claim_of_their_own(): void
     {
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);

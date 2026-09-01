@@ -9,7 +9,15 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!} <x-player-icon :player="$player" /></h1>
-            <div class="text-xs font-mono text-cyan-400 mt-0.5" title="{{ __('Identificador único derivado del HWID del jugador') }}">Guid: {{ $player->guid }}</div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                <span class="text-xs font-mono text-cyan-400" title="{{ __('Identificador único derivado del HWID del jugador') }}">Guid: {{ $player->guid }}</span>
+                @if($player->siteUser)
+                    <a href="https://discord.com/users/{{ $player->siteUser->discord_id }}" target="_blank" rel="noopener"
+                        class="inline-flex items-center gap-1 rounded-full bg-[#5865F2]/15 text-[#5865F2] px-2 py-0.5 text-xs font-medium hover:bg-[#5865F2]/25 transition-colors">
+                        Discord: {{ $player->siteUser->discord_username }}
+                    </a>
+                @endif
+            </div>
             @if($canClaim)
                 <form method="POST" action="{{ route('players.claim.store', $player) }}" class="mt-1">
                     @csrf
@@ -31,7 +39,6 @@
                 <p class="text-sm text-slate-300">{{ $player->siteUser->bio }}</p>
             @endif
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                <span>Discord: {{ $player->siteUser->discord_username }}</span>
                 @if($player->siteUser->steam_url)
                     <a href="{{ $player->siteUser->steam_url }}" target="_blank" rel="noopener" class="hover:text-gsaccent">Steam</a>
                 @endif
