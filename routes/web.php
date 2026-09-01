@@ -31,6 +31,7 @@ use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
+use App\Http\Controllers\SiteAuthController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SpecialtyController;
 use App\Http\Controllers\TeamBalanceController;
@@ -85,6 +86,17 @@ Route::get('/descargas/archivos/{path?}', [HelpController::class, 'browseFiles']
     ->name('downloads.browse');
 
 Route::get('/idioma/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
+
+// Login publico con Discord (2026-09-01) -- guard `site`, separado del login
+// admin. Ver docs/superpowers/specs/2026-09-01-login-discord-reclamo-perfil-design.md.
+Route::get('/login', [SiteAuthController::class, 'redirect'])->name('login');
+Route::get('/auth/discord/callback', [SiteAuthController::class, 'callback'])->name('auth.discord.callback');
+Route::post('/logout', [SiteAuthController::class, 'logout'])->name('logout')->middleware('auth:site');
+
+// Mi cuenta -- placeholder de ruta, el controlador real se agrega en la Task 5.
+// Se deja la ruta acá porque DiscordLoginTest ya necesita que exista para
+// probar el redirect de invitados.
+Route::get('/mi-cuenta', fn () => redirect()->route('dashboard'))->name('account.show')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
 // es una ruta de Laravel -- ver public/ping (archivo estatico vacio) y public/.htaccess

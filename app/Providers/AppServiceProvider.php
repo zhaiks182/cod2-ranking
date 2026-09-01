@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\HostedServer;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,12 @@ class AppServiceProvider extends ServiceProvider
         // HostedServerController::store()/stop() para donde se pone/saca la cookie.
         View::composer('layouts.app', function ($view) {
             $view->with('activeHostedServer', $this->resolveActiveHostedServer());
+        });
+
+        // Registra el driver de Discord para Socialite (paquete
+        // socialiteproviders/discord -- Discord no es un driver oficial).
+        Event::listen(function (SocialiteWasCalled $event) {
+            $event->extendSocialite('discord', \SocialiteProviders\Discord\Provider::class);
         });
     }
 

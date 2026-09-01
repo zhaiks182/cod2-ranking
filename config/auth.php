@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\SiteUser;
 use App\Models\User;
 
 return [
@@ -42,6 +43,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Cuentas publicas (login con Discord, 2026-09-01) -- completamente
+        // separado del guard 'web' que usa el panel admin.
+        'site' => [
+            'driver' => 'session',
+            'provider' => 'site_users',
+        ],
     ],
 
     /*
@@ -65,6 +73,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'site_users' => [
+            'driver' => 'eloquent',
+            'model' => env('AUTH_SITE_MODEL', SiteUser::class),
         ],
 
         // 'users' => [
