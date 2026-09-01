@@ -25,6 +25,16 @@ class PlayerProfileClaimDisplayTest extends TestCase
             ->assertSee('https://steamcommunity.com/id/zhaiks', false);
     }
 
+    public function test_hides_the_empty_profile_card_when_the_player_has_no_bio_socials_or_specs_yet(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        SiteUser::create(['discord_id' => '1', 'discord_username' => 'zhaiks', 'player_id' => $player->id]);
+
+        $this->get(route('players.show', $player))
+            ->assertOk()
+            ->assertDontSee('id="player-profile-card"', false);
+    }
+
     public function test_shows_a_clickable_discord_badge_next_to_the_name_when_claimed(): void
     {
         $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);

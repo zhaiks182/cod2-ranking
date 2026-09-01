@@ -80,7 +80,6 @@
                                     <a href="{{ route('admin.players.merge.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Fusionar jugadores</a>
                                     <a href="{{ route('admin.players.delete.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Borrar jugadores</a>
                                     <a href="{{ route('admin.players.icons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Íconos de jugadores</a>
-                                    <a href="{{ route('admin.players.discord-accounts.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Cuentas de Discord</a>
                                 @endif
                                 @if(auth()->user()->hasModule('audit'))<a href="{{ route('admin.audit.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Auditoría</a>@endif
                             </div>
@@ -97,6 +96,14 @@
                             @if(auth()->user()->hasModule('seasons'))<a href="{{ route('admin.seasons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Temporadas</a>@endif
                             @if(auth()->user()->hasModule('backups'))<a href="{{ route('admin.backups.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Respaldos</a>@endif
                             @if(auth()->user()->hasModule('discord'))<a href="{{ route('admin.discord.edit') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Discord</a>@endif
+                            {{-- Cuentas de Discord (cuentas publicas del sitio) y Usuarios (cuentas
+                            del panel admin) juntas -- ambas son pantallas de "quien tiene acceso
+                            a que identidad", a pedido del dueño (2026-09-01), para que quede a mano
+                            si en algun momento se agrega asignacion de roles tambien a las cuentas
+                            publicas. --}}
+                            @if(auth()->user()->hasModule('players'))
+                                <a href="{{ route('admin.players.discord-accounts.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Cuentas de Discord</a>
+                            @endif
                             @if(auth()->user()->is_super_admin)
                                 <a href="{{ route('admin.users.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Usuarios</a>
                             @endif
