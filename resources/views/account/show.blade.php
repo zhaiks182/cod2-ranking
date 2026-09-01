@@ -71,11 +71,23 @@
             </p>
             <p class="text-2xl font-mono font-semibold text-cyan-400">{{ $siteUser->claim_code }}</p>
             <p class="text-xs text-slate-500">{{ __('Vence') }}: {{ $siteUser->claim_code_expires_at->format('d/m/Y H:i') }}</p>
+            <p class="text-xs text-slate-500 flex items-center gap-1.5">
+                <span class="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 motion-safe:animate-pulse"></span>
+                {{ __('Esta página se actualiza sola apenas se confirme (podés tardar hasta 1 minuto desde que escribís el código).') }}
+            </p>
             <form method="POST" action="{{ route('account.claim.cancel') }}">
                 @csrf
                 <button type="submit" class="text-xs text-red-400 hover:underline">{{ __('Cancelar reclamo') }}</button>
             </form>
         </div>
+        {{-- El reclamo se confirma en el fondo (cron players:check-claims, cada
+        minuto) -- sin esto, el jugador tenia que refrescar a mano para ver que
+        ya se confirmo. Recarga sola cada 10s mientras siga en este estado; una
+        vez confirmado, esta rama deja de renderizarse y el script no vuelve a
+        aparecer. --}}
+        <script>
+            setTimeout(() => location.reload(), 10000);
+        </script>
     @elseif($siteUser->pending_claim_player_id)
         {{-- Codigo vencido sin confirmar --}}
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-3">
