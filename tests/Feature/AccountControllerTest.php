@@ -79,4 +79,33 @@ class AccountControllerTest extends TestCase
 
         $this->assertNull($siteUser->fresh()->steam_url);
     }
+
+    public function test_status_endpoint_reports_unclaimed_while_a_claim_is_pending(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create([
+            'discord_id' => '1', 'discord_username' => 'a',
+            'pending_claim_player_id' => $player->id, 'claim_code' => 'ABCDEFGH',
+            'claim_code_expires_at' => now()->addMinutes(15),
+        ]);
+
+        $this->actingAs($siteUser, 'site')->getJson(route('account.status'))
+            ->assertOk()
+            ->assertJson(['claimed' => false, 'player_name' => null]);
+    }
+
+    public function test_status_endpoint_reports_claimed_once_the_code_was_confirmed(): void
+    {
+        $player = Player::create(['guid' => 111, 'last_name' => 'Zhaiks', 'last_name_plain' => 'Zhaiks']);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
+
+        $this->actingAs($siteUser, 'site')->getJson(route('account.status'))
+            ->assertOk()
+            ->assertJson(['claimed' => true, 'player_name' => 'Zhaiks']);
+    }
+
+    public function test_a_guest_cannot_hit_the_status_endpoint(): void
+    {
+        $this->get(route('account.status'))->assertRedirect(route('login'));
+    }
 }

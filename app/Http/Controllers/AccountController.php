@@ -39,4 +39,19 @@ class AccountController extends Controller
 
         return back()->with('status', __('Perfil actualizado.'));
     }
+
+    /**
+     * Consultado por JS desde /mi-cuenta mientras hay un reclamo pendiente,
+     * para avisar apenas players:check-claims (cron cada minuto) lo confirme
+     * sin que el jugador tenga que refrescar la pagina a mano.
+     */
+    public function status()
+    {
+        $siteUser = Auth::guard('site')->user();
+
+        return response()->json([
+            'claimed' => $siteUser->player_id !== null,
+            'player_name' => $siteUser->player?->last_name_plain,
+        ]);
+    }
 }

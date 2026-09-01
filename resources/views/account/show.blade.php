@@ -70,23 +70,64 @@
                 <strong>{{ $siteUser->pendingClaimPlayer->last_name_plain }}</strong>:
             </p>
             <p class="text-2xl font-mono font-semibold text-cyan-400">{{ $siteUser->claim_code }}</p>
-            <p class="text-xs text-slate-500">{{ __('Vence') }}: {{ $siteUser->claim_code_expires_at->format('d/m/Y H:i') }}</p>
+
+            <div class="w-full h-1.5 bg-panel2 rounded-full overflow-hidden">
+                <div id="claim-progress-bar" class="h-full bg-cyan-400" style="width:100%"></div>
+            </div>
+            <p class="text-xs text-slate-500" id="claim-progress-label">{{ __('Vence') }}: {{ $siteUser->claim_code_expires_at->format('d/m/Y H:i') }}</p>
+
             <p class="text-xs text-slate-500 flex items-center gap-1.5">
                 <span class="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 motion-safe:animate-pulse"></span>
-                {{ __('Esta página se actualiza sola apenas se confirme (podés tardar hasta 1 minuto desde que escribís el código).') }}
+                {{ __('Esta página avisa sola apenas se confirme (podés tardar hasta 1 minuto desde que escribís el código).') }}
             </p>
             <form method="POST" action="{{ route('account.claim.cancel') }}">
                 @csrf
                 <button type="submit" class="text-xs text-red-400 hover:underline">{{ __('Cancelar reclamo') }}</button>
             </form>
         </div>
-        {{-- El reclamo se confirma en el fondo (cron players:check-claims, cada
-        minuto) -- sin esto, el jugador tenia que refrescar a mano para ver que
-        ya se confirmo. Recarga sola cada 10s mientras siga en este estado; una
-        vez confirmado, esta rama deja de renderizarse y el script no vuelve a
-        aparecer. --}}
+
+        {{-- Aviso flotante que aparece apenas players:check-claims (cron cada
+        minuto) confirma el reclamo, sin que el jugador tenga que refrescar la
+        pagina a mano. Mismo `cod2-pop` que ya usan los botones de "copiar" del
+        sitio (definido en layouts/app.blade.php). --}}
+        <div id="claim-confirmed-toast" class="hidden fixed bottom-6 right-6 z-50 max-w-xs rounded-xl border border-emerald-800 bg-emerald-950 text-emerald-200 px-4 py-3 shadow-xl" style="animation: cod2-pop 0.3s ease-out;">
+            <p class="font-semibold text-sm">✅ {{ __('¡Reclamo confirmado!') }}</p>
+            <p class="text-xs text-emerald-300 mt-1" id="claim-confirmed-name"></p>
+        </div>
+
         <script>
-            setTimeout(() => location.reload(), 10000);
+            (function () {
+                var expiresAt = new Date(@json($siteUser->claim_code_expires_at->toIso8601String())).getTime();
+                var totalMs = 15 * 60 * 1000;
+                var bar = document.getElementById('claim-progress-bar');
+
+                function tickBar() {
+                    var remaining = expiresAt - Date.now();
+                    var pct = Math.max(0, Math.min(100, (remaining / totalMs) * 100));
+                    bar.style.width = pct + '%';
+                    if (remaining <= 0) {
+                        clearInterval(barInterval);
+                        location.reload();
+                    }
+                }
+                var barInterval = setInterval(tickBar, 1000);
+                tickBar();
+
+                function checkStatus() {
+                    fetch(@json(route('account.status')), { headers: { 'Accept': 'application/json' } })
+                        .then(function (res) { return res.ok ? res.json() : null; })
+                        .then(function (data) {
+                            if (!data || !data.claimed) return;
+                            clearInterval(pollInterval);
+                            clearInterval(barInterval);
+                            document.getElementById('claim-confirmed-name').textContent = data.player_name || '';
+                            document.getElementById('claim-confirmed-toast').classList.remove('hidden');
+                            setTimeout(function () { location.reload(); }, 2500);
+                        })
+                        .catch(function () {});
+                }
+                var pollInterval = setInterval(checkStatus, 5000);
+            })();
         </script>
     @elseif($siteUser->pending_claim_player_id)
         {{-- Codigo vencido sin confirmar --}}

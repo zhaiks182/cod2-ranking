@@ -100,6 +100,7 @@ Route::post('/logout', [SiteAuthController::class, 'logout'])->name('logout')->m
 // Mi cuenta -- ver estado del reclamo y editar bio/redes/specs de PC (Task 5).
 Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('account.show')->middleware('auth:site');
 Route::post('/mi-cuenta', [AccountController::class, 'update'])->name('account.update')->middleware('auth:site');
+Route::get('/mi-cuenta/estado', [AccountController::class, 'status'])->name('account.status')->middleware('auth:site');
 Route::post('/mi-cuenta/reclamo/cancelar', [PlayerClaimController::class, 'cancel'])->name('account.claim.cancel')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
