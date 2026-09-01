@@ -34,6 +34,16 @@ todo se calcula a partir del propio `games_mp.log`.
   servidores (soporta más de un servidor CoD2 a la vez), consola RCON en vivo
   (kick, mensaje, cambio de mapa, comando libre), subida de imágenes de mapa,
   gestión de partidas y de países/IP de jugadores.
+- 👥 **Usuarios y roles** — más de un admin, cada uno con acceso solo a los
+  módulos que se le asignen (servidores, partidas, demos, bans, temporadas,
+  respaldos, etc.) o acceso total como super-admin.
+- 🗓️ **Temporadas** — cerrar/abrir temporadas desde el panel resetea el
+  ranking, las especialidades y el balanceo de equipos a "desde acá en
+  adelante", sin perder el historial completo (siempre disponible eligiendo
+  "todas las temporadas").
+- 📣 **Notificaciones a Discord** — resultado de cada partida de Search &
+  Destroy (mapa, marcador, MVP, headshots, granadas) y los equipos sugeridos
+  al balancear, cada uno a su propio webhook configurable desde el panel.
 - 🌐 **Multi-servidor** — cada servidor CoD2 configurado tiene su propio log,
   credenciales RCON e IP pública; los jugadores son globales (identificados por
   hardware ID, no por nombre) pero las estadísticas se llevan por servidor.
