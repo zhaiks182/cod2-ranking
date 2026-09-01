@@ -6,7 +6,7 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto space-y-6">
-    <a href="{{ route('players.show', $player) }}" class="text-xs text-slate-500 hover:text-cyan-400">&larr; {{ __('Volver a las estadísticas') }}</a>
+    <a href="{{ route('players.show', $player) }}" class="text-xs text-blue-400 hover:text-blue-300">&larr; {{ __('Volver a las estadísticas') }}</a>
 
     <div class="rounded-xl border border-slate-800 bg-panel px-6 py-6">
         <div class="flex items-start gap-5 flex-wrap">
