@@ -3762,9 +3762,11 @@ desplegar la rama correspondiente.
 `cod2:notify-discord-matches` (cron cada minuto, `routes/console.php`, mismo
 ritmo que `cod2:parse-log`) postea a un webhook de Discord el resultado de
 cada partida SD real que llegó a un resultado desde la última corrida —
-mapa, marcador (rojo si ganó axis, azul si ganó allies), duración y MVP
-(`KillAggregator::aggregate()` sobre los kills de esa partida, mayor
-cantidad de bajas).
+mapa, marcador (con 🔴/🔵 según ganó axis/allies, rojo/azul también en el
+color del embed), duración, servidor, y los líderes de esa partida (🏆 MVP,
+🎯 Headshots, 💣 Granadas, todos vía `KillAggregator::aggregate()` sobre los
+kills de esa partida). Formato del embed reescrito el 2026-09-01, ver esa
+fecha más abajo.
 
 - **`settings.discord_match_webhook_url`** (nullable, editable desde
   `/adm_cod2/discord` junto al resto de la config de Discord ya existente) —
@@ -3822,6 +3824,114 @@ cantidad de bajas).
   cada minuto). **Pendiente: el dueño todavía tiene que cargar la URL del
   webhook desde `/adm_cod2/discord`** — sin eso el comando sigue
   saliendo sin hacer nada, tal como se lo dejó verificado.
+
+### Bug real: notificaba partidas antes de tiempo + rescate de DiscordTeamsNotifier (2026-09-01)
+
+El dueño reportó una notificación real de Toujane con **"Duración: 0 min"**
+— y por separado mostró una captura de una partida de Burgundy con un
+formato de embed mucho más completo (Marcador con 🔴/🔵, Servidor, 🎯
+Headshots, 💣 Granadas, imagen grande, pie con ícono) que dijo era "como
+debió quedar" — ninguno de los dos coincidía con lo que este archivo
+documentaba.
+
+**Causa raíz del "0 min", confirmada contra la base real:**
+`cod2:notify-discord-matches` usaba `GameMatch::scopeVisibleInListing()`
+—pensado para `/partidas`, que también debe mostrar partidas **en curso**
+con un badge— en vez de exigir que la partida ya hubiera terminado de
+verdad. `matches.discord_notified_at` de la partida 125 (Toujane) quedó en
+**2 segundos después** de `started_at`: se notificó apenas arrancó, sin
+rondas jugadas todavía.
+
+**Segundo hallazgo, más grave, mismo diagnóstico:** al revisar
+`discord_notified_at` de todas las partidas, **61 partidas históricas**
+(desde el 2026-08-09) quedaron marcadas como notificadas en una ráfaga de
+apenas 2 minutos (16:17:03 → 16:19:04) — la primera vez que alguien cargó
+una URL de webhook, el comando encontró todas las partidas reales viejas
+con `discord_notified_at` aún `null` (la columna recién se había agregado)
+y las mandó todas de una. Esos 61 mensajes ya se enviaron, no hay forma de
+recuperarlos/borrarlos del canal desde acá.
+
+**Fix, `app/Models/GameMatch.php`:** nuevo `scopeReadyToNotify()` —
+`reachedConclusion()` (13+ rondas o evento `match_end`, ya existía) **Y**
+la partida ya no es el `current_match_id` del parser para su server (mismo
+puntero que ya usa `scopeAbandonedWithoutConclusion()`). Hace falta esto
+además de `reachedConclusion()` porque una partida que va a **overtime**
+(empate 12-12) puede tener 13+ rondas reales y seguir jugándose — el
+conteo de rondas solo no alcanza como señal de "esto terminó". Más el
+corte de seguridad `where('ended_at', '>=', now()->subHours(2))` en el
+comando, para que ningún futuro "apagar y prender" el webhook (o cargar
+uno nuevo) pueda volver a inundar el canal con partidas viejas.
+
+**Sobre el formato "rico" de la captura — investigado, no inventado:**
+encontrado `app/Services/DiscordTeamsNotifier.php` **viviendo solo en el
+VPS, nunca comiteado a git** (mismo patrón exacto que el incidente de
+`deploy.sh` de esta misma sesión, ver "Alguien puede desplegar desde otra
+máquina..." más abajo) — junto con su test, su migración
+(`discord_teams_webhook_url`), y `public/logo_cod2_icon.png`, los cuatro
+con fecha de modificación **17:41:47 del 2026-08-31**, la misma hora exacta
+en que el `CLAUDE.md` del VPS se editó con la falsa afirmación de que
+`deploy.sh` ya estaba arreglado. Todo apunta a una sesión que trabajó
+directo por SSH en el VPS esa hora, sin pasar nunca por este repo. Ese
+`DiscordTeamsNotifier` es una feature DISTINTA (anuncia los equipos armados
+en `/equipos`, no resultados de partida) — pero probablemente esa misma
+sesión también construyó (o dejó andando) una versión más rica de
+`DiscordMatchNotifier.php`, con el formato exacto de la captura del dueño.
+**Esa versión no se pudo recuperar** — no quedó ningún rastro en el
+filesystem del VPS (`find` sin resultados, sin `.git` propio ahí) — se
+perdió cuando un `git archive HEAD | tar -x` posterior de esta sesión
+pisó el archivo con la versión más simple que sí estaba en git.
+
+**Se reconstruyó `DiscordMatchNotifier.php` a mano para igualar la
+captura**, no adivinado: campos `Marcador` (con `🔴`/`🔵` según quién
+ganó, mismo par de emoji que ya usa `DiscordTeamsNotifier` para Axis/
+Allies), `Duración`, `Servidor` (`$match->server->name`), `🏆 MVP`, `🎯
+Headshots`, `💣 Granadas` (los tres vía la misma `KillAggregator::aggregate()`
+que ya se usaba para el MVP, ordenada por `kills`/`headshots`/
+`grenade_kills` respectivamente — sin queries nuevas), `image` en vez de
+`thumbnail` (imagen grande del mapa, no la miniatura chica de antes), y
+`footer` con ícono (`asset('logo_cod2_icon.png')`) + `"Search & Destroy ·
+{$server->name}"` en vez de `description` — mismo patrón de footer que
+`DiscordTeamsNotifier` ya usaba.
+
+**`DiscordTeamsNotifier` se rescató completo a git** (servicio + test +
+migración + el logo), igual que se hizo con `deploy.sh` — agregado
+`discord_teams_webhook_url` a `Setting::$fillable` y un campo nuevo en
+`/adm_cod2/discord` para poder cargar esa URL desde el panel (antes solo
+se podía setear por SQL/tinker directo, nunca desde la UI). **Ojo: el
+botón "Notificar Discord" en `/equipos` que el docblock de la clase daba
+por hecho que existía NUNCA se construyó** (`grep` sin resultados en toda
+la vista/controller de `/equipos`) — el servicio y sus tests están listos
+y pasan, pero no hay forma real de dispararlo desde el sitio todavía. Si
+se quiere terminar esta feature, falta: el botón en
+`partials/team-balance.blade.php`, la ruta, y el controller que lo reciba
+y llame a `DiscordTeamsNotifier::notify()`.
+
+Se reseteó a mano `discord_notified_at = NULL` de la partida 125 (Toujane,
+la única de las dos recién afectadas que realmente terminó — 21 rondas +
+`match_end`, confirmado con `reachedConclusion()`/`stillCurrent()` antes de
+tocarla) para que el próximo cron la renotifique con el formato correcto;
+no así la 124 (Burgundy, solo 1 ronda, nunca fue una partida real — no
+merece notificación de ningún tipo).
+
+TDD: `tests/Feature/NotifyDiscordMatchesTest.php` ganó 5 casos (headshots/
+granadas se muestran cuando la baja decisiva los tiene; no postea una
+partida que recién arrancó con 0 rondas; no postea una partida con 13+
+rondas mientras el parser la sigue rastreando como `current_match_id`
+—el caso de overtime—; no inunda partidas históricas viejas aunque
+`discord_notified_at` sea `null`) sobre las 6 que ya existían (una
+reescrita para verificar el campo `Servidor` nuevo). `tests/Feature/DiscordTeamsNotifierTest.php`
+(5 casos, ya escritos por la sesión que lo dejó en el VPS) necesitó un
+fix de fixture al traerlo — su `server()` creaba un server nuevo con slug
+`pug-latam`, que choca con el que la migración semilla ya crea en cada
+`RefreshDatabase` (mismo gotcha ya documentado en
+`UpdateHostedServerPortsTest::realServer()`) — corregido a `Server::first()`.
+Verificado junto a la suite completa en el clone descartable del VPS:
+279/287 tests, mismos 8 fallos preexistentes sin relación. Desplegado a
+producción (`./deploy.sh --migrate` — la migración de `discord_teams_webhook_url`
+ya estaba aplicada desde el trabajo directo en el VPS, `migrate` no tuvo
+nada que hacer), verificado en vivo: `cod2:notify-discord-matches` corrido
+a mano confirma que la partida 125 quedó renotificada con el formato
+nuevo.
 
 ## sitemap.xml (2026-08-31)
 
