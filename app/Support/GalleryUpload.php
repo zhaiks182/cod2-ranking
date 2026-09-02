@@ -23,7 +23,7 @@ class GalleryUpload
 
     private const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-    public static function store(SiteUser $siteUser, UploadedFile $file, string $title, ?int $matchId): GalleryItem
+    public static function store(SiteUser $siteUser, UploadedFile $file, string $title, ?int $matchId, ?string $category = null): GalleryItem
     {
         $mimeType = $file->getMimeType();
         $type = self::typeFor($mimeType);
@@ -62,6 +62,7 @@ class GalleryUpload
             'mime_type' => $mimeType,
             'size_bytes' => $sizeBytes,
             'match_id' => $matchId,
+            'category' => $category,
         ]);
     }
 

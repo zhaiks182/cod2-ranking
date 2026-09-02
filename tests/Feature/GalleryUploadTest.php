@@ -203,4 +203,46 @@ class GalleryUploadTest extends TestCase
 
         $this->assertSame($match->id, GalleryItem::first()->match_id);
     }
+
+    public function test_saves_the_optional_category(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->image('foto.jpg'),
+            'category' => 'troll',
+        ]);
+
+        $this->assertSame('troll', GalleryItem::first()->category);
+    }
+
+    public function test_uploading_without_a_category_leaves_it_null(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->image('foto.jpg'),
+        ]);
+
+        $this->assertNull(GalleryItem::first()->category);
+    }
+
+    public function test_rejects_a_category_that_is_not_in_the_predefined_list(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $response = $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->image('foto.jpg'),
+            'category' => 'no_existe',
+        ]);
+
+        $response->assertSessionHasErrors('category');
+        $this->assertSame(0, GalleryItem::count());
+    }
 }

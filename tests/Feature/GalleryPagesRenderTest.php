@@ -67,6 +67,26 @@ class GalleryPagesRenderTest extends TestCase
         $this->get(route('gallery.show', $item))->assertOk()->assertSee('Mi video');
     }
 
+    public function test_gallery_index_filters_by_category(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $troll = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Un troll', 'type' => 'image',
+            'file_path' => 'gallery/1/a.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1024, 'category' => 'troll',
+        ]);
+        $tiros = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Buen tiro', 'type' => 'image',
+            'file_path' => 'gallery/1/b.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1024, 'category' => 'buenos_tiros',
+        ]);
+
+        $response = $this->get(route('gallery.index', ['categoria' => 'troll']));
+
+        $response->assertOk();
+        $ids = collect($response->viewData('items')->items())->pluck('id')->all();
+        $this->assertSame([$troll->id], $ids);
+        $response->assertSee('Troll');
+    }
+
     public function test_gallery_show_renders_share_and_download_buttons(): void
     {
         $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);

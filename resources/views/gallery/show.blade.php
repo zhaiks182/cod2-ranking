@@ -42,6 +42,9 @@
                         @if($galleryItem->is_featured)
                             <span class="px-2 py-0.5 rounded-full bg-amber-500/90 text-black text-[11px] font-semibold">⭐ {{ __('Destacado') }}</span>
                         @endif
+                        @if($galleryItem->category)
+                            <span class="px-2 py-0.5 rounded-full bg-panel2 border border-slate-700 text-[11px] text-slate-400">{{ \App\Support\GalleryCategory::label($galleryItem->category) }}</span>
+                        @endif
                     </h1>
                     <div class="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
                         @if($galleryItem->siteUser->avatar_url)

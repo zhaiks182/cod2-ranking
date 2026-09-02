@@ -13,10 +13,20 @@
         @endauth
     </div>
 
-    <div class="flex items-center gap-2 text-sm">
-        <a href="{{ route('gallery.index') }}" class="px-3 py-1.5 rounded-lg border {{ !$type ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Todo') }}</a>
-        <a href="{{ route('gallery.index', ['tipo' => 'video']) }}" class="px-3 py-1.5 rounded-lg border {{ $type === 'video' ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Videos') }}</a>
-        <a href="{{ route('gallery.index', ['tipo' => 'image']) }}" class="px-3 py-1.5 rounded-lg border {{ $type === 'image' ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Imágenes') }}</a>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+        <a href="{{ route('gallery.index', ['categoria' => $category]) }}" class="px-3 py-1.5 rounded-lg border {{ !$type ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Todo') }}</a>
+        <a href="{{ route('gallery.index', ['tipo' => 'video', 'categoria' => $category]) }}" class="px-3 py-1.5 rounded-lg border {{ $type === 'video' ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Videos') }}</a>
+        <a href="{{ route('gallery.index', ['tipo' => 'image', 'categoria' => $category]) }}" class="px-3 py-1.5 rounded-lg border {{ $type === 'image' ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-400 hover:border-slate-500' }}">{{ __('Imágenes') }}</a>
+
+        <form method="GET" action="{{ route('gallery.index') }}" class="ml-auto">
+            @if($type)<input type="hidden" name="tipo" value="{{ $type }}">@endif
+            <select name="categoria" onchange="this.form.submit()" class="bg-panel2 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200">
+                <option value="">{{ __('Todas las categorías') }}</option>
+                @foreach(\App\Support\GalleryCategory::OPTIONS as $code => $label)
+                    <option value="{{ $code }}" @selected($category === $code)>{{ $label }}</option>
+                @endforeach
+            </select>
+        </form>
     </div>
 
     @if($items->isEmpty())
@@ -53,6 +63,9 @@
                     </div>
                     <div class="p-3">
                         <div class="text-sm font-medium truncate">{{ $item->title }}</div>
+                        @if($item->category)
+                            <span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-panel2 border border-slate-700 text-[10px] text-slate-400">{{ \App\Support\GalleryCategory::label($item->category) }}</span>
+                        @endif
                         <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
                             @if($item->siteUser->avatar_url)
                                 <img src="{{ $item->siteUser->avatar_url }}" alt="" class="w-4 h-4 rounded-full">

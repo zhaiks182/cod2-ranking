@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class GalleryItem extends Model
 {
     protected $fillable = [
-        'site_user_id', 'title', 'type', 'file_path', 'thumbnail_path', 'mime_type', 'size_bytes', 'match_id', 'is_featured',
+        'site_user_id', 'title', 'type', 'file_path', 'thumbnail_path', 'mime_type', 'size_bytes', 'match_id', 'is_featured', 'category',
     ];
 
     protected $casts = ['is_featured' => 'boolean'];

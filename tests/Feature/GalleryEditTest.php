@@ -88,4 +88,23 @@ class GalleryEditTest extends TestCase
         $this->assertSame($originalPath, $item->file_path);
         $this->assertNull($item->match_id);
     }
+
+    public function test_the_owner_can_edit_the_category(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = $this->makeItem($owner);
+
+        $this->actingAs($owner, 'site')->put(route('gallery.update', $item), ['title' => 'Headshot', 'category' => 'buenos_tiros']);
+
+        $this->assertSame('buenos_tiros', $item->fresh()->category);
+    }
+
+    public function test_updating_rejects_a_category_outside_the_predefined_list(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = $this->makeItem($owner);
+
+        $this->actingAs($owner, 'site')->put(route('gallery.update', $item), ['title' => 'Headshot', 'category' => 'no_existe'])
+            ->assertSessionHasErrors('category');
+    }
 }

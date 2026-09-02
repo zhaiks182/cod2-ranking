@@ -7,6 +7,7 @@ use App\Models\GalleryItem;
 use App\Models\GalleryLike;
 use App\Models\GameMatch;
 use App\Notifications\GalleryCommentPosted;
+use App\Support\GalleryCategory;
 use App\Support\GalleryQuota;
 use App\Support\GalleryUpload;
 use Illuminate\Http\Request;
@@ -23,16 +24,18 @@ class GalleryController extends Controller
     public function index(Request $request)
     {
         $type = $request->query('tipo');
+        $category = $request->query('categoria');
 
         $items = GalleryItem::with(['siteUser', 'match'])
             ->withCount(['comments', 'likes'])
             ->when(in_array($type, ['image', 'video'], true), fn ($q) => $q->where('type', $type))
+            ->when($category && array_key_exists($category, GalleryCategory::OPTIONS), fn ($q) => $q->where('category', $category))
             ->orderByDesc('is_featured')
             ->orderByDesc('created_at')
             ->paginate(24)
             ->withQueryString();
 
-        return view('gallery.index', compact('items', 'type'));
+        return view('gallery.index', ['items' => $items, 'type' => $type, 'category' => $category]);
     }
 
     public function show(GalleryItem $galleryItem)
@@ -54,6 +57,11 @@ class GalleryController extends Controller
         $matches = $this->recentMatches();
 
         return view('gallery.create', compact('remainingMb', 'limitMb', 'videoMaxMb', 'matches'));
+    }
+
+    private function categoryRules(): array
+    {
+        return ['nullable', 'string', 'in:'.implode(',', array_keys(GalleryCategory::OPTIONS))];
     }
 
     private function recentMatches()
@@ -87,6 +95,7 @@ class GalleryController extends Controller
             'title' => ['required', 'string', 'max:120'],
             'file' => ['required', 'file', 'mimes:mp4,webm,jpg,jpeg,png,webp,gif', 'max:'.($isVideoUpload ? $maxKb : $remainingKb)],
             'match_id' => ['nullable', 'integer', 'exists:matches,id'],
+            'category' => $this->categoryRules(),
         ], [
             'file.max' => $isVideoUpload
                 ? 'Los videos no pueden pesar más de '.round($videoMaxKb / 1024).'MB.'
@@ -94,7 +103,7 @@ class GalleryController extends Controller
         ]);
 
         try {
-            $item = GalleryUpload::store($siteUser, $request->file('file'), $data['title'], $data['match_id'] ?? null);
+            $item = GalleryUpload::store($siteUser, $request->file('file'), $data['title'], $data['match_id'] ?? null, $data['category'] ?? null);
         } catch (RuntimeException $e) {
             return back()->withErrors($e->getMessage())->withInput();
         }
@@ -110,7 +119,7 @@ class GalleryController extends Controller
     }
 
     /**
-     * Solo el titulo -- ni el archivo ni la partida vinculada se pueden
+     * Titulo y categoria -- ni el archivo ni la partida vinculada se pueden
      * editar despues de subir (a pedido del dueño, alcance acotado a
      * proposito: reemplazar el archivo o editar el video en si -recortar,
      * etc- quedaron fuera, necesitarian procesamiento de video en un VPS de
@@ -120,9 +129,12 @@ class GalleryController extends Controller
     {
         abort_unless($galleryItem->site_user_id === Auth::guard('site')->id(), 403);
 
-        $data = $request->validate(['title' => ['required', 'string', 'max:120']]);
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:120'],
+            'category' => $this->categoryRules(),
+        ]);
 
-        $galleryItem->update(['title' => $data['title']]);
+        $galleryItem->update(['title' => $data['title'], 'category' => $data['category'] ?? null]);
 
         return redirect()->route('gallery.show', $galleryItem)->with('status', 'Actualizado.');
     }
