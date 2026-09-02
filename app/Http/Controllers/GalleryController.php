@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\GalleryComment;
 use App\Models\GalleryItem;
 use App\Models\GalleryLike;
-use App\Models\GallerySave;
 use App\Models\GameMatch;
 use App\Notifications\GalleryCommentPosted;
 use App\Support\GalleryQuota;
@@ -42,21 +41,8 @@ class GalleryController extends Controller
         $likesCount = $galleryItem->likes()->count();
         $siteUserId = Auth::guard('site')->id();
         $liked = $siteUserId && GalleryLike::where('gallery_item_id', $galleryItem->id)->where('site_user_id', $siteUserId)->exists();
-        $saved = $siteUserId && GallerySave::where('gallery_item_id', $galleryItem->id)->where('site_user_id', $siteUserId)->exists();
 
-        return view('gallery.show', compact('galleryItem', 'likesCount', 'liked', 'saved'));
-    }
-
-    /** "Guardados" del usuario logueado -- tipo "Ver más tarde" de YouTube. */
-    public function saved()
-    {
-        $items = GalleryItem::with(['siteUser', 'match'])
-            ->withCount(['comments', 'likes'])
-            ->whereHas('saves', fn ($q) => $q->where('site_user_id', Auth::guard('site')->id()))
-            ->orderByDesc('created_at')
-            ->paginate(24);
-
-        return view('gallery.saved', compact('items'));
+        return view('gallery.show', compact('galleryItem', 'likesCount', 'liked'));
     }
 
     public function create()
@@ -160,21 +146,6 @@ class GalleryController extends Controller
             $like->delete();
         } else {
             GalleryLike::create(['gallery_item_id' => $galleryItem->id, 'site_user_id' => $siteUserId, 'created_at' => now()]);
-        }
-
-        return back();
-    }
-
-    public function toggleSave(GalleryItem $galleryItem)
-    {
-        $siteUserId = Auth::guard('site')->id();
-
-        $save = GallerySave::where('gallery_item_id', $galleryItem->id)->where('site_user_id', $siteUserId)->first();
-
-        if ($save) {
-            $save->delete();
-        } else {
-            GallerySave::create(['gallery_item_id' => $galleryItem->id, 'site_user_id' => $siteUserId, 'created_at' => now()]);
         }
 
         return back();

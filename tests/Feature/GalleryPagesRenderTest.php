@@ -67,26 +67,55 @@ class GalleryPagesRenderTest extends TestCase
         $this->get(route('gallery.show', $item))->assertOk()->assertSee('Mi video');
     }
 
-    public function test_gallery_show_renders_share_and_save_buttons_for_a_logged_in_user(): void
+    public function test_gallery_show_renders_share_and_download_buttons(): void
     {
         $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
         $item = GalleryItem::create([
             'site_user_id' => $owner->id, 'title' => 'Mi video', 'type' => 'video',
             'file_path' => 'gallery/1/x.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024,
         ]);
-        $viewer = SiteUser::create(['discord_id' => '2', 'discord_username' => 'viewer']);
 
-        $this->actingAs($viewer, 'site')->get(route('gallery.show', $item))
+        // Compartir/Descargar no requieren sesion -- se ven sin login.
+        $this->get(route('gallery.show', $item))
             ->assertOk()
             ->assertSee('Compartir')
-            ->assertSee('Guardar');
+            ->assertSee('Descargar');
     }
 
-    public function test_gallery_saved_page_renders_empty(): void
+    /**
+     * Al pegar el link de un item en Discord/redes debe verse el titulo y
+     * autor de ESE item, no solo la meta generica del sitio (2026-09-02, a
+     * pedido del dueño) -- layouts/app.blade.php ya cae al default cuando
+     * una vista no pisa @section('og_title'|'og_description'|'og_image').
+     */
+    public function test_gallery_show_sets_item_specific_open_graph_tags_for_an_image(): void
     {
-        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Ace en Toujane', 'type' => 'image',
+            'file_path' => 'gallery/1/x.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1024,
+        ]);
 
-        $this->actingAs($siteUser, 'site')->get(route('gallery.saved'))->assertOk();
+        $response = $this->get(route('gallery.show', $item));
+
+        $response->assertOk();
+        $response->assertSee('<meta property="og:title" content="Ace en Toujane">', false);
+        $response->assertSee('owner', false);
+        $response->assertSee($item->url(), false);
+    }
+
+    public function test_gallery_show_sets_open_graph_title_for_a_video_without_a_generated_image(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Clip de headshot', 'type' => 'video',
+            'file_path' => 'gallery/1/x.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024,
+        ]);
+
+        $response = $this->get(route('gallery.show', $item));
+
+        $response->assertOk();
+        $response->assertSee('<meta property="og:title" content="Clip de headshot">', false);
     }
 
     public function test_gallery_create_renders_for_a_logged_in_user(): void

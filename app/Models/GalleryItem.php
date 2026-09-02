@@ -35,11 +35,6 @@ class GalleryItem extends Model
         return $this->hasMany(GalleryLike::class);
     }
 
-    public function saves(): HasMany
-    {
-        return $this->hasMany(GallerySave::class);
-    }
-
     public function url(): string
     {
         return Storage::disk('public')->url($this->file_path);
