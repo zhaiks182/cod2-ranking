@@ -51,7 +51,7 @@
                     10 links sueltos en una fila se saturaban. Cada link adentro esta gateado
                     por su modulo (2026-08-31, sistema de roles) -- un usuario sin ningun
                     modulo del grupo ni siquiera ve el boton del dropdown. --}}
-                    @if(auth()->user()->hasModule('matches') || auth()->user()->hasModule('demos') || auth()->user()->hasModule('maps') || auth()->user()->hasModule('players'))
+                    @if(auth()->user()->hasModule('matches') || auth()->user()->hasModule('demos') || auth()->user()->hasModule('maps') || auth()->user()->hasModule('players') || auth()->user()->hasModule('gallery'))
                         <div class="relative">
                             <button type="button" data-dropdown-toggle="admin-content-dropdown"
                                 class="text-slate-300 hover:text-gsaccent flex items-center gap-1">
@@ -63,6 +63,7 @@
                                 @if(auth()->user()->hasModule('demos'))<a href="{{ route('admin.demos.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Demos</a>@endif
                                 @if(auth()->user()->hasModule('maps'))<a href="{{ route('admin.maps.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Mapas</a>@endif
                                 @if(auth()->user()->hasModule('players'))<a href="{{ route('admin.players.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Países</a>@endif
+                                @if(auth()->user()->hasModule('gallery'))<a href="{{ route('admin.gallery.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Galería</a>@endif
                             </div>
                         </div>
                     @endif

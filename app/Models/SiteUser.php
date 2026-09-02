@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +49,11 @@ class SiteUser extends Authenticatable
     public function pendingClaimPlayer(): BelongsTo
     {
         return $this->belongsTo(Player::class, 'pending_claim_player_id');
+    }
+
+    public function galleryItems(): HasMany
+    {
+        return $this->hasMany(GalleryItem::class);
     }
 
     public function hasPendingClaim(): bool

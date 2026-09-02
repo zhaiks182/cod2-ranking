@@ -121,6 +121,7 @@
                 @endauth
                 <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Inicio') }}</a>
                 <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Crear servidor') }}</a>
+                <a href="{{ route('gallery.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Galería') }}</a>
                 <div class="relative">
                     <button type="button" data-ranking-toggle onclick="document.getElementById('ranking-dropdown').classList.toggle('hidden')"
                         class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">
@@ -223,6 +224,15 @@
                 </div>
                 @if (config('services.discord.client_id'))
                     @auth('site')
+                        {{-- Campanita de notificaciones (2026-09-02, modulo de galeria) --
+                        solo comentarios generan notificacion, ver GalleryCommentPosted. --}}
+                        <a href="{{ route('notifications.index') }}" class="relative p-1.5 rounded-lg text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal" title="{{ __('Notificaciones') }}">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                            @php $unreadCount = auth('site')->user()->unreadNotifications->count(); @endphp
+                            @if($unreadCount > 0)
+                                <span class="absolute -top-1 -right-1 flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">{{ $unreadCount > 9 ? '9+' : $unreadCount }}</span>
+                            @endif
+                        </a>
                         <div class="relative">
                             <button type="button" data-account-toggle onclick="document.getElementById('account-dropdown').classList.toggle('hidden')"
                                 class="flex items-center gap-1.5 text-slate-300 hover:text-gsaccent transition-colors normal-case tracking-normal">

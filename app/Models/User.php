@@ -50,6 +50,7 @@ class User extends Authenticatable
         'backups' => 'Respaldos',
         'discord' => 'Configuración de Discord',
         'audit' => 'Auditoría',
+        'gallery' => 'Galería (videos/imágenes)',
     ];
 
     /**

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\ConsoleController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
 use App\Http\Controllers\Admin\DiscordSettingController;
+use App\Http\Controllers\Admin\GalleryController as AdminGalleryController;
 use App\Http\Controllers\Admin\HostedServerSettingController;
 use App\Http\Controllers\Admin\MapImageController;
 use App\Http\Controllers\Admin\MatchController as AdminMatchController;
@@ -25,12 +26,14 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemosController;
 use App\Http\Controllers\DemoUploadController;
+use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HostedServerController;
 use App\Http\Controllers\KillDetailController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MatchController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlayerClaimController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
@@ -56,6 +59,22 @@ Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');
 Route::get('/demos/download/{demo}', [DemosController::class, 'download'])->name('demos.download');
 Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show');
+
+// Galeria multimedia (2026-09-02) -- publica para ver, requiere sesion de
+// Discord (auth:site) para subir/comentar/likear. Ver docs/superpowers/specs/
+// 2026-09-02-galeria-multimedia-design.md. "/galeria/subir" antes de
+// "/galeria/{galleryItem}" a proposito, mismo tipo de trampa de orden de
+// rutas ya conocida en este proyecto (ver "borrar/masivo-sin-actividad" en
+// CLAUDE.md) -- si quedara despues, Laravel intentaria bindear "subir" como
+// un id de GalleryItem.
+Route::get('/galeria', [GalleryController::class, 'index'])->name('gallery.index');
+Route::get('/galeria/subir', [GalleryController::class, 'create'])->name('gallery.create')->middleware('auth:site');
+Route::post('/galeria', [GalleryController::class, 'store'])->name('gallery.store')->middleware('auth:site');
+Route::get('/galeria/{galleryItem}', [GalleryController::class, 'show'])->name('gallery.show');
+Route::delete('/galeria/{galleryItem}', [GalleryController::class, 'destroy'])->name('gallery.destroy')->middleware('auth:site');
+Route::post('/galeria/{galleryItem}/like', [GalleryController::class, 'toggleLike'])->name('gallery.like')->middleware('auth:site');
+Route::post('/galeria/{galleryItem}/comentarios', [GalleryController::class, 'storeComment'])->name('gallery.comments.store')->middleware('auth:site');
+Route::delete('/galeria/comentarios/{galleryComment}', [GalleryController::class, 'destroyComment'])->name('gallery.comments.destroy')->middleware('auth:site');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
 Route::get('/jugadores/{player:guid}/perfil', [PlayerController::class, 'profile'])->name('players.profile');
@@ -106,6 +125,8 @@ Route::get('/mi-cuenta', [AccountController::class, 'show'])->name('account.show
 Route::post('/mi-cuenta', [AccountController::class, 'update'])->name('account.update')->middleware('auth:site');
 Route::get('/mi-cuenta/estado', [AccountController::class, 'status'])->name('account.status')->middleware('auth:site');
 Route::post('/mi-cuenta/reclamo/cancelar', [PlayerClaimController::class, 'cancel'])->name('account.claim.cancel')->middleware('auth:site');
+
+Route::get('/notificaciones', [NotificationController::class, 'index'])->name('notifications.index')->middleware('auth:site');
 
 // El endpoint de latencia (/ping, usado por hosted-servers/create.blade.php) YA NO
 // es una ruta de Laravel -- ver public/ping (archivo estatico vacio) y public/.htaccess
@@ -253,6 +274,14 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
 
         Route::middleware('module:audit')->group(function () {
             Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
+        });
+
+        Route::middleware('module:gallery')->group(function () {
+            Route::get('/galeria', [AdminGalleryController::class, 'index'])->name('gallery.index');
+            Route::put('/galeria/cuota', [AdminGalleryController::class, 'updateQuota'])->name('gallery.quota.update');
+            Route::get('/galeria/{galleryItem}', [AdminGalleryController::class, 'show'])->name('gallery.show');
+            Route::delete('/galeria/{galleryItem}', [AdminGalleryController::class, 'destroy'])->name('gallery.destroy');
+            Route::delete('/galeria/comentarios/{galleryComment}', [AdminGalleryController::class, 'destroyComment'])->name('gallery.comments.destroy');
         });
 
         Route::middleware('module:bans')->group(function () {

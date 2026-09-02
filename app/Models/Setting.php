@@ -15,6 +15,7 @@ class Setting extends Model
         'hosted_servers_ports',
         'discord_match_webhook_url',
         'discord_teams_webhook_url',
+        'gallery_quota_mb',
     ];
 
     /** @return array<int, string> Un item de beneficio por linea, vacios descartados. */
