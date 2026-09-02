@@ -22,7 +22,7 @@
                     @foreach($discordNotifyFields ?? [] as $field => $value)
                         <input type="hidden" name="{{ $field }}" value="{{ $value }}">
                     @endforeach
-                    <button type="submit" class="text-[11px] text-cyan-400 hover:underline">📣 {{ __('Notificar Discord') }}</button>
+                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-[#5865F2]/15 border border-[#5865F2]/40 text-[#5865F2] hover:bg-[#5865F2]/25 px-3 py-1.5 text-xs font-semibold whitespace-nowrap">📣 {{ __('Notificar Discord') }}</button>
                 </form>
             @endif
         </div>
