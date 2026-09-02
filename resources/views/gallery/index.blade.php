@@ -30,12 +30,18 @@
                     <div class="relative aspect-video bg-panel2 flex items-center justify-center overflow-hidden">
                         @if($item->type === 'image')
                             <img src="{{ $item->url() }}" alt="" loading="lazy" class="w-full h-full object-cover">
+                        @elseif($item->thumbnailUrl())
+                            {{-- Miniatura real (2026-09-02), un frame extraido con ffmpeg al
+                            subir -- ver GalleryUpload::generateVideoThumbnail(). --}}
+                            <img src="{{ $item->thumbnailUrl() }}" alt="" loading="lazy" class="w-full h-full object-cover">
+                            <span class="absolute inset-0 flex items-center justify-center">
+                                <span class="w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white text-sm">▶</span>
+                            </span>
                         @else
-                            {{-- Sin generar miniaturas en el servidor (necesitaria ffmpeg,
-                            riesgoso en un VPS de 1 core, ver la spec) -- el propio navegador
-                            muestra el primer frame como miniatura con preload="metadata",
-                            pidiendole a Apache solo un rango chico del archivo (HTTP Range,
-                            ya soportado nativo), no el video entero. --}}
+                            {{-- Respaldo si ffmpeg no pudo generar una miniatura (clip corrupto,
+                            sin pista de video, etc.) -- el propio navegador muestra el primer
+                            frame con preload="metadata", pidiendole a Apache solo un rango chico
+                            del archivo (HTTP Range, ya soportado nativo), no el video entero. --}}
                             <video src="{{ $item->url() }}#t=0.1" preload="metadata" muted playsinline class="w-full h-full object-cover pointer-events-none"></video>
                             <span class="absolute inset-0 flex items-center justify-center">
                                 <span class="w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white text-sm">▶</span>

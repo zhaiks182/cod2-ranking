@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class GalleryItem extends Model
 {
     protected $fillable = [
-        'site_user_id', 'title', 'type', 'file_path', 'mime_type', 'size_bytes', 'match_id', 'is_featured',
+        'site_user_id', 'title', 'type', 'file_path', 'thumbnail_path', 'mime_type', 'size_bytes', 'match_id', 'is_featured',
     ];
 
     protected $casts = ['is_featured' => 'boolean'];
@@ -38,5 +38,10 @@ class GalleryItem extends Model
     public function url(): string
     {
         return Storage::disk('public')->url($this->file_path);
+    }
+
+    public function thumbnailUrl(): ?string
+    {
+        return $this->thumbnail_path ? Storage::disk('public')->url($this->thumbnail_path) : null;
     }
 }

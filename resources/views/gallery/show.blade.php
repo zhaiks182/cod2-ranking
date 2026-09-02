@@ -5,6 +5,8 @@
 @section('og_description', __('Subido por :name en la galería de CoD2 Stats — Pug Latam · :likes 👍 · :comments 💬', ['name' => $galleryItem->siteUser->discord_username, 'likes' => $likesCount, 'comments' => $galleryItem->comments->count()]))
 @if($galleryItem->type === 'image')
     @section('og_image', $galleryItem->url())
+@elseif($galleryItem->thumbnailUrl())
+    @section('og_image', $galleryItem->thumbnailUrl())
 @endif
 
 @section('content')
@@ -14,7 +16,7 @@
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="bg-black">
             @if($galleryItem->type === 'video')
-                <video src="{{ $galleryItem->url() }}" controls class="w-full max-h-[70vh]"></video>
+                <video src="{{ $galleryItem->url() }}" @if($galleryItem->thumbnailUrl()) poster="{{ $galleryItem->thumbnailUrl() }}" @endif controls class="w-full max-h-[70vh]"></video>
             @else
                 <img src="{{ $galleryItem->url() }}" alt="{{ $galleryItem->title }}" class="w-full max-h-[70vh] object-contain mx-auto">
             @endif

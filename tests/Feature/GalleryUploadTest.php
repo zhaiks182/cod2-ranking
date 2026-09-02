@@ -52,6 +52,46 @@ class GalleryUploadTest extends TestCase
         $this->assertSame('video', $item->type);
     }
 
+    /**
+     * UploadedFile::fake()->create() genera bytes al azar, no un video real
+     * -- ffmpeg no puede extraer un frame de ahi. Confirma que eso no
+     * bloquea la subida, solo se queda sin miniatura (mismo criterio
+     * defensivo del resto del modulo).
+     */
+    public function test_a_fake_video_without_real_video_data_uploads_without_a_thumbnail(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'Clip',
+            'file' => UploadedFile::fake()->create('clip.mp4', 500, 'video/mp4'),
+        ]);
+
+        $this->assertNull(GalleryItem::firstWhere('title', 'Clip')->thumbnail_path);
+    }
+
+    /**
+     * Con un archivo mp4 real (tests/Fixtures/tiny-video.mp4, generado con
+     * ffmpeg: 1s, 64x64, color solido) confirma el camino exitoso completo:
+     * ffmpeg extrae un frame real y queda guardado en el disco publico.
+     */
+    public function test_a_real_video_gets_a_generated_thumbnail(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+        $fixture = base_path('tests/Fixtures/tiny-video.mp4');
+
+        $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'Clip real',
+            'file' => new UploadedFile($fixture, 'clip.mp4', 'video/mp4', null, true),
+        ]);
+
+        $item = GalleryItem::firstWhere('title', 'Clip real');
+        $this->assertNotNull($item->thumbnail_path);
+        Storage::disk('public')->assertExists($item->thumbnail_path);
+    }
+
     public function test_rejects_a_disallowed_file_format(): void
     {
         Storage::fake('public');

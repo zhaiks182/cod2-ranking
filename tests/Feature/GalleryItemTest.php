@@ -57,6 +57,24 @@ class GalleryItemTest extends TestCase
         $this->delete(route('gallery.destroy', $item))->assertRedirect(route('login'));
     }
 
+    public function test_deleting_a_video_also_deletes_its_thumbnail(): void
+    {
+        Storage::fake('public');
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+        Storage::disk('public')->put("gallery/{$owner->id}/x.mp4", 'contenido');
+        Storage::disk('public')->put("gallery/{$owner->id}/x_thumb.jpg", 'miniatura');
+        $item = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'x', 'type' => 'video',
+            'file_path' => "gallery/{$owner->id}/x.mp4", 'thumbnail_path' => "gallery/{$owner->id}/x_thumb.jpg",
+            'mime_type' => 'video/mp4', 'size_bytes' => 1024,
+        ]);
+
+        $this->actingAs($owner, 'site')->delete(route('gallery.destroy', $item));
+
+        Storage::disk('public')->assertMissing($item->file_path);
+        Storage::disk('public')->assertMissing('gallery/'.$owner->id.'/x_thumb.jpg');
+    }
+
     public function test_deleting_an_item_frees_up_the_quota(): void
     {
         Storage::fake('public');
