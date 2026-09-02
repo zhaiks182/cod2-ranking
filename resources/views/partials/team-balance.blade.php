@@ -3,10 +3,12 @@
      y team-balance.blade.php (pagina publica /equipos) para no duplicar el
      marcado. Ver CLAUDE.md, "Balanceador de equipos por rango".
 
-     $showDiscordButton (opcional, default false) muestra el boton
-     "Notificar Discord" -- solo lo pasa admin/console.blade.php. La pagina
-     publica NUNCA lo pasa: postear al canal es una accion administrativa,
-     no algo que cualquier visitante deba poder disparar. --}}
+     $discordNotifyAction (opcional) es la URL a la que postea el boton
+     "Notificar Discord" -- si se omite, el boton no se muestra.
+     admin/console.blade.php postea a admin.console.notify-teams (auth admin);
+     team-balance.blade.php (pagina publica /equipos) postea a
+     team-balance.notify, sin auth -- a pedido explicito del dueño, cualquier
+     visitante puede notificar los equipos armados, no solo un admin. --}}
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
         <span class="text-xs uppercase tracking-wide text-slate-400">{{ __('Balanceo sugerido de equipos') }}</span>
@@ -14,9 +16,12 @@
             @if($teamBalance && $teamBalance->enough)
                 <span class="text-[11px] text-slate-500">{{ __('Score total') }}: <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreA }}</span> vs <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreB }}</span></span>
             @endif
-            @if(($showDiscordButton ?? false) && $teamBalance && $teamBalance->enough)
-                <form method="POST" action="{{ route('admin.console.notify-teams', $server) }}" onsubmit="return confirm('¿Notificar estos equipos al canal de Discord?')">
+            @if(isset($discordNotifyAction) && $teamBalance && $teamBalance->enough)
+                <form method="POST" action="{{ $discordNotifyAction }}" onsubmit="return confirm('¿Notificar estos equipos al canal de Discord?')">
                     @csrf
+                    @foreach($discordNotifyFields ?? [] as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
+                    @endforeach
                     <button type="submit" class="text-[11px] text-cyan-400 hover:underline">📣 {{ __('Notificar Discord') }}</button>
                 </form>
             @endif

@@ -48,6 +48,9 @@ Route::get('/widget/discord', [DashboardController::class, 'discordWidget'])->na
 Route::get('/ranking', [LeaderboardController::class, 'index'])->name('leaderboard');
 Route::get('/rango', [SpecialtyController::class, 'rango'])->name('rango');
 Route::get('/equipos', [TeamBalanceController::class, 'index'])->name('team-balance');
+Route::post('/equipos/notificar', [TeamBalanceController::class, 'notifyDiscord'])
+    ->middleware('throttle:10,1')
+    ->name('team-balance.notify');
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');

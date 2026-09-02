@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Server;
 use App\Services\Cod2RconClient;
+use App\Services\DiscordTeamsNotifier;
 use App\Support\PlayerRankCalculator;
 use App\Support\TeamBalancer;
 use Illuminate\Http\Request;
@@ -35,5 +36,41 @@ class TeamBalanceController extends Controller
         }
 
         return view('team-balance', compact('servers', 'server', 'status', 'teamBalance'));
+    }
+
+    /**
+     * Boton publico "Notificar Discord" de /equipos (2026-09-01) -- a
+     * diferencia de Admin\ConsoleController::notifyTeams(), esta version no
+     * pide sesion admin, a pedido explicito del dueño: cualquier jugador que
+     * genere el balance puede avisar al canal. Recalcula el balance en el
+     * momento del click (RCON en vivo) por el mismo motivo que la version
+     * admin -- no confiar en el roster que la pagina tenia renderizado unos
+     * segundos antes. Throttle en la ruta (ver routes/web.php) para que no
+     * se pueda inundar el canal de Discord sin login de por medio.
+     */
+    public function notifyDiscord(Request $request)
+    {
+        $data = $request->validate(['server' => ['required', 'string']]);
+
+        $server = Server::where('is_active', true)->where('slug', $data['server'])->first();
+        if (! $server) {
+            return back()->with('error', 'Servidor no encontrado.');
+        }
+
+        $status = Cod2RconClient::forServer($server)->status();
+        if (! $status) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
+        }
+
+        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server));
+        if (! $teamBalance->enough) {
+            return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');
+        }
+
+        if (! DiscordTeamsNotifier::notify($server, $teamBalance->teamA, $teamBalance->teamB)) {
+            return back()->with('error', 'No se pudo postear a Discord — revisá que el webhook de equipos esté configurado.');
+        }
+
+        return back()->with('status', 'Equipos notificados a Discord.');
     }
 }

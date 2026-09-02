@@ -48,7 +48,11 @@
         </div>
 
         @if($teamBalance)
-            @include('partials.team-balance', ['teamBalance' => $teamBalance])
+            @include('partials.team-balance', [
+                'teamBalance' => $teamBalance,
+                'discordNotifyAction' => route('team-balance.notify'),
+                'discordNotifyFields' => ['server' => $server->slug],
+            ])
         @endif
     @endif
 </div>
