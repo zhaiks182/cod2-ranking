@@ -9,6 +9,7 @@
     <h1 class="text-lg font-semibold">{{ __('Subir video o imagen') }}</h1>
 
     <p class="text-sm text-slate-400">{{ __('Te quedan :remaining MB de tu cuota de :limit MB.', ['remaining' => $remainingMb, 'limit' => $limitMb]) }}</p>
+    <p class="text-xs text-slate-500 -mt-4">{{ __('Los videos no pueden pesar más de :max MB.', ['max' => $videoMaxMb]) }}</p>
 
     @if($errors->any())
         <div class="rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">

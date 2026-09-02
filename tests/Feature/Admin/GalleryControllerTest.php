@@ -67,9 +67,14 @@ class GalleryControllerTest extends TestCase
 
     public function test_updating_the_quota_is_reflected_in_the_setting(): void
     {
-        $this->actingAs($this->admin())->put(route('admin.gallery.quota.update'), ['gallery_quota_mb' => 250]);
+        $this->actingAs($this->admin())->put(route('admin.gallery.quota.update'), [
+            'gallery_quota_mb' => 250,
+            'gallery_video_max_mb' => 45,
+        ]);
 
-        $this->assertSame(250, Setting::current()->fresh()->gallery_quota_mb);
+        $setting = Setting::current()->fresh();
+        $this->assertSame(250, $setting->gallery_quota_mb);
+        $this->assertSame(45, $setting->gallery_video_max_mb);
     }
 
     public function test_deleting_an_item_removes_the_file_and_audits(): void

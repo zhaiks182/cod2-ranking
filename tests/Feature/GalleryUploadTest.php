@@ -81,6 +81,69 @@ class GalleryUploadTest extends TestCase
         $this->assertSame(0, GalleryItem::count());
     }
 
+    /**
+     * Tope de 30MB solo para video (2026-09-02, a pedido del dueño), APARTE
+     * de la cuota total -- rechaza incluso si el usuario todavia tiene
+     * cuota de sobra (100MB default, video de 40MB entra en la cuota pero
+     * no en el tope de video).
+     */
+    public function test_rejects_a_video_larger_than_the_video_max_even_with_quota_to_spare(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $response = $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->create('grande.mp4', 40 * 1024, 'video/mp4'),
+        ]);
+
+        $response->assertSessionHasErrors('file');
+        $this->assertSame(0, GalleryItem::count());
+    }
+
+    public function test_allows_a_video_within_the_video_max(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $response = $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->create('ok.mp4', 25 * 1024, 'video/mp4'),
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(1, GalleryItem::count());
+    }
+
+    public function test_an_image_is_not_subject_to_the_video_max(): void
+    {
+        Storage::fake('public');
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $response = $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->create('grande.jpg', 40 * 1024, 'image/jpeg'),
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame(1, GalleryItem::count());
+    }
+
+    public function test_the_admin_configured_video_max_is_respected(): void
+    {
+        Storage::fake('public');
+        Setting::current()->update(['gallery_video_max_mb' => 10]);
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $response = $this->actingAs($siteUser, 'site')->post(route('gallery.store'), [
+            'title' => 'x',
+            'file' => UploadedFile::fake()->create('clip.mp4', 15 * 1024, 'video/mp4'),
+        ]);
+
+        $response->assertSessionHasErrors('file');
+        $this->assertSame(0, GalleryItem::count());
+    }
+
     public function test_saves_the_optional_linked_match(): void
     {
         Storage::fake('public');

@@ -50,4 +50,17 @@ class GalleryQuotaTest extends TestCase
         $this->assertNull(\App\Models\Setting::current()->gallery_quota_mb);
         $this->assertSame(100 * 1024 * 1024, GalleryQuota::limitBytes());
     }
+
+    public function test_video_max_bytes_defaults_to_30mb_when_unset(): void
+    {
+        $this->assertNull(\App\Models\Setting::current()->gallery_video_max_mb);
+        $this->assertSame(30 * 1024 * 1024, GalleryQuota::videoMaxBytes());
+    }
+
+    public function test_video_max_bytes_uses_the_configured_setting(): void
+    {
+        \App\Models\Setting::current()->update(['gallery_video_max_mb' => 15]);
+
+        $this->assertSame(15 * 1024 * 1024, GalleryQuota::videoMaxBytes());
+    }
 }

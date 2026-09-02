@@ -64,9 +64,10 @@ class GalleryController extends Controller
         $siteUser = Auth::guard('site')->user();
         $remainingMb = round(GalleryQuota::remainingBytes($siteUser) / 1024 / 1024, 1);
         $limitMb = round(GalleryQuota::limitBytes() / 1024 / 1024);
+        $videoMaxMb = round(GalleryQuota::videoMaxBytes() / 1024 / 1024);
         $matches = $this->recentMatches();
 
-        return view('gallery.create', compact('remainingMb', 'limitMb', 'matches'));
+        return view('gallery.create', compact('remainingMb', 'limitMb', 'videoMaxMb', 'matches'));
     }
 
     private function recentMatches()
@@ -88,10 +89,22 @@ class GalleryController extends Controller
             return back()->withErrors('Ya usaste toda tu cuota de almacenamiento.')->withInput();
         }
 
+        // El tope de video (30MB por default, ver GalleryQuota::videoMaxBytes())
+        // es APARTE de la cuota total -- se aplica ademas del "max" dinamico de
+        // la cuota, no en su lugar, asi que el limite real de un video es el mas
+        // chico de los dos.
+        $videoMaxKb = (int) floor(GalleryQuota::videoMaxBytes() / 1024);
+        $maxKb = min($remainingKb, $videoMaxKb);
+        $isVideoUpload = in_array(strtolower($request->file('file')?->getClientOriginalExtension() ?? ''), ['mp4', 'webm'], true);
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:120'],
-            'file' => ['required', 'file', 'mimes:mp4,webm,jpg,jpeg,png,webp,gif', "max:{$remainingKb}"],
+            'file' => ['required', 'file', 'mimes:mp4,webm,jpg,jpeg,png,webp,gif', 'max:'.($isVideoUpload ? $maxKb : $remainingKb)],
             'match_id' => ['nullable', 'integer', 'exists:matches,id'],
+        ], [
+            'file.max' => $isVideoUpload
+                ? 'Los videos no pueden pesar más de '.round($videoMaxKb / 1024).'MB.'
+                : 'El archivo excede tu cuota disponible.',
         ]);
 
         try {

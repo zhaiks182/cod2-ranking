@@ -32,11 +32,17 @@ class GalleryController extends Controller
 
     public function updateQuota(Request $request)
     {
-        $data = $request->validate(['gallery_quota_mb' => ['required', 'integer', 'min:1', 'max:10000']]);
+        $data = $request->validate([
+            'gallery_quota_mb' => ['required', 'integer', 'min:1', 'max:10000'],
+            'gallery_video_max_mb' => ['required', 'integer', 'min:1', 'max:10000'],
+        ]);
 
-        Setting::current()->update(['gallery_quota_mb' => $data['gallery_quota_mb']]);
+        Setting::current()->update([
+            'gallery_quota_mb' => $data['gallery_quota_mb'],
+            'gallery_video_max_mb' => $data['gallery_video_max_mb'],
+        ]);
 
-        AdminAction::record('gallery.quota-update', "Cambió la cuota de galería a {$data['gallery_quota_mb']}MB por usuario");
+        AdminAction::record('gallery.quota-update', "Cambió la cuota de galería a {$data['gallery_quota_mb']}MB por usuario (máximo por video: {$data['gallery_video_max_mb']}MB)");
 
         return back()->with('status', 'Cuota actualizada.');
     }

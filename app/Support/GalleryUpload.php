@@ -28,6 +28,11 @@ class GalleryUpload
         $type = self::typeFor($mimeType);
         $sizeBytes = $file->getSize();
 
+        if ($type === 'video' && $sizeBytes > GalleryQuota::videoMaxBytes()) {
+            $videoMaxMb = round(GalleryQuota::videoMaxBytes() / 1024 / 1024);
+            throw new RuntimeException("Los videos no pueden pesar más de {$videoMaxMb}MB.");
+        }
+
         if (! GalleryQuota::fits($siteUser, $sizeBytes)) {
             $remainingMb = round(GalleryQuota::remainingBytes($siteUser) / 1024 / 1024, 1);
             $limitMb = round(GalleryQuota::limitBytes() / 1024 / 1024);

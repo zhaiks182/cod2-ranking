@@ -17,12 +17,19 @@
             @csrf
             @method('PUT')
             <div>
+                <label class="block text-[11px] text-slate-500 mb-1">Cuota total</label>
                 <input type="number" name="gallery_quota_mb" min="1" max="10000" value="{{ $setting->gallery_quota_mb ?? 100 }}"
                     class="bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm w-28">
                 <span class="text-sm text-slate-400 ml-1">MB</span>
             </div>
+            <div>
+                <label class="block text-[11px] text-slate-500 mb-1">Máximo por video</label>
+                <input type="number" name="gallery_video_max_mb" min="1" max="10000" value="{{ $setting->gallery_video_max_mb ?? 30 }}"
+                    class="bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm w-28">
+                <span class="text-sm text-slate-400 ml-1">MB</span>
+            </div>
             <button type="submit" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium">Guardar</button>
-            <p class="text-xs text-slate-500 basis-full">Cuánto puede almacenar cada usuario, acumulado entre todos sus archivos.</p>
+            <p class="text-xs text-slate-500 basis-full">Cuota: cuánto puede almacenar cada usuario, acumulado entre todos sus archivos. Máximo por video: tope aparte que se aplica solo a video, además de la cuota.</p>
         </form>
     </div>
 
