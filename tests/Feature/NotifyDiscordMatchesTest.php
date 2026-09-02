@@ -224,12 +224,49 @@ class NotifyDiscordMatchesTest extends TestCase
 
     /**
      * Una partida que va a overtime puede tener 13+ rondas reales y seguir
-     * jugándose (el parser todavía la sigue como `current_match_id`) --
-     * reachedConclusion() sola ya daría true acá, así que hace falta el
-     * chequeo de "ya no es la partida actual" para no notificarla en pleno
-     * overtime.
+     * jugándose (el parser todavía la sigue como `current_match_id`), SIN
+     * ningún evento match_end todavía -- reachedConclusion() sola ya daría
+     * true acá por la cantidad de rondas, así que hace falta el chequeo de
+     * "ya no es la partida actual" para no notificarla en pleno overtime.
      */
-    public function test_does_not_post_a_match_still_being_tracked_as_current_even_with_13_rounds(): void
+    public function test_does_not_post_a_match_still_being_tracked_as_current_with_13_rounds_but_no_match_end_event(): void
+    {
+        Setting::current()->update(['discord_match_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
+        Http::fake(['discord.com/*' => Http::response(['ok' => true], 204)]);
+
+        $match = GameMatch::create([
+            'server_id' => $this->server->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now()->subMinutes(20), 'ended_at' => now(),
+        ]);
+        for ($i = 1; $i <= 13; $i++) {
+            Round::create([
+                'server_id' => $this->server->id, 'match_id' => $match->id, 'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+                'started_at' => now(), 'ended_at' => now(), 'winner_guids' => [$this->winner->guid],
+            ]);
+        }
+
+        LogParserState::create([
+            'server_id' => $this->server->id, 'log_path' => $this->server->log_path,
+            'byte_offset' => 0, 'current_match_id' => $match->id,
+        ]);
+
+        $this->artisan('cod2:notify-discord-matches');
+
+        Http::assertNothingSent();
+        $this->assertNull($match->fresh()->discord_notified_at);
+    }
+
+    /**
+     * Bug real reportado en vivo por el dueño (2026-09-01), el mismo día que
+     * se agregó el chequeo de arriba: una partida recién terminada CON
+     * evento match_end real (score definitivo, no va a cambiar más) seguía
+     * sin notificarse porque el parser todavía no había arrancado la
+     * partida siguiente (current_match_id seguía apuntando a esta) --
+     * quedaba esperando indefinidamente a que alguien arrancara otra
+     * partida. match_end es la señal definitiva del servidor, no hace falta
+     * esperar a stillCurrent() cuando ya existe.
+     */
+    public function test_posts_a_match_with_a_real_match_end_event_even_while_still_tracked_as_current(): void
     {
         Setting::current()->update(['discord_match_webhook_url' => 'https://discord.com/api/webhooks/123/abc']);
         Http::fake(['discord.com/*' => Http::response(['ok' => true], 204)]);
@@ -242,8 +279,8 @@ class NotifyDiscordMatchesTest extends TestCase
 
         $this->artisan('cod2:notify-discord-matches');
 
-        Http::assertNothingSent();
-        $this->assertNull($match->fresh()->discord_notified_at);
+        Http::assertSentCount(1);
+        $this->assertNotNull($match->fresh()->discord_notified_at);
     }
 
     /**

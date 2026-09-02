@@ -135,17 +135,31 @@ class GameMatch extends Model
      * mirar si el parser todavía la sigue jugando — una partida que va a
      * overtime (empate 12-12) sigue repartiendo winner_guids reales pasada la
      * ronda 13 mientras SIGUE en curso, así que "13+ rondas" sola no alcanza
-     * como señal de "esto ya terminó". stillCurrent() (el mismo puntero de
-     * log_parser_state.current_match_id que ya usa abandonedWithoutConclusion())
-     * es la señal real de "el parser la sigue rastreando" — mientras lo sea,
-     * nunca se notifica, sin importar cuántas rondas lleve.
+     * como señal de "esto ya terminó".
+     *
+     * Corregido el mismo día (segundo bug real, reportado en vivo por el
+     * dueño apenas terminó una partida): exigir además `!stillCurrent()` sin
+     * excepción dejaba una partida con evento `match_end` real esperando
+     * indefinidamente a que el parser arrancara la SIGUIENTE partida (cambio
+     * de mapa real) antes de notificarla — `match_end` ya es la señal
+     * definitiva del propio servidor de que el marcador no va a cambiar más
+     * (mismo evento que TeamSideAnalyzer::clusterRoundWinners() usa como
+     * autoridad para el score final), así que no hace falta esperar a que
+     * stillCurrent() deje de ser cierto cuando ese evento existe. La espera
+     * por stillCurrent() sigue aplicando SOLO al camino de "13+ rondas sin
+     * match_end" (el caso de overtime real todavía en curso, sin ninguna
+     * señal definitiva de fin todavía).
      */
     public function scopeReadyToNotify($query)
     {
         $currentMatchIds = LogParserState::whereNotNull('current_match_id')->pluck('current_match_id');
 
-        return $query->whereNotIn('id', $currentMatchIds)
-            ->where(fn ($q) => $q->reachedConclusion());
+        return $query->where(function ($q) use ($currentMatchIds) {
+            $q->whereHas('events', fn ($eq) => $eq->where('event_type', 'match_end'))
+                ->orWhere(function ($q2) use ($currentMatchIds) {
+                    $q2->has('rounds', '>=', 13)->whereNotIn('id', $currentMatchIds);
+                });
+        });
     }
 
     /**
