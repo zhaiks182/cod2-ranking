@@ -221,6 +221,52 @@ class WinRateCalculatorTest extends TestCase
         $this->assertSame(100.0, $burgundy->rate);
     }
 
+    /**
+     * Bug real reportado por el dueño (2026-09-02): fusionó un jugador (ver
+     * PlayerMerger, app/Support/PlayerMerger.php) y su win rate bajó. Causa:
+     * PlayerMerger repunta attacker_player_id/victim_player_id de las kills
+     * viejas al jugador destino, pero NUNCA reescribe attacker_guid/
+     * victim_guid (registro fiel de lo que el log dijo en su momento) -- así
+     * que una partida ganada bajo el guid ANTERIOR del jugador (antes del
+     * merge) tiene winner_guids con ese guid viejo, no el guid actual y fijo
+     * de $player->guid. Simula el estado exacto que deja un merge: kills con
+     * attacker_player_id ya repuntado pero attacker_guid todavía el viejo.
+     */
+    public function test_a_match_won_under_a_guid_the_player_had_before_being_merged_still_counts_as_a_win(): void
+    {
+        $oldGuid = 12345;
+
+        $match = GameMatch::create([
+            'server_id' => $this->server->id, 'season_id' => 1,
+            'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now(), 'ended_at' => now(),
+        ]);
+        for ($i = 1; $i <= 13; $i++) {
+            Round::create([
+                'server_id' => $this->server->id, 'match_id' => $match->id,
+                'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+                'started_at' => now(), 'ended_at' => now(),
+                'winner_guids' => [$oldGuid],
+            ]);
+        }
+        Kill::create([
+            'round_id' => $match->rounds()->first()->id, 'match_id' => $match->id,
+            // player_id ya repuntado al destino del merge (lo que PlayerMerger
+            // hace), pero el guid crudo sigue siendo el viejo (lo que
+            // PlayerMerger NUNCA toca).
+            'attacker_player_id' => $this->player->id, 'attacker_guid' => $oldGuid, 'attacker_name' => 'Old Name', 'attacker_team' => 'allies',
+            'victim_player_id' => $this->opponent->id, 'victim_guid' => $this->opponent->guid, 'victim_name' => $this->opponent->last_name, 'victim_team' => 'axis',
+            'weapon' => 'weapon_mp44', 'mod' => 'MOD_RIFLE_BULLET', 'damage' => 50,
+            'is_headshot' => false, 'is_grenade' => false, 'is_suicide' => false, 'is_teamkill' => false, 'occurred_at' => now(),
+        ]);
+
+        $result = WinRateCalculator::forPlayer($this->player, collect([$match->id]));
+
+        $this->assertSame(1, $result['played']);
+        $this->assertSame(1, $result['wins']);
+        $this->assertSame(100.0, $result['rate']);
+    }
+
     public function test_by_map_merges_community_patch_variants_of_the_same_real_map(): void
     {
         // mp_toujane_fix and mp_toujane_bal are both community variants of the

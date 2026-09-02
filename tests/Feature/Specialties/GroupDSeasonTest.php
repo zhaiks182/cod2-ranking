@@ -178,6 +178,95 @@ class GroupDSeasonTest extends TestCase
     }
 
     /**
+     * Partida ganada bajo un guid que el jugador ya no tiene -- simula el
+     * estado exacto que deja PlayerMerger (ver CLAUDE.md, "Fusionar
+     * jugadores"): attacker_player_id/victim_player_id repuntados al
+     * jugador destino, pero attacker_guid/victim_guid SIN reescribir (el
+     * registro fiel de lo que el log dijo en su momento). Bug real
+     * reportado por el dueño (2026-09-02): tras fusionar a "DESTINATION #
+     * ZHAIKS" perdió win rate -- mapsWon()/streaks()/winRate() tallyaban
+     * por el guid crudo de winner_guids y despues buscaban `Player::where
+     * guid=...`, que ya no existe para el guid viejo (la fila fuente se
+     * borra al fusionar) -- toda la actividad bajo la identidad anterior
+     * quedaba huerfana, invisible.
+     */
+    private function matchWonUnderOldGuid(int $seasonId, Player $winner, int $oldGuidUsedThisMatch, Player $loser): GameMatch
+    {
+        $match = GameMatch::create([
+            'server_id' => $this->server->id, 'season_id' => $seasonId,
+            'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+            'started_at' => now(), 'ended_at' => now(),
+        ]);
+
+        for ($i = 1; $i <= 13; $i++) {
+            Round::create([
+                'server_id' => $this->server->id, 'match_id' => $match->id,
+                'map' => 'mp_toujane_fix', 'gametype' => 'sd',
+                'started_at' => now(), 'ended_at' => now(),
+                'winner_guids' => [$oldGuidUsedThisMatch],
+            ]);
+        }
+
+        Kill::create([
+            'round_id' => $match->rounds()->first()->id, 'match_id' => $match->id,
+            'attacker_player_id' => $winner->id, 'attacker_guid' => $oldGuidUsedThisMatch, 'attacker_name' => 'Old Name', 'attacker_team' => 'allies',
+            'victim_player_id' => $loser->id, 'victim_guid' => $loser->guid, 'victim_name' => $loser->last_name, 'victim_team' => 'axis',
+            'weapon' => 'weapon_mp44', 'damage' => 100, 'mod' => 'MOD_RIFLE_BULLET', 'hitloc' => 'torso_upper',
+            'is_headshot' => false, 'is_grenade' => false, 'is_suicide' => false, 'is_teamkill' => false, 'occurred_at' => now(),
+        ]);
+
+        return $match;
+    }
+
+    public function test_maps_won_counts_a_match_won_under_a_guid_the_player_had_before_being_merged(): void
+    {
+        $winner = Player::create(['guid' => 601, 'last_name' => 'W', 'last_name_plain' => 'W']);
+        $loser = Player::create(['guid' => 602, 'last_name' => 'L', 'last_name_plain' => 'L']);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999601, $loser);
+
+        $response = $this->get(route('specialties.maps-won', ['server' => $this->server->slug]));
+        $response->assertOk();
+
+        $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->guid === $winner->guid);
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row->value);
+    }
+
+    public function test_streaks_counts_a_match_won_under_a_guid_the_player_had_before_being_merged(): void
+    {
+        $winner = Player::create(['guid' => 611, 'last_name' => 'W', 'last_name_plain' => 'W']);
+        $loser = Player::create(['guid' => 612, 'last_name' => 'L', 'last_name_plain' => 'L']);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999611, $loser);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999611, $loser);
+
+        $response = $this->get(route('specialties.streaks', ['server' => $this->server->slug]));
+        $response->assertOk();
+
+        $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->guid === $winner->guid);
+        $this->assertNotNull($row);
+        $this->assertSame(2, $row->best);
+        $this->assertSame(2, $row->current);
+    }
+
+    public function test_win_rate_counts_a_match_won_under_a_guid_the_player_had_before_being_merged(): void
+    {
+        $winner = Player::create(['guid' => 621, 'last_name' => 'W', 'last_name_plain' => 'W']);
+        $loser = Player::create(['guid' => 622, 'last_name' => 'L', 'last_name_plain' => 'L']);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999621, $loser);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999621, $loser);
+        $this->matchWonUnderOldGuid(Season::current()->id, $winner, 999621, $loser);
+
+        $response = $this->get(route('specialties.win-rate', ['server' => $this->server->slug]));
+        $response->assertOk();
+
+        $row = collect($response->viewData('rows'))->first(fn ($r) => $r->player->guid === $winner->guid);
+        $this->assertNotNull($row);
+        $this->assertSame(3, $row->played);
+        $this->assertSame(3, $row->won);
+        $this->assertSame(100.0, $row->rate);
+    }
+
+    /**
      * Partida completa (13 rondas, ganadas por el roster [$a, $r]) con $aKills/$aDeaths
      * kills/muertes de $a y $rKills/$rDeaths de $r, todos contra $v -- $v nunca es el
      * foco de las aserciones, solo hace de saco de boxeo para que $a y $r puedan tener

@@ -296,18 +296,29 @@ class SpecialtyController extends Controller
                 }
 
                 $totalMaps++;
+
+                // Resuelve cada guid ganador al player_id vigente EN ESE MOMENTO de
+                // esa partida puntual (no el guid actual y fijo del jugador) --
+                // un jugador fusionado despues (PlayerMerger, ver CLAUDE.md) sigue
+                // teniendo filas de kills con su guid viejo, sin reescribir, asi que
+                // buscar por guid directo perdia sus mapas ganados bajo esa
+                // identidad anterior. Mismo patron ya usado en PlayerRankCalculator.
+                $guidToPlayerId = $this->guidToPlayerIdForMatch($match->id);
                 foreach ($winningGuids as $guid) {
-                    $tally[$guid] = ($tally[$guid] ?? 0) + 1;
+                    $playerId = $guidToPlayerId[$guid] ?? null;
+                    if ($playerId) {
+                        $tally[$playerId] = ($tally[$playerId] ?? 0) + 1;
+                    }
                 }
             }
 
             arsort($tally);
             $tally = array_slice($tally, 0, 50, true);
 
-            $players = Player::whereIn('guid', array_keys($tally))->get()->keyBy('guid');
+            $players = Player::whereIn('id', array_keys($tally))->get()->keyBy('id');
 
-            $rows = collect($tally)->map(function ($count, $guid) use ($players) {
-                $player = $players[$guid] ?? null;
+            $rows = collect($tally)->map(function ($count, $playerId) use ($players) {
+                $player = $players[$playerId] ?? null;
                 if (! $player) {
                     return null;
                 }
@@ -552,16 +563,20 @@ class SpecialtyController extends Controller
                 }
                 $winningGuids = array_flip($winningGuids);
 
-                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
-                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
-                    ->filter(fn ($g) => $g && $g !== '0')->unique();
+                // Resuelve por player_id, no por el guid crudo de la ronda -- un
+                // jugador fusionado despues (PlayerMerger) sigue teniendo kills
+                // viejas con su guid anterior, y sin esto su racha se cortaba en
+                // el momento exacto del merge en vez de seguir corrida. Ver
+                // guidToPlayerIdForMatch().
+                $guidToPlayerId = $this->guidToPlayerIdForMatch($match->id);
+                $playerIdToGuid = array_flip($guidToPlayerId);
 
-                foreach ($participantGuids as $guid) {
+                foreach ($playerIdToGuid as $playerId => $guid) {
                     if (isset($winningGuids[$guid])) {
-                        $current[$guid] = ($current[$guid] ?? 0) + 1;
-                        $best[$guid] = max($best[$guid] ?? 0, $current[$guid]);
+                        $current[$playerId] = ($current[$playerId] ?? 0) + 1;
+                        $best[$playerId] = max($best[$playerId] ?? 0, $current[$playerId]);
                     } else {
-                        $current[$guid] = 0;
+                        $current[$playerId] = 0;
                     }
                 }
             }
@@ -570,10 +585,10 @@ class SpecialtyController extends Controller
             $best = array_filter($best, fn ($v) => $v >= 2);
             $best = array_slice($best, 0, 50, true);
 
-            $players = Player::whereIn('guid', array_keys($best))->get()->keyBy('guid');
+            $players = Player::whereIn('id', array_keys($best))->get()->keyBy('id');
 
-            $rows = collect($best)->map(function ($bestStreak, $guid) use ($players, $current) {
-                $player = $players[$guid] ?? null;
+            $rows = collect($best)->map(function ($bestStreak, $playerId) use ($players, $current) {
+                $player = $players[$playerId] ?? null;
                 if (! $player) {
                     return null;
                 }
@@ -581,7 +596,7 @@ class SpecialtyController extends Controller
                 return (object) [
                     'player' => $player,
                     'best' => $bestStreak,
-                    'current' => $current[$guid] ?? 0,
+                    'current' => $current[$playerId] ?? 0,
                 ];
             })->filter()->values();
 
@@ -989,35 +1004,39 @@ class SpecialtyController extends Controller
                 // "Played" has no direct participant list stored per match — same
                 // proxy used by "Racha de Mapas": a player counts as having played a
                 // match if they appear as attacker or victim in at least one of its
-                // kills.
-                $kills = Kill::where('match_id', $match->id)->get(['attacker_guid', 'victim_guid']);
-                $participantGuids = $kills->pluck('attacker_guid')->merge($kills->pluck('victim_guid'))
-                    ->filter(fn ($g) => $g && $g !== '0')->unique();
+                // kills. Resuelto por player_id, no por el guid crudo -- un jugador
+                // fusionado despues (PlayerMerger) sigue teniendo kills viejas con su
+                // guid anterior sin reescribir, ver guidToPlayerIdForMatch().
+                $guidToPlayerId = $this->guidToPlayerIdForMatch($match->id);
+                $participantPlayerIds = collect($guidToPlayerId)->unique();
 
-                foreach ($participantGuids as $guid) {
-                    $played[$guid] = ($played[$guid] ?? 0) + 1;
+                foreach ($participantPlayerIds as $playerId) {
+                    $played[$playerId] = ($played[$playerId] ?? 0) + 1;
                 }
 
                 $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
                 if ($winningGuids) {
                     foreach ($winningGuids as $guid) {
-                        $won[$guid] = ($won[$guid] ?? 0) + 1;
+                        $playerId = $guidToPlayerId[$guid] ?? null;
+                        if ($playerId) {
+                            $won[$playerId] = ($won[$playerId] ?? 0) + 1;
+                        }
                     }
                 }
             }
 
-            $players = Player::whereIn('guid', array_keys($played))->get()->keyBy('guid');
+            $players = Player::whereIn('id', array_keys($played))->get()->keyBy('id');
 
             $rows = collect($played)
-                ->map(function ($playedCount, $guid) use ($won, $players, $minMaps) {
+                ->map(function ($playedCount, $playerId) use ($won, $players, $minMaps) {
                     if ($playedCount < $minMaps) {
                         return null;
                     }
-                    $player = $players[$guid] ?? null;
+                    $player = $players[$playerId] ?? null;
                     if (! $player) {
                         return null;
                     }
-                    $wonCount = $won[$guid] ?? 0;
+                    $wonCount = $won[$playerId] ?? 0;
 
                     return (object) [
                         'player' => $player,
@@ -1309,5 +1328,33 @@ class SpecialtyController extends Controller
             ->where('rounds.gametype', 'sd')
             ->where('kills.is_suicide', false)
             ->whereIn('kills.match_id', $matchIds);
+    }
+
+    /**
+     * Guid -> player_id valido para ESA partida puntual, no el guid actual y
+     * fijo de un jugador -- un jugador fusionado despues (PlayerMerger, ver
+     * CLAUDE.md, "Fusionar jugadores") sigue teniendo filas de kills viejas
+     * con su guid anterior sin reescribir, asi que resolver por guid directo
+     * pierde su actividad bajo esa identidad anterior. Mismo patron ya usado
+     * en PlayerRankCalculator::calculateForServer(). Usado por mapsWon(),
+     * streaks() y winRate() -- las tres tallyan por guid ganador/participante
+     * sacado de rounds.winner_guids (que nunca se reescribe), asi que
+     * necesitan la misma resolucion.
+     *
+     * @return array<string, int>
+     */
+    private function guidToPlayerIdForMatch(int $matchId): array
+    {
+        $map = [];
+        foreach (Kill::where('match_id', $matchId)->get(['attacker_player_id', 'attacker_guid', 'victim_player_id', 'victim_guid']) as $kill) {
+            if ($kill->attacker_player_id) {
+                $map[$kill->attacker_guid] = $kill->attacker_player_id;
+            }
+            if ($kill->victim_player_id) {
+                $map[$kill->victim_guid] = $kill->victim_player_id;
+            }
+        }
+
+        return $map;
     }
 }

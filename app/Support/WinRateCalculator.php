@@ -29,18 +29,18 @@ class WinRateCalculator
      */
     private static function decidedMatchesForPlayer(Player $player, Collection $matchIds): Collection
     {
-        $participatedMatchIds = Kill::query()
+        $participatingKills = Kill::query()
             ->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->where('rounds.gametype', 'sd')
             ->whereIn('kills.match_id', $matchIds)
             ->where(fn ($q) => $q->where('kills.attacker_player_id', $player->id)->orWhere('kills.victim_player_id', $player->id))
-            ->distinct()
-            ->pluck('kills.match_id');
+            ->get(['kills.match_id', 'kills.attacker_player_id', 'kills.attacker_guid', 'kills.victim_player_id', 'kills.victim_guid'])
+            ->groupBy('match_id');
 
-        $matches = GameMatch::whereIn('id', $participatedMatchIds)->with('rounds')->get();
+        $matches = GameMatch::whereIn('id', $participatingKills->keys())->with('rounds')->get();
 
         return $matches
-            ->map(function ($match) use ($player) {
+            ->map(function ($match) use ($player, $participatingKills) {
                 $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
 
                 // Sin ganador determinable (empate o rondas insuficientes) -- no
@@ -50,7 +50,22 @@ class WinRateCalculator
                     return null;
                 }
 
-                return (object) ['match' => $match, 'won' => in_array($player->guid, $winningGuids, true)];
+                // El jugador puede haber jugado ESTA partida puntual bajo cualquier
+                // guid que alguna vez tuvo -- PlayerMerger (ver CLAUDE.md, "Fusionar
+                // jugadores") repunta attacker_player_id/victim_player_id al fusionar
+                // perfiles, pero nunca reescribe el guid historico de cada kill. Usar
+                // el guid actual y fijo del jugador ($player->guid) rompía el win
+                // rate de cualquier partida jugada antes de un merge -- hay que
+                // mirar con que guid jugo ESTA partida especifica.
+                $guidsInThisMatch = $participatingKills[$match->id]
+                    ->flatMap(fn ($kill) => [
+                        $kill->attacker_player_id === $player->id ? $kill->attacker_guid : null,
+                        $kill->victim_player_id === $player->id ? $kill->victim_guid : null,
+                    ])
+                    ->filter(fn ($guid) => $guid !== null)
+                    ->unique();
+
+                return (object) ['match' => $match, 'won' => $guidsInThisMatch->intersect($winningGuids)->isNotEmpty()];
             })
             ->filter()
             ->values();
