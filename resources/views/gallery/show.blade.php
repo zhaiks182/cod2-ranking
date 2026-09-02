@@ -16,7 +16,19 @@
     <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
         <div class="bg-black">
             @if($galleryItem->type === 'video')
-                <video src="{{ $galleryItem->url() }}" @if($galleryItem->thumbnailUrl()) poster="{{ $galleryItem->thumbnailUrl() }}" @endif controls class="w-full max-h-[70vh]"></video>
+                <video id="gallery-video-{{ $galleryItem->id }}" src="{{ $galleryItem->url() }}" @if($galleryItem->thumbnailUrl()) poster="{{ $galleryItem->thumbnailUrl() }}" @endif controls class="w-full max-h-[70vh]"></video>
+                <script>
+                    (function () {
+                        // Cuenta UNA vez por carga de pagina, en el primer "play" real --
+                        // no en cada pausa/reanudacion del mismo video (ver
+                        // GalleryController::registerPlay()).
+                        var video = document.getElementById('gallery-video-{{ $galleryItem->id }}');
+                        video.addEventListener('play', function onPlay() {
+                            video.removeEventListener('play', onPlay);
+                            fetch({{ json_encode(route('gallery.play', $galleryItem)) }}, { method: 'POST' });
+                        });
+                    })();
+                </script>
             @else
                 <img src="{{ $galleryItem->url() }}" alt="{{ $galleryItem->title }}" class="w-full max-h-[70vh] object-contain mx-auto">
             @endif
@@ -38,6 +50,10 @@
                         {{ $galleryItem->siteUser->discord_username }}
                         <span class="text-slate-600">·</span>
                         {{ $galleryItem->created_at->format('d/m/Y H:i') }}
+                        @if($galleryItem->type === 'video')
+                            <span class="text-slate-600">·</span>
+                            👁️ {{ __(':n reproducciones', ['n' => number_format($galleryItem->views_count)]) }}
+                        @endif
                     </div>
                     @if($galleryItem->match)
                         <a href="{{ route('matches.show', $galleryItem->match) }}" class="inline-block mt-1 text-xs text-cyan-400 hover:underline">

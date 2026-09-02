@@ -75,6 +75,10 @@ Route::get('/galeria/{galleryItem}/editar', [GalleryController::class, 'edit'])-
 Route::put('/galeria/{galleryItem}', [GalleryController::class, 'update'])->name('gallery.update')->middleware('auth:site');
 Route::delete('/galeria/{galleryItem}', [GalleryController::class, 'destroy'])->name('gallery.destroy')->middleware('auth:site');
 Route::post('/galeria/{galleryItem}/like', [GalleryController::class, 'toggleLike'])->name('gallery.like')->middleware('auth:site');
+// Contador de reproducciones -- sin login (cualquiera que mire cuenta, como
+// YouTube) y sin CSRF (lo dispara un fetch() en el evento "play" del <video>,
+// ver bootstrap/app.php). Throttle liviano contra abuso trivial.
+Route::post('/galeria/{galleryItem}/reproduccion', [GalleryController::class, 'registerPlay'])->name('gallery.play')->middleware('throttle:60,1');
 Route::post('/galeria/{galleryItem}/comentarios', [GalleryController::class, 'storeComment'])->name('gallery.comments.store')->middleware('auth:site');
 Route::delete('/galeria/comentarios/{galleryComment}', [GalleryController::class, 'destroyComment'])->name('gallery.comments.destroy')->middleware('auth:site');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');

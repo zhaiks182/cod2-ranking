@@ -151,6 +151,21 @@ class GalleryController extends Controller
         return back();
     }
 
+    /**
+     * Contador de reproducciones (2026-09-02, a pedido del dueño) -- solo
+     * video, disparado por el evento "play" del <video> en gallery/show.blade.php,
+     * no por visitar la pagina. Sin sesion (cualquiera que mire cuenta, como
+     * YouTube) ni CSRF (ver bootstrap/app.php).
+     */
+    public function registerPlay(GalleryItem $galleryItem)
+    {
+        if ($galleryItem->type === 'video') {
+            $galleryItem->increment('views_count');
+        }
+
+        return response()->noContent();
+    }
+
     public function storeComment(Request $request, GalleryItem $galleryItem)
     {
         $data = $request->validate(['body' => ['required', 'string', 'max:500']]);

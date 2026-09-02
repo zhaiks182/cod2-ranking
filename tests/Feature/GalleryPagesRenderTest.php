@@ -118,6 +118,18 @@ class GalleryPagesRenderTest extends TestCase
         $response->assertSee('<meta property="og:title" content="Clip de headshot">', false);
     }
 
+    public function test_gallery_show_displays_the_play_count_for_a_video(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Mi video', 'type' => 'video',
+            'file_path' => 'gallery/1/x.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024,
+        ]);
+        $item->forceFill(['views_count' => 42])->save();
+
+        $this->get(route('gallery.show', $item))->assertOk()->assertSee('42');
+    }
+
     public function test_gallery_create_renders_for_a_logged_in_user(): void
     {
         $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);

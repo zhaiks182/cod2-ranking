@@ -36,6 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // El cliente CoD2x no puede mandar un token CSRF al subir el demo.
         $middleware->validateCsrfTokens(except: [
             'api/demos/upload/*',
+            // Contador de reproducciones de la galeria (POST disparado por
+            // fetch() en el evento "play" del <video>, sin sesion ni token
+            // a mano) -- ver GalleryController::registerPlay().
+            'galeria/*/reproduccion',
         ]);
 
         // El sitio esta detras de Cloudflare (proxy) -- sin esto, $request->ip()
