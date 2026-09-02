@@ -36,10 +36,13 @@
 
                 @auth('site')
                     @if($galleryItem->site_user_id === auth('site')->id())
-                        <form method="POST" action="{{ route('gallery.destroy', $galleryItem) }}" onsubmit="return confirm('¿Borrar este archivo?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-xs text-red-400 hover:text-red-300">{{ __('Borrar') }}</button>
-                        </form>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <a href="{{ route('gallery.edit', $galleryItem) }}" class="text-xs text-cyan-400 hover:text-cyan-300">{{ __('Editar') }}</a>
+                            <form method="POST" action="{{ route('gallery.destroy', $galleryItem) }}" onsubmit="return confirm('¿Borrar este archivo?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="text-xs text-red-400 hover:text-red-300">{{ __('Borrar') }}</button>
+                            </form>
+                        </div>
                     @endif
                 @endauth
             </div>

@@ -49,15 +49,19 @@ class GalleryController extends Controller
         $siteUser = Auth::guard('site')->user();
         $remainingMb = round(GalleryQuota::remainingBytes($siteUser) / 1024 / 1024, 1);
         $limitMb = round(GalleryQuota::limitBytes() / 1024 / 1024);
+        $matches = $this->recentMatches();
 
-        $matches = GameMatch::visibleInListing()
+        return view('gallery.create', compact('remainingMb', 'limitMb', 'matches'));
+    }
+
+    private function recentMatches()
+    {
+        return GameMatch::visibleInListing()
             ->where('gametype', 'sd')
             ->where('is_backfilled', false)
             ->orderByDesc('started_at')
             ->limit(50)
             ->get();
-
-        return view('gallery.create', compact('remainingMb', 'limitMb', 'matches'));
     }
 
     public function store(Request $request)
@@ -82,6 +86,31 @@ class GalleryController extends Controller
         }
 
         return redirect()->route('gallery.show', $item)->with('status', 'Subido correctamente.');
+    }
+
+    public function edit(GalleryItem $galleryItem)
+    {
+        abort_unless($galleryItem->site_user_id === Auth::guard('site')->id(), 403);
+
+        return view('gallery.edit', compact('galleryItem'));
+    }
+
+    /**
+     * Solo el titulo -- ni el archivo ni la partida vinculada se pueden
+     * editar despues de subir (a pedido del dueño, alcance acotado a
+     * proposito: reemplazar el archivo o editar el video en si -recortar,
+     * etc- quedaron fuera, necesitarian procesamiento de video en un VPS de
+     * 1 core).
+     */
+    public function update(Request $request, GalleryItem $galleryItem)
+    {
+        abort_unless($galleryItem->site_user_id === Auth::guard('site')->id(), 403);
+
+        $data = $request->validate(['title' => ['required', 'string', 'max:120']]);
+
+        $galleryItem->update(['title' => $data['title']]);
+
+        return redirect()->route('gallery.show', $galleryItem)->with('status', 'Actualizado.');
     }
 
     public function destroy(GalleryItem $galleryItem)
