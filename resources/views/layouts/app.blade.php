@@ -243,6 +243,7 @@
                             </button>
                             <div id="account-dropdown" class="hidden absolute right-0 mt-2 w-44 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                                 <a href="{{ route('account.show') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Mi cuenta') }}</a>
+                                <a href="{{ route('gallery.saved') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🔖 {{ __('Guardados') }}</a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
                                     <button type="submit" class="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Cerrar sesión') }}</button>

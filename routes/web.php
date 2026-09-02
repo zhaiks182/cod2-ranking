@@ -70,11 +70,13 @@ Route::get('/demos/{match}', [DemosController::class, 'show'])->name('demos.show
 Route::get('/galeria', [GalleryController::class, 'index'])->name('gallery.index');
 Route::get('/galeria/subir', [GalleryController::class, 'create'])->name('gallery.create')->middleware('auth:site');
 Route::post('/galeria', [GalleryController::class, 'store'])->name('gallery.store')->middleware('auth:site');
+Route::get('/galeria/guardados', [GalleryController::class, 'saved'])->name('gallery.saved')->middleware('auth:site');
 Route::get('/galeria/{galleryItem}', [GalleryController::class, 'show'])->name('gallery.show');
 Route::get('/galeria/{galleryItem}/editar', [GalleryController::class, 'edit'])->name('gallery.edit')->middleware('auth:site');
 Route::put('/galeria/{galleryItem}', [GalleryController::class, 'update'])->name('gallery.update')->middleware('auth:site');
 Route::delete('/galeria/{galleryItem}', [GalleryController::class, 'destroy'])->name('gallery.destroy')->middleware('auth:site');
 Route::post('/galeria/{galleryItem}/like', [GalleryController::class, 'toggleLike'])->name('gallery.like')->middleware('auth:site');
+Route::post('/galeria/{galleryItem}/guardar', [GalleryController::class, 'toggleSave'])->name('gallery.save')->middleware('auth:site');
 Route::post('/galeria/{galleryItem}/comentarios', [GalleryController::class, 'storeComment'])->name('gallery.comments.store')->middleware('auth:site');
 Route::delete('/galeria/comentarios/{galleryComment}', [GalleryController::class, 'destroyComment'])->name('gallery.comments.destroy')->middleware('auth:site');
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');

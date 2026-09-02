@@ -67,6 +67,28 @@ class GalleryPagesRenderTest extends TestCase
         $this->get(route('gallery.show', $item))->assertOk()->assertSee('Mi video');
     }
 
+    public function test_gallery_show_renders_share_and_save_buttons_for_a_logged_in_user(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $item = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Mi video', 'type' => 'video',
+            'file_path' => 'gallery/1/x.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1024,
+        ]);
+        $viewer = SiteUser::create(['discord_id' => '2', 'discord_username' => 'viewer']);
+
+        $this->actingAs($viewer, 'site')->get(route('gallery.show', $item))
+            ->assertOk()
+            ->assertSee('Compartir')
+            ->assertSee('Guardar');
+    }
+
+    public function test_gallery_saved_page_renders_empty(): void
+    {
+        $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);
+
+        $this->actingAs($siteUser, 'site')->get(route('gallery.saved'))->assertOk();
+    }
+
     public function test_gallery_create_renders_for_a_logged_in_user(): void
     {
         $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a']);

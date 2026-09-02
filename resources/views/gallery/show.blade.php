@@ -60,9 +60,19 @@
                             {{ $liked ? '❤️' : '🤍' }} {{ $likesCount }}
                         </button>
                     </form>
+                    <form method="POST" action="{{ route('gallery.save', $galleryItem) }}">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border {{ $saved ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-300 hover:border-slate-500' }} text-sm">
+                            {{ $saved ? '🔖' : '📑' }} {{ $saved ? __('Guardado') : __('Guardar') }}
+                        </button>
+                    </form>
                 @else
                     <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-400 text-sm">🤍 {{ $likesCount }}</span>
                 @endauth
+                <button type="button" onclick="cod2CopyConnect(this, {{ json_encode(route('gallery.show', $galleryItem)) }})"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:border-slate-500 text-sm">
+                    🔗 {{ __('Compartir') }}
+                </button>
             </div>
         </div>
     </div>
