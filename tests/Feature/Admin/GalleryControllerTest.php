@@ -85,6 +85,36 @@ class GalleryControllerTest extends TestCase
         $this->assertDatabaseHas('admin_actions', ['action' => 'gallery.destroy']);
     }
 
+    public function test_toggling_featured_marks_and_unmarks_the_item_and_audits(): void
+    {
+        $item = $this->makeItem()->fresh();
+        $this->assertFalse($item->is_featured);
+
+        $this->actingAs($this->admin())->put(route('admin.gallery.toggle-featured', $item));
+        $this->assertTrue($item->fresh()->is_featured);
+        $this->assertDatabaseHas('admin_actions', ['action' => 'gallery.toggle-featured']);
+
+        $this->actingAs($this->admin())->put(route('admin.gallery.toggle-featured', $item));
+        $this->assertFalse($item->fresh()->is_featured);
+    }
+
+    public function test_a_guest_cannot_toggle_featured(): void
+    {
+        $item = $this->makeItem();
+
+        $this->put(route('admin.gallery.toggle-featured', $item))->assertRedirect(route('admin.login'));
+        $this->assertFalse($item->fresh()->is_featured);
+    }
+
+    public function test_an_admin_without_the_module_cannot_toggle_featured(): void
+    {
+        $user = User::factory()->create(['is_super_admin' => false, 'permissions' => ['demos']]);
+        $item = $this->makeItem();
+
+        $this->actingAs($user)->put(route('admin.gallery.toggle-featured', $item))->assertForbidden();
+        $this->assertFalse($item->fresh()->is_featured);
+    }
+
     public function test_deleting_a_comment_audits(): void
     {
         $item = $this->makeItem();

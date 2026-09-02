@@ -281,6 +281,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
         Route::middleware('module:gallery')->group(function () {
             Route::get('/galeria', [AdminGalleryController::class, 'index'])->name('gallery.index');
             Route::put('/galeria/cuota', [AdminGalleryController::class, 'updateQuota'])->name('gallery.quota.update');
+            Route::put('/galeria/{galleryItem}/destacar', [AdminGalleryController::class, 'toggleFeatured'])->name('gallery.toggle-featured');
             Route::get('/galeria/{galleryItem}', [AdminGalleryController::class, 'show'])->name('gallery.show');
             Route::delete('/galeria/{galleryItem}', [AdminGalleryController::class, 'destroy'])->name('gallery.destroy');
             Route::delete('/galeria/comentarios/{galleryComment}', [AdminGalleryController::class, 'destroyComment'])->name('gallery.comments.destroy');

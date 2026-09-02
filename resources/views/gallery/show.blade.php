@@ -18,7 +18,12 @@
         <div class="p-4 space-y-3">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h1 class="text-lg font-semibold">{{ $galleryItem->title }}</h1>
+                    <h1 class="text-lg font-semibold flex items-center gap-2">
+                        {{ $galleryItem->title }}
+                        @if($galleryItem->is_featured)
+                            <span class="px-2 py-0.5 rounded-full bg-amber-500/90 text-black text-[11px] font-semibold">⭐ {{ __('Destacado') }}</span>
+                        @endif
+                    </h1>
                     <div class="text-sm text-slate-400 flex items-center gap-1.5 mt-1">
                         @if($galleryItem->siteUser->avatar_url)
                             <img src="{{ $galleryItem->siteUser->avatar_url }}" alt="" class="w-5 h-5 rounded-full">

@@ -27,6 +27,7 @@ class GalleryController extends Controller
         $items = GalleryItem::with(['siteUser', 'match'])
             ->withCount(['comments', 'likes'])
             ->when(in_array($type, ['image', 'video'], true), fn ($q) => $q->where('type', $type))
+            ->orderByDesc('is_featured')
             ->orderByDesc('created_at')
             ->paginate(24)
             ->withQueryString();

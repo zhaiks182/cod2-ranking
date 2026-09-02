@@ -34,6 +34,28 @@ class GalleryPagesRenderTest extends TestCase
         $this->get(route('gallery.index'))->assertOk();
     }
 
+    public function test_featured_items_are_listed_first_regardless_of_upload_date(): void
+    {
+        $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);
+        $older = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Viejo pero destacado', 'type' => 'image',
+            'file_path' => 'gallery/1/a.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1024,
+            'is_featured' => true,
+        ]);
+        $older->forceFill(['created_at' => now()->subDays(5)])->save();
+        $newer = GalleryItem::create([
+            'site_user_id' => $owner->id, 'title' => 'Nuevo sin destacar', 'type' => 'image',
+            'file_path' => 'gallery/1/b.jpg', 'mime_type' => 'image/jpeg', 'size_bytes' => 1024,
+        ]);
+
+        $response = $this->get(route('gallery.index'));
+
+        $response->assertOk();
+        $ids = collect($response->viewData('items')->items())->pluck('id')->all();
+        $this->assertSame([$older->id, $newer->id], $ids);
+        $response->assertSee('Destacado');
+    }
+
     public function test_gallery_show_renders(): void
     {
         $owner = SiteUser::create(['discord_id' => '1', 'discord_username' => 'owner']);

@@ -41,6 +41,9 @@
                                 <span class="w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white text-sm">▶</span>
                             </span>
                         @endif
+                        @if($item->is_featured)
+                            <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-amber-500/90 text-black text-[11px] font-semibold">⭐ {{ __('Destacado') }}</span>
+                        @endif
                     </div>
                     <div class="p-3">
                         <div class="text-sm font-medium truncate">{{ $item->title }}</div>

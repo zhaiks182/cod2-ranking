@@ -41,6 +41,16 @@ class GalleryController extends Controller
         return back()->with('status', 'Cuota actualizada.');
     }
 
+    public function toggleFeatured(GalleryItem $galleryItem)
+    {
+        $galleryItem->update(['is_featured' => ! $galleryItem->is_featured]);
+
+        $action = $galleryItem->is_featured ? 'destacó' : 'quitó el destaque de';
+        AdminAction::record('gallery.toggle-featured', "El admin {$action} \"{$galleryItem->title}\" en la galería");
+
+        return back()->with('status', $galleryItem->is_featured ? 'Marcado como destacado.' : 'Se quitó el destaque.');
+    }
+
     public function destroy(GalleryItem $galleryItem)
     {
         $label = $galleryItem->title;

@@ -45,14 +45,20 @@
                     <tr class="border-b border-slate-800/60 last:border-0">
                         <td class="px-4 py-2 font-medium">
                             <a href="{{ route('admin.gallery.show', $item) }}" class="hover:text-cyan-400">{{ $item->title }}</a>
+                            @if($item->is_featured)<span class="ml-1 text-amber-400" title="Destacado">⭐</span>@endif
                         </td>
                         <td class="px-4 py-2 text-slate-400">{{ $item->siteUser->discord_username }}</td>
                         <td class="px-4 py-2 text-slate-400">{{ $item->type === 'video' ? 'Video' : 'Imagen' }}</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ number_format($item->size_bytes / 1024 / 1024, 1) }} MB</td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $item->comments_count }}</td>
                         <td class="px-4 py-2 text-slate-400">{{ $item->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="px-4 py-2 text-right">
-                            <form method="POST" action="{{ route('admin.gallery.destroy', $item) }}" onsubmit="return confirm('¿Borrar &quot;{{ $item->title }}&quot;? No se puede deshacer.')">
+                        <td class="px-4 py-2 text-right whitespace-nowrap">
+                            <form method="POST" action="{{ route('admin.gallery.toggle-featured', $item) }}" class="inline">
+                                @csrf
+                                @method('PUT')
+                                <button type="submit" class="text-xs px-2 py-1 rounded border border-slate-700 hover:border-amber-500 hover:text-amber-400">{{ $item->is_featured ? 'Quitar destaque' : 'Destacar' }}</button>
+                            </form>
+                            <form method="POST" action="{{ route('admin.gallery.destroy', $item) }}" onsubmit="return confirm('¿Borrar &quot;{{ $item->title }}&quot;? No se puede deshacer.')" class="inline">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-xs px-2 py-1 rounded border border-slate-700 hover:border-red-500 hover:text-red-400">Borrar</button>
