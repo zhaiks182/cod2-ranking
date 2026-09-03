@@ -121,7 +121,6 @@ class AccountControllerTest extends TestCase
         $siteUser = SiteUser::create(['discord_id' => '1', 'discord_username' => 'a', 'player_id' => $player->id]);
 
         $this->actingAs($siteUser, 'site')->post(route('account.update'), [
-            'clan_tag' => 'Destino',
             'country' => 'ec',
             'language' => 'es',
             'preferred_role' => 'weapon_mp44',
@@ -131,7 +130,6 @@ class AccountControllerTest extends TestCase
         ])->assertRedirect();
 
         $siteUser->refresh();
-        $this->assertSame('Destino', $siteUser->clan_tag);
         $this->assertSame('ec', $siteUser->country);
         $this->assertSame('es', $siteUser->language);
         $this->assertSame('weapon_mp44', $siteUser->preferred_role);

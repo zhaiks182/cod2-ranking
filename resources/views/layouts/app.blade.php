@@ -122,6 +122,7 @@
                 <a href="{{ route('dashboard') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Inicio') }}</a>
                 <a href="{{ route('hosted-servers.create') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Crear servidor') }}</a>
                 <a href="{{ route('gallery.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Galería') }}</a>
+                <a href="{{ route('clans.index') }}" class="text-slate-300 hover:text-gsaccent transition-colors">{{ __('Clanes') }}</a>
                 <div class="relative">
                     <button type="button" data-ranking-toggle onclick="document.getElementById('ranking-dropdown').classList.toggle('hidden')"
                         class="text-slate-300 hover:text-gsaccent transition-colors flex items-center gap-1">

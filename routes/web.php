@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ClanController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BanController;
+use App\Http\Controllers\Admin\ClanController as AdminClanController;
 use App\Http\Controllers\Admin\ConsoleController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DemoController as AdminDemoController;
@@ -81,6 +83,27 @@ Route::post('/galeria/{galleryItem}/like', [GalleryController::class, 'toggleLik
 Route::post('/galeria/{galleryItem}/reproduccion', [GalleryController::class, 'registerPlay'])->name('gallery.play')->middleware('throttle:60,1');
 Route::post('/galeria/{galleryItem}/comentarios', [GalleryController::class, 'storeComment'])->name('gallery.comments.store')->middleware('auth:site');
 Route::delete('/galeria/comentarios/{galleryComment}', [GalleryController::class, 'destroyComment'])->name('gallery.comments.destroy')->middleware('auth:site');
+// Clanes (2026-09-03) -- identidad + membresia + estadisticas reales de sus
+// miembros, sin ladders/torneos. Ver docs/superpowers/specs/
+// 2026-09-03-clanes-design.md. "/clanes/crear" antes de "/clanes/{clan:tag}"
+// a proposito, mismo tipo de trampa de orden de rutas ya conocida en este
+// proyecto (ver "galeria/subir" mas arriba).
+Route::get('/clanes', [ClanController::class, 'index'])->name('clans.index');
+Route::get('/clanes/crear', [ClanController::class, 'create'])->name('clans.create')->middleware('auth:site');
+Route::post('/clanes', [ClanController::class, 'store'])->name('clans.store')->middleware('auth:site');
+Route::post('/clanes/invitaciones/{invitation}/responder', [ClanController::class, 'respondToInvitation'])->name('clans.invitations.respond')->middleware('auth:site');
+Route::get('/clanes/{clan:tag}', [ClanController::class, 'show'])->name('clans.show');
+Route::put('/clanes/{clan:tag}', [ClanController::class, 'update'])->name('clans.update')->middleware('auth:site');
+Route::delete('/clanes/{clan:tag}', [ClanController::class, 'disband'])->name('clans.disband')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/solicitar', [ClanController::class, 'requestJoin'])->name('clans.request')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/invitar', [ClanController::class, 'invite'])->name('clans.invite')->middleware('auth:site');
+Route::get('/clanes/{clan:tag}/buscar-jugador', [ClanController::class, 'searchInvitable'])->name('clans.search-invitable')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/solicitudes/{invitation}/responder', [ClanController::class, 'respondToRequest'])->name('clans.requests.respond')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/miembros/{member}/rol', [ClanController::class, 'changeRole'])->name('clans.members.role')->middleware('auth:site');
+Route::delete('/clanes/{clan:tag}/miembros/{member}', [ClanController::class, 'kick'])->name('clans.members.kick')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/transferir', [ClanController::class, 'transfer'])->name('clans.transfer')->middleware('auth:site');
+Route::post('/clanes/{clan:tag}/salir', [ClanController::class, 'leave'])->name('clans.leave')->middleware('auth:site');
+
 Route::get('/jugadores/buscar', [PlayerSearchController::class, 'search'])->name('players.search');
 Route::get('/jugadores/{player:guid}', [PlayerController::class, 'show'])->name('players.show');
 Route::get('/jugadores/{player:guid}/perfil', [PlayerController::class, 'profile'])->name('players.profile');
@@ -254,6 +277,11 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::get('/maps', [MapImageController::class, 'index'])->name('maps.index');
             Route::post('/maps/{code}', [MapImageController::class, 'store'])->name('maps.store');
             Route::delete('/maps/{code}', [MapImageController::class, 'destroy'])->name('maps.destroy');
+        });
+
+        Route::middleware('module:clans')->group(function () {
+            Route::get('/clanes', [AdminClanController::class, 'index'])->name('clans.index');
+            Route::delete('/clanes/{clan}', [AdminClanController::class, 'destroy'])->name('clans.destroy');
         });
 
         // "players" agrupa las 4 pantallas que administran identidad de jugador

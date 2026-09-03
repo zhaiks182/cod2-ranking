@@ -14,7 +14,7 @@ class AccountController extends Controller
 {
     public function show()
     {
-        $siteUser = Auth::guard('site')->user()->load('player', 'pendingClaimPlayer');
+        $siteUser = Auth::guard('site')->user()->load('player', 'pendingClaimPlayer', 'clanMembership.clan', 'receivedClanInvitations.clan');
 
         // "Rol preferido" (2026-09-01, antes texto libre) -- se elige entre
         // las armas con las que el jugador REALMENTE tiene bajas, no
@@ -43,7 +43,6 @@ class AccountController extends Controller
 
         $data = $request->validate([
             'bio' => ['nullable', 'string', 'max:400'],
-            'clan_tag' => ['nullable', 'string', 'max:20'],
             // Elegido de una lista (2026-09-01, antes texto libre) -- asi
             // GeoIp::flagIconHtml() siempre tiene un codigo real con el que
             // dibujar una bandera de verdad.

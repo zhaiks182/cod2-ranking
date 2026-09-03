@@ -4185,6 +4185,69 @@ guarda `discord_id` (el snowflake real de Discord), el dato exacto que un
 bot con permiso "Mover miembros" necesita para saber a quién mover, una
 vez que el jugador reclamó su perfil.
 
+## Módulo de clanes (2026-09-03)
+
+Spec completa: `docs/superpowers/specs/2026-09-03-clanes-design.md`. Identidad
++ membresía + estadísticas reales de los miembros — sin ladders/torneos ni
+partidas "clan vs clan" (fuera de alcance explícito, no existen como
+concepto en este sitio; la referencia visual del dueño era de otra
+plataforma). Reemplaza `site_users.clan_tag` (texto libre sin validar,
+existente desde 2026-09-01) — el tag real pasa a ser el del clan al que
+pertenece el jugador, si pertenece a uno.
+
+- **Modelo**: `clans` (nombre/tag únicos, descripción, logo, fundador),
+  `clan_members` (`site_user_id` con `unique()` — un jugador solo pertenece
+  a un clan a la vez, garantizado a nivel de esquema, no solo por
+  convención), `clan_invitations` (cubre las dos direcciones de unión —
+  `player_requested`/`manager_invited` — con una sola tabla, el `direction`
+  decide quién puede resolver cada fila).
+- **Requisito de perfil reclamado**: crear o unirse a un clan exige
+  `site_users.player_id` no nulo (verificado server-side en cada acción, no
+  solo en la UI) — sin un jugador real vinculado no hay estadísticas que
+  aportar.
+- **Roles**: Fundador (único, todo el poder incluido disolver/transferir),
+  Manager (aprobar/rechazar solicitudes, invitar, expulsar Miembros —nunca a
+  otro Manager ni al Fundador—, editar nombre/tag/descripción/logo — nunca
+  puede tocar roles ni disolver), Miembro (sin permisos de gestión).
+- **Unirse, dos caminos** resolviendo la misma tabla `clan_invitations`:
+  solicitud del jugador (la aprueba/rechaza un Manager/Fundador) o
+  invitación del clan (un Manager/Fundador busca por nombre/alias — mismo
+  patrón que `/adm_cod2/jugadores/fusionar` — y el jugador invitado la
+  acepta/rechaza desde `/mi-cuenta`).
+- **Salir del Fundador**: no puede salir sin transferir la fundación primero
+  a otro miembro — el elegido pasa a `founder`, el saliente pasa a `member`.
+  Si está solo, su única salida es Disolver. **Disolver**: solo el Fundador,
+  doble confirmación en la UI, cascade borra `clan_members`+`clan_invitations`.
+- **Estadísticas del clan**: `ClanStatsCalculator::aggregate()` — kills,
+  muertes, K/D y partidas distintas (sin duplicar) de **todos los miembros
+  actuales**, mismo criterio SD y mismo selector de temporada que
+  `/ranking`/`/rango`. Los `kills` no tienen ningún vínculo con clan en la
+  base (el log del juego no sabe de esto) — nunca se filtra por "solo lo
+  jugado siendo miembro", es el agregado real de cada miembro tal cual ya
+  se puede calcular hoy para cualquier jugador individual.
+- **Páginas**: `/clanes` (listado buscable), `/clanes/{tag}` (detalle +
+  gestión inline, mismo espíritu que la referencia visual del dueño — los
+  botones de gestión aparecen en la propia página del clan, solo si el
+  visitante tiene permiso), `/clanes/crear`. Invitaciones recibidas por el
+  jugador aparecen en `/mi-cuenta`.
+- **Admin**: `/adm_cod2/clanes` (nuevo módulo `clans` en `User::MODULES`,
+  bajo Moderación) — listado con disolución forzada, para intervenir ante
+  abuso sin depender de que el fundador coopere. Auditado vía
+  `AdminAction::record()`.
+- TDD: `tests/Feature/ClanTest.php` (23 casos — creación, unicidad,
+  ambos flujos de unión, permisos por rol para invitar/aprobar/expulsar/
+  cambiar rol/transferir/disolver, un jugador no puede pertenecer a dos
+  clanes a la vez, transferencia de fundación swap correcto de roles, el
+  fundador no puede salir sin transferir, disolver borra clan+miembros+
+  invitaciones en cascada, agregación real de estadísticas, y smoke tests
+  de las 3 páginas públicas incluyendo las secciones solo-manager) +
+  `tests/Feature/Admin/ClanControllerTest.php` (3 casos). Dos tests
+  preexistentes (`PlayerProfilePageTest`, `AccountControllerTest`) tuvieron
+  que actualizarse porque referenciaban el `clan_tag` de texto libre
+  eliminado. Verificado en un clon descartable del VPS: 494/496 tests,
+  mismos 2 fallos preexistentes sin relación (`ExampleTest`,
+  `CountriesSeasonTest`).
+
 ## Transición gradual de rank_score en el arranque de temporada (2026-09-03)
 
 Spec completa: `docs/superpowers/specs/2026-09-03-transicion-rank-score-t2-design.md`.

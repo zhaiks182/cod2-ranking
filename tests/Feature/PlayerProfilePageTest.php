@@ -23,7 +23,7 @@ class PlayerProfilePageTest extends TestCase
         SiteUser::create([
             'discord_id' => '221538919068467200', 'discord_username' => 'zhaiks', 'player_id' => $player->id,
             'bio' => 'Jugador desde 2003.', 'steam_url' => 'https://steamcommunity.com/id/zhaiks',
-            'pc_cpu' => 'Ryzen 5600X', 'clan_tag' => 'Destino', 'role' => 'Fundador', 'preferred_role' => 'weapon_mp44',
+            'pc_cpu' => 'Ryzen 5600X', 'role' => 'Fundador', 'preferred_role' => 'weapon_mp44',
             'country' => 'ec', 'language' => 'es',
         ]);
 
@@ -32,7 +32,6 @@ class PlayerProfilePageTest extends TestCase
             ->assertSee('Jugador desde 2003.')
             ->assertSee('https://steamcommunity.com/id/zhaiks', false)
             ->assertSee('Ryzen 5600X')
-            ->assertSee(__('Clan').': Destino')
             ->assertSee('Fundador')
             // "Rol preferido" ahora es un codigo de arma real, resuelto a
             // nombre bonito con WeaponCatalog::label() al mostrarse.

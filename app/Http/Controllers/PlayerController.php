@@ -176,7 +176,7 @@ class PlayerController extends Controller
     {
         abort_unless($player->siteUser !== null, 404);
 
-        $player->load('siteUser');
+        $player->load('siteUser.clanMembership.clan');
 
         return view('players.profile', compact('player'));
     }

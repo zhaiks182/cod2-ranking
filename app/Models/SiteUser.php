@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,7 @@ class SiteUser extends Authenticatable
     protected $fillable = [
         'discord_id', 'discord_username', 'discord_avatar_url', 'avatar_path', 'role',
         'player_id', 'pending_claim_player_id', 'claim_code', 'claim_code_expires_at',
-        'bio', 'clan_tag', 'country', 'language', 'preferred_role',
+        'bio', 'country', 'language', 'preferred_role',
         'steam_url', 'twitch_url', 'instagram_url', 'youtube_url', 'twitter_url', 'website_url',
         'pc_cpu', 'pc_gpu', 'pc_ram', 'pc_peripherals',
     ];
@@ -61,5 +62,22 @@ class SiteUser extends Authenticatable
         return $this->pending_claim_player_id !== null
             && $this->claim_code_expires_at !== null
             && $this->claim_code_expires_at->isFuture();
+    }
+
+    /** Un jugador solo pertenece a un clan a la vez (unique en clan_members.site_user_id). */
+    public function clanMembership(): HasOne
+    {
+        return $this->hasOne(ClanMember::class);
+    }
+
+    public function clan(): ?Clan
+    {
+        return $this->clanMembership?->clan;
+    }
+
+    /** Invitaciones que ESTE jugador recibio de un clan, pendientes de su respuesta. */
+    public function receivedClanInvitations(): HasMany
+    {
+        return $this->hasMany(ClanInvitation::class)->where('direction', 'manager_invited')->where('status', 'pending');
     }
 }

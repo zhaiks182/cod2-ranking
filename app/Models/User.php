@@ -45,6 +45,7 @@ class User extends Authenticatable
         'demos' => 'Demos',
         'maps' => 'Mapas',
         'players' => 'Jugadores (países, fusionar, borrar, íconos)',
+        'clans' => 'Clanes',
         'bans' => 'Bans',
         'seasons' => 'Temporadas',
         'backups' => 'Respaldos',

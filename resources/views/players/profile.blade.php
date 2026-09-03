@@ -18,8 +18,13 @@
 
             <div class="min-w-0">
                 <h1 class="text-2xl font-semibold">{!! \App\Support\Cod2Colors::toHtml($player->last_name) !!}</h1>
-                @if($player->siteUser->clan_tag)
-                    <p class="text-base text-slate-400 mt-1">{{ __('Clan') }}: {{ $player->siteUser->clan_tag }}</p>
+                @if($player->siteUser->clanMembership)
+                    <p class="text-base text-slate-400 mt-1">
+                        {{ __('Clan') }}:
+                        <a href="{{ route('clans.show', $player->siteUser->clanMembership->clan) }}" class="text-cyan-400 hover:underline">
+                            [{{ $player->siteUser->clanMembership->clan->tag }}] {{ $player->siteUser->clanMembership->clan->name }}
+                        </a>
+                    </p>
                 @endif
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3">
                     <a href="https://discord.com/users/{{ $player->siteUser->discord_id }}" target="_blank" rel="noopener"

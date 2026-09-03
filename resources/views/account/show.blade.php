@@ -23,6 +23,29 @@
             <a href="{{ route('players.show', $siteUser->player) }}" class="text-cyan-400 hover:underline">{{ $siteUser->player->last_name_plain }}</a>
         </p>
 
+        @if(! $siteUser->clanMembership && $siteUser->receivedClanInvitations->isNotEmpty())
+            <div class="rounded-xl border border-cyan-800 bg-cyan-950/20 px-4 py-4 space-y-2">
+                <h2 class="text-sm font-semibold text-cyan-300">{{ __('Invitaciones de clan recibidas') }}</h2>
+                @foreach($siteUser->receivedClanInvitations as $invitation)
+                    <div class="flex items-center justify-between gap-3 text-sm">
+                        <span class="text-slate-300">[{{ $invitation->clan->tag }}] {{ $invitation->clan->name }}</span>
+                        <div class="flex gap-2">
+                            <form method="POST" action="{{ route('clans.invitations.respond', $invitation) }}">
+                                @csrf
+                                <input type="hidden" name="accept" value="1">
+                                <button type="submit" class="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold">{{ __('Aceptar') }}</button>
+                            </form>
+                            <form method="POST" action="{{ route('clans.invitations.respond', $invitation) }}">
+                                @csrf
+                                <input type="hidden" name="accept" value="0">
+                                <button type="submit" class="px-3 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold">{{ __('Rechazar') }}</button>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('account.update') }}" enctype="multipart/form-data" class="space-y-6">
             @csrf
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -49,9 +72,14 @@
                     <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold">{{ __('Identidad gaming') }}</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs text-slate-500 mb-1">{{ __('Clan / Tag') }}</label>
-                            <input type="text" name="clan_tag" value="{{ old('clan_tag', $siteUser->clan_tag) }}" maxlength="20" placeholder="ej. Destino" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                            @error('clan_tag')<p class="text-xs text-red-400 mt-1">{{ $message }}</p>@enderror
+                            <label class="block text-xs text-slate-500 mb-1">{{ __('Clan') }}</label>
+                            @if($siteUser->clanMembership)
+                                <a href="{{ route('clans.show', $siteUser->clanMembership->clan) }}" class="block w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-cyan-400 hover:underline">
+                                    [{{ $siteUser->clanMembership->clan->tag }}] {{ $siteUser->clanMembership->clan->name }}
+                                </a>
+                            @else
+                                <a href="{{ route('clans.index') }}" class="block w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 hover:text-cyan-400">{{ __('No pertenecés a ningún clan — buscar o crear uno') }}</a>
+                            @endif
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">{{ __('Rol preferido') }}</label>

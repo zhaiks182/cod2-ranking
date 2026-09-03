@@ -68,7 +68,7 @@
                         </div>
                     @endif
 
-                    @if(auth()->user()->hasModule('bans') || auth()->user()->hasModule('players') || auth()->user()->hasModule('audit'))
+                    @if(auth()->user()->hasModule('bans') || auth()->user()->hasModule('players') || auth()->user()->hasModule('clans') || auth()->user()->hasModule('audit'))
                         <div class="relative">
                             <button type="button" data-dropdown-toggle="admin-moderation-dropdown"
                                 class="text-slate-300 hover:text-gsaccent flex items-center gap-1">
@@ -82,6 +82,7 @@
                                     <a href="{{ route('admin.players.delete.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Borrar jugadores</a>
                                     <a href="{{ route('admin.players.icons.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Íconos de jugadores</a>
                                 @endif
+                                @if(auth()->user()->hasModule('clans'))<a href="{{ route('admin.clans.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Clanes</a>@endif
                                 @if(auth()->user()->hasModule('audit'))<a href="{{ route('admin.audit.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">Auditoría</a>@endif
                             </div>
                         </div>
