@@ -58,6 +58,40 @@ class PlayerRankCalculator
      * $seasonId es un id real, el string literal 'all', o null (default --
      * resuelve a Season::current()->id).
      */
+    /**
+     * Cuantas partidas distintas jugo cada player_id en este server+scope --
+     * mismo proxy de "participo" que calculateForServer() (aparecio como
+     * atacante o victima en al menos una baja SD de esa partida), extraido
+     * aparte (2026-09-02, a pedido del dueño) para que otras paginas de
+     * /especialidades (no solo /rango) puedan exigir un minimo de partidas
+     * sin duplicar la logica de "que cuenta como jugada". Caso real que lo
+     * motivo: un jugador con muy pocas partidas aparecio 2do en K/D
+     * (/eficiencia), que solo exigia un minimo de BAJAS (20), nunca de
+     * partidas -- una muestra chica infla facil un ratio.
+     *
+     * @return array<int, int> player_id => cantidad de partidas
+     */
+    public static function matchesPlayedByPlayer(int $serverId, Collection $matchIds): array
+    {
+        $rows = Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
+            ->where('rounds.server_id', $serverId)
+            ->where('rounds.gametype', 'sd')
+            ->whereIn('kills.match_id', $matchIds)
+            ->select('kills.match_id', 'kills.attacker_player_id', 'kills.victim_player_id')
+            ->get();
+
+        $matchesByPlayer = [];
+        foreach ($rows as $row) {
+            foreach ([$row->attacker_player_id, $row->victim_player_id] as $playerId) {
+                if ($playerId) {
+                    $matchesByPlayer[$playerId][$row->match_id] = true;
+                }
+            }
+        }
+
+        return array_map('count', $matchesByPlayer);
+    }
+
     public static function calculateForServer(Server $server, int|string|null $seasonId = null): Collection
     {
         $seasonId ??= Season::current()->id;

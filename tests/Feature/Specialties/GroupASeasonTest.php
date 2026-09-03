@@ -211,7 +211,14 @@ class GroupASeasonTest extends TestCase
 
         $oldSeason->update(['ended_at' => now()]);
         $newSeason = Season::create(['name' => 'Temporada 2', 'started_at' => now(), 'ended_at' => null]);
-        $this->createKillsAndDeaths($newSeason->id, $attacker, $victim, kills: 20, deaths: 5);
+        // /eficiencia ahora exige tambien un minimo de PARTIDAS (2026-09-02,
+        // ver PlayerRankCalculator::MIN_MATCHES), no solo de bajas -- se
+        // reparten las mismas 20 bajas/5 muertes en 9 partidas distintas en
+        // vez de una sola, mismo K/D final (20/5=4.0).
+        for ($i = 0; $i < 8; $i++) {
+            $this->createKillsAndDeaths($newSeason->id, $attacker, $victim, kills: 2, deaths: 0);
+        }
+        $this->createKillsAndDeaths($newSeason->id, $attacker, $victim, kills: 4, deaths: 5);
 
         $response = $this->get(route('specialties.efficiency', ['server' => $this->server->slug]));
 

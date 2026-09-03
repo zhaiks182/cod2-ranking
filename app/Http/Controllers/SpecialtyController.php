@@ -43,6 +43,10 @@ class SpecialtyController extends Controller
                 })
                 ->sortByDesc('value')->take(50)->values();
 
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
+
             $totalGrenadeKills = $all->sum('grenade_kills');
             $totalKills = $all->sum('kills');
 
@@ -88,6 +92,10 @@ class SpecialtyController extends Controller
                     return $row;
                 })
                 ->sortByDesc('value')->take(50)->values();
+
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
 
             $totalHeadshots = $all->sum('headshots');
             $totalKills = $all->sum('kills');
@@ -243,11 +251,19 @@ class SpecialtyController extends Controller
 
         $rows = collect();
         $minKills = 20;
+        $minMatches = PlayerRankCalculator::MIN_MATCHES;
 
         if ($server) {
             $all = KillAggregator::aggregate(fn () => $this->sdKills($server->id, $matchIds));
 
-            $rows = $all->filter(fn ($row) => $row->kills >= $minKills)
+            // Minimo de PARTIDAS ademas del minimo de bajas ya existente
+            // (2026-09-02, a pedido del dueño) -- un jugador con pocas
+            // partidas puede inflar facil un ratio como K/D con una muestra
+            // chica (caso real: alguien apareciendo 2do en este ranking
+            // habiendo jugado muy poco).
+            $matchesPlayed = PlayerRankCalculator::matchesPlayedByPlayer($server->id, $matchIds);
+
+            $rows = $all->filter(fn ($row) => $row->kills >= $minKills && ($matchesPlayed[$row->player->id] ?? 0) >= $minMatches)
                 ->map(function ($row) {
                     $row->value = $row->deaths > 0 ? round($row->kills / $row->deaths, 2) : $row->kills;
                     $row->share = null;
@@ -257,16 +273,21 @@ class SpecialtyController extends Controller
                 ->sortByDesc('value')
                 ->values()
                 ->take(50);
+
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
         }
 
         return view('specialties.ranking', [
             'servers' => $servers, 'server' => $server, 'seasons' => $seasons, 'seasonId' => $seasonId, 'rows' => $rows,
             'routeName' => 'specialties.efficiency', 'icon' => '⚔️', 'title' => __('Los Más Eficientes'),
-            'subtitle' => __('Mejor ratio kills/muertes (K/D) — mínimo :min bajas para entrar al ranking', ['min' => $minKills]),
+            'subtitle' => __('Mejor ratio kills/muertes (K/D) — mínimo :minKills bajas y :minMatches partidas para entrar al ranking', ['minKills' => $minKills, 'minMatches' => $minMatches]),
             'valueLabel' => 'K/D', 'valueColor' => 'text-emerald-400',
             'shareLabel' => null,
             'statCards' => [
                 ['label' => __('Mínimo de bajas para calificar'), 'value' => $minKills],
+                ['label' => __('Mínimo de partidas para calificar'), 'value' => $minMatches],
             ],
         ]);
     }
@@ -767,6 +788,10 @@ class SpecialtyController extends Controller
 
                 return $player ? (object) ['player' => $player, 'value' => $count, 'share' => null] : null;
             })->filter()->values();
+
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
         }
 
         return view('specialties.ranking', [
@@ -834,6 +859,10 @@ class SpecialtyController extends Controller
 
                 return $player ? (object) ['player' => $player, 'value' => $best, 'share' => null] : null;
             })->filter()->values();
+
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
         }
 
         return view('specialties.ranking', [
@@ -964,6 +993,10 @@ class SpecialtyController extends Controller
                     return $row;
                 })
                 ->sortByDesc('value')->take(50)->values();
+
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
 
             $totalBashes = $all->sum('bash');
         }
@@ -1162,6 +1195,10 @@ class SpecialtyController extends Controller
                     ] : null;
                 })->filter()->values();
 
+                if ($seasonId === Season::current()->id) {
+                    $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+                }
+
                 $totalPlants = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('bomb_plants');
                 $totalDefuses = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('bomb_defuses');
             }
@@ -1236,6 +1273,10 @@ class SpecialtyController extends Controller
                         'kills' => $killsByPlayer[$row->player_id]->kills ?? 0,
                     ] : null;
                 })->filter()->values();
+
+                if ($seasonId === Season::current()->id) {
+                    $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+                }
 
                 $totalDamage = (int) PlayerMatchExtra::whereIn('match_id', $serverMatchIds)->sum('damage_dealt');
             }

@@ -59,7 +59,7 @@
             <div class="order-1">
                 @if($podium->count() > 1)
                     @php $p = $podium[1]; $country = \App\Services\GeoIp::countryFor($p->player->ip); @endphp
-                    <div class="rounded-xl border border-slate-700 bg-panel px-3 py-4 text-center">
+                    <div class="rounded-xl border border-slate-700 bg-panel px-3 py-4 text-center {{ ($p->inactive ?? false) ? 'opacity-40' : '' }}">
                         <div class="text-2xl">🥈</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                         <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
@@ -72,7 +72,7 @@
             <div class="order-2">
                 @if($podium->count() > 0)
                     @php $p = $podium[0]; $country = \App\Services\GeoIp::countryFor($p->player->ip); @endphp
-                    <div class="rounded-xl border-2 border-amber-500 bg-gradient-to-b from-amber-950/40 to-panel px-3 py-6 text-center shadow-lg shadow-amber-950/50">
+                    <div class="rounded-xl border-2 border-amber-500 bg-gradient-to-b from-amber-950/40 to-panel px-3 py-6 text-center shadow-lg shadow-amber-950/50 {{ ($p->inactive ?? false) ? 'opacity-40' : '' }}">
                         <div class="text-3xl">🥇</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                         <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-semibold truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
@@ -88,7 +88,7 @@
             <div class="order-3">
                 @if($podium->count() > 2)
                     @php $p = $podium[2]; $country = \App\Services\GeoIp::countryFor($p->player->ip); @endphp
-                    <div class="rounded-xl border border-slate-700 bg-panel px-3 py-3 text-center">
+                    <div class="rounded-xl border border-slate-700 bg-panel px-3 py-3 text-center {{ ($p->inactive ?? false) ? 'opacity-40' : '' }}">
                         <div class="text-xl">🥉</div>
                         @if($country)<span title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                         <a href="{{ route('players.show', $p->player->guid) }}" class="mt-1 block font-medium text-sm truncate hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($p->player->last_name) !!}<x-player-icon :player="$p->player" /></a>
@@ -117,12 +117,15 @@
                     <tbody>
                         @foreach($rest as $i => $row)
                             @php $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
-                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30">
+                            <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30 {{ ($row->inactive ?? false) ? 'opacity-40' : '' }}">
                                 <td class="px-4 py-2 text-cyan-400">{{ $i + 4 }}</td>
                                 <td class="px-4 py-2 font-medium">
                                     @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                     <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
                                     <x-player-icon :player="$row->player" />
+                                    @if($row->inactive ?? false)
+                                        <span class="ml-1 text-[10px] text-slate-500">{{ __('(inactivo)') }}</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-2 text-right tabular-nums {{ $valueColor }} font-medium">{{ $row->value }}</td>
                                 @if($shareLabel)
