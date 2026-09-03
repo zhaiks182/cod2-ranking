@@ -10,7 +10,7 @@
 <div class="space-y-6 max-w-3xl">
     <div>
         <h1 class="font-display text-2xl md:text-3xl font-bold text-white">{{ __('Cómo funciona el rango') }}</h1>
-        <p class="text-sm text-slate-400 mt-1">{{ __('Explicación pública del algoritmo detrás de /rango y del balanceador de Equipos, actualizada el 2 de septiembre de 2026.') }}</p>
+        <p class="text-sm text-slate-400 mt-1">{{ __('Explicación pública del algoritmo detrás de /rango y del balanceador de Equipos, actualizada el 3 de septiembre de 2026.') }}</p>
     </div>
 
     <div class="space-y-3">
@@ -89,7 +89,9 @@
             </summary>
             <div class="px-4 pb-4 text-sm text-slate-400 space-y-3">
                 <p>{{ __('El balanceador de equipos usa este mismo score para armar dos equipos parejos (snake draft por score descendente) entre los jugadores conectados ahora mismo.') }}</p>
-                <p>{{ __('Un jugador que todavía no llega al mínimo de partidas en la temporada actual, pero sí jugó lo suficiente en la temporada anterior, arranca con un valor interno basado 100% en el percentil de K/D que tenía en esa temporada anterior — solo para que Equipos pueda armar un balance razonable desde el primer partido, en vez de tratarlo como un desconocido total. Este valor nunca se muestra públicamente en /rango, que sigue exigiendo el mínimo de partidas de esta temporada como siempre.') }}</p>
+                <p>{{ __('Un jugador que todavía no llega al mínimo de partidas en la temporada actual arranca con un valor semilla interno (100% el percentil de K/D que tenía en la temporada anterior, o un valor neutro si es nuevo) — solo para que Equipos pueda armar un balance razonable desde el primer partido, en vez de tratarlo como un desconocido total.') }}</p>
+                <p>{{ __('Ese valor semilla se va disolviendo gradualmente partida a partida: a medida que el jugador acumula partidas esta temporada, su valor interno se mezcla progresivamente entre la semilla y su desempeño real de esta temporada, hasta quedar 100% en su desempeño real apenas cumple el mínimo de partidas — así se evita un salto brusco de golpe en la última partida necesaria. Mientras todavía no haya suficientes jugadores calificados esta temporada como referencia, el jugador se queda con el valor semilla hasta que exista una base sólida contra la cual comparar.') }}</p>
+                <p>{{ __('Ninguno de estos valores internos se muestra públicamente en /rango, que sigue exigiendo el mínimo de partidas de esta temporada como siempre.') }}</p>
             </div>
         </details>
     </div>
