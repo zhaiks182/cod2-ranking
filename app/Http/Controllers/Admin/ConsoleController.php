@@ -28,7 +28,7 @@ class ConsoleController extends Controller
         // conectados. Ver TeamBalancer para el porque del snake draft y por
         // que solo sugiere en vez de mover jugadores por RCON.
         $teamBalance = $status
-            ? TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server))
+            ? TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server)
             : null;
 
         return view('admin.console', compact('server', 'status', 'teamBalance'));
@@ -50,7 +50,7 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
         }
 
-        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server));
+        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server);
 
         if (! $teamBalance->enough) {
             return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');

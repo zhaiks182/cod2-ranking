@@ -219,6 +219,7 @@
                     </button>
                     <div id="help-dropdown" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ {{ __('Preguntas frecuentes') }}</a>
+                        <a href="{{ route('help.rank-explained') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎖️ {{ __('Cómo funciona el rango') }}</a>
                         <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
                     </div>
                 </div>

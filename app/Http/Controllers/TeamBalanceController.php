@@ -32,7 +32,7 @@ class TeamBalanceController extends Controller
 
         if ($server && $status && $request->boolean('generar')) {
             $ranks = PlayerRankCalculator::calculateForServer($server);
-            $teamBalance = TeamBalancer::suggest($status['players'] ?? [], $ranks);
+            $teamBalance = TeamBalancer::suggest($status['players'] ?? [], $ranks, $server);
         }
 
         return view('team-balance', compact('servers', 'server', 'status', 'teamBalance'));
@@ -62,7 +62,7 @@ class TeamBalanceController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
         }
 
-        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server));
+        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server);
         if (! $teamBalance->enough) {
             return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');
         }

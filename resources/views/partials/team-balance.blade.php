@@ -58,11 +58,11 @@
                             @foreach($team as $p)
                                 @php
                                     $tierStyle = match($p->rango) {
+                                        'S' => 'bg-fuchsia-950/40 border-fuchsia-600 text-fuchsia-300',
                                         'A' => 'bg-amber-950/40 border-amber-700 text-amber-300',
                                         'B' => 'bg-cyan-950/40 border-cyan-700 text-cyan-300',
-                                        'C' => 'bg-slate-800/60 border-slate-600 text-slate-300',
-                                        'D' => 'bg-orange-950/40 border-orange-800 text-orange-400',
-                                        'E' => 'bg-red-950/40 border-red-900 text-red-400',
+                                        'C' => 'bg-orange-950/40 border-orange-800 text-orange-400',
+                                        'D' => 'bg-red-950/40 border-red-900 text-red-400',
                                         default => 'bg-slate-800/40 border-slate-700 text-slate-500',
                                     };
                                 @endphp

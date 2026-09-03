@@ -113,6 +113,7 @@ Route::get('/desconexiones', [SpecialtyController::class, 'disconnects'])->name(
 Route::get('/muertes-por-nades', [SpecialtyController::class, 'grenadeDeaths'])->name('specialties.grenade-deaths');
 
 Route::get('/preguntas-frecuentes', [HelpController::class, 'faq'])->name('faq');
+Route::get('/como-funciona-el-rango', [HelpController::class, 'rankExplained'])->name('help.rank-explained');
 Route::get('/descargas', [HelpController::class, 'downloads'])->name('downloads');
 Route::get('/descargas/archivos/{path?}', [HelpController::class, 'browseFiles'])
     ->where('path', '.*')

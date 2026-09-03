@@ -38,8 +38,12 @@ class TeamBalancer
      * @param  array  $connectedPlayers  status()['players'] de Cod2RconClient
      *                                   (cada uno con slot/score/ping/guid/name/ip)
      * @param  Collection  $ranks  PlayerRankCalculator::calculateForServer($server)
+     * @param  \App\Models\Server|null  $server  Solo para resolver el MMR semilla
+     *      (PlayerRankCalculator::seasonSeedScore(), 2026-09-02) de un jugador sin
+     *      rango todavia en la temporada actual -- opcional para no romper otros
+     *      usos de este metodo que no lo necesiten (tests, etc.).
      */
-    public static function suggest(array $connectedPlayers, Collection $ranks): object
+    public static function suggest(array $connectedPlayers, Collection $ranks, ?\App\Models\Server $server = null): object
     {
         $bots = 0;
         $pool = collect();
@@ -58,11 +62,17 @@ class TeamBalancer
 
             $rank = $ranks->get($guid);
 
+            // Sin rango todavia esta temporada -- antes de caer al score
+            // neutro, intenta el MMR semilla de la temporada anterior
+            // (2026-09-02, a pedido del dueño). Devuelve null (sin efecto)
+            // si no hay temporada anterior o el jugador no calificaba ahi.
+            $seedScore = ! $rank && $server ? PlayerRankCalculator::seasonSeedScore($server, $guid) : null;
+
             $pool->push((object) [
                 'guid' => $guid,
                 'name' => $p['name'] ?? '(sin nombre)',
                 'rango' => $rank->rango ?? null,
-                'score' => $rank->score ?? self::DEFAULT_SCORE,
+                'score' => $rank->score ?? $seedScore ?? self::DEFAULT_SCORE,
             ]);
         }
 

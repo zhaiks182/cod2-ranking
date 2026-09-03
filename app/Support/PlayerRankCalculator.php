@@ -9,11 +9,20 @@ use App\Models\Server;
 use Illuminate\Support\Collection;
 
 /**
- * Categoriza a los jugadores de un server en rangos A-E segun un score de
- * 70% K/D + 30% win rate -- cada metrica se convierte a un percentil (0-100)
- * dentro del pool de jugadores calificados antes de combinarse, para que
- * ambas pesen relativo al resto del server y no a una escala arbitraria. Los
- * rangos son quintiles de ese score (A = top 20%, ..., E = bottom 20%).
+ * Categoriza a los jugadores de un server en rangos S/A/B/C/D segun un score
+ * de 50% win rate + 30% K/D + 20% "Impacto" (ImpactScoreCalculator: bombas,
+ * primera sangre, multi-kills, clutches -- 2026-09-02, a pedido del dueño,
+ * para incentivar jugar a ganar la ronda en vez de acumular bajas sueltas
+ * sin mas). Cada metrica se convierte a un percentil (0-100) dentro del pool
+ * de jugadores calificados antes de combinarse, para que las tres pesen
+ * relativo al resto del server y no a una escala arbitraria.
+ *
+ * Los rangos ya NO son quintiles iguales -- son una distribucion normal
+ * seccionada por la posicion percentil en la tabla ordenada (no por el valor
+ * del score en si): P_tabla = (1 - (posicion-1)/(N-1)) x 100, con cortes en
+ * 95/75/25/5 (S=top 5%, A=siguiente 20%, B=el 50% del medio, C=siguiente
+ * 20%, D=el 5% de abajo) -- ver percentileTiers() mas abajo y la pagina
+ * publica /como-funciona-el-rango para la explicacion completa.
  *
  * Extraido de SpecialtyController::rango() (2026-08-25) para que el
  * balanceador de equipos de la consola admin (TeamBalancer) reuse el mismo
@@ -33,6 +42,12 @@ use Illuminate\Support\Collection;
 class PlayerRankCalculator
 {
     public const MIN_MATCHES = 9;
+
+    /**
+     * Cortes de la distribucion normal seccionada, en percentil de posicion
+     * dentro de la tabla (100 = el mejor puesto). S/A/B/C/D = 5/20/50/20/5%.
+     */
+    private const TIER_CUTOFFS = ['S' => 95, 'A' => 75, 'B' => 25, 'C' => 5, 'D' => 0];
 
     /**
      * Devuelve una colección keyed por guid con: player, kd, hsPct, nadePct,
@@ -115,6 +130,8 @@ class PlayerRankCalculator
             }
         }
 
+        $impactPoints = ImpactScoreCalculator::calculate($server->id, $matchIds);
+
         $qualified = collect();
         foreach ($stats as $guid => $stat) {
             $playerId = $stat->player->id;
@@ -130,6 +147,7 @@ class PlayerRankCalculator
                 'hsPct' => $stat->kills > 0 ? round($stat->headshots / $stat->kills * 100, 1) : 0,
                 'nadePct' => $stat->kills > 0 ? round($stat->grenade_kills / $stat->kills * 100, 1) : 0,
                 'winPct' => round(min($won[$playerId] ?? 0, $playedCount) / $playedCount * 100, 1),
+                'impact' => round($impactPoints[$playerId] ?? 0.0, 2),
                 'played' => $playedCount,
             ]);
         }
@@ -163,21 +181,72 @@ class PlayerRankCalculator
 
         $kdPct = $percentiles('kd');
         $winPctPct = $percentiles('winPct');
+        $impactPct = $percentiles('impact');
 
-        $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $winPctPct) {
-            $row->score = round($kdPct[$i] * 0.7 + $winPctPct[$i] * 0.3, 1);
+        $qualified = $qualified->values()->map(function ($row, $i) use ($kdPct, $winPctPct, $impactPct) {
+            // kdPct se guarda aparte del score final -- es el mismo "100%
+            // percentil KD" que usa la semilla de temporada nueva
+            // (seasonSeedScore()), sin mezclar win rate/impacto.
+            $row->kdPct = $kdPct[$i];
+            $row->score = round($winPctPct[$i] * 0.5 + $kdPct[$i] * 0.3 + $impactPct[$i] * 0.2, 1);
 
             return $row;
         })->sortByDesc('score')->values();
 
-        $tiers = ['A', 'B', 'C', 'D', 'E'];
-        $qualified = $qualified->map(function ($row, $i) use ($n, $tiers) {
-            $quintile = (int) floor($i / ($n / 5));
-            $row->rango = $tiers[min($quintile, 4)];
+        $qualified = $qualified->map(function ($row, $i) use ($n) {
+            // Posicion percentil DENTRO de la tabla ordenada (no el valor del
+            // score) -- 100 = el mejor puesto, 0 = el ultimo. Ver el
+            // comentario de clase para los cortes S/A/B/C/D.
+            $percentTabla = $n > 1 ? round((1 - $i / ($n - 1)) * 100, 4) : 100.0;
+            $row->rango = self::tierForPercent($percentTabla);
 
             return $row;
         });
 
         return $qualified->keyBy('guid');
+    }
+
+    private static function tierForPercent(float $percentTabla): string
+    {
+        foreach (self::TIER_CUTOFFS as $tier => $cutoff) {
+            if ($percentTabla >= $cutoff) {
+                return $tier;
+            }
+        }
+
+        return 'D';
+    }
+
+    /**
+     * Semilla de MMR oculto para el arranque de una temporada nueva
+     * (2026-09-02, a pedido del dueño) -- SOLO para uso interno de
+     * TeamBalancer mientras un jugador todavia no llega a MIN_MATCHES en la
+     * temporada actual. Nunca se muestra en /rango (esa pagina sigue
+     * excluyendo a cualquiera bajo MIN_MATCHES, sin cambios) -- es
+     * exclusivamente para que Equipos pueda armar un balance razonable desde
+     * la primera partida de la temporada nueva, en vez de tratar a todo el
+     * mundo como "sin rango" (score neutro) hasta que cada quien acumule
+     * partidas de cero otra vez.
+     *
+     * "La metrica con el menor sesgo posible": 100% el percentil de K/D que
+     * el jugador tenia en la temporada INMEDIATAMENTE ANTERIOR (la mas
+     * reciente ya cerrada, la que sea) -- nunca el score combinado (que ya
+     * incluye impacto/win rate, mas sesgado por el roster de esa temporada
+     * vieja). Devuelve null si no hay temporada anterior cerrada, o si el
+     * jugador no calificaba (MIN_MATCHES) en esa temporada -- en ambos casos
+     * TeamBalancer cae al score neutro de siempre.
+     */
+    public static function seasonSeedScore(Server $server, int $guid): ?float
+    {
+        $previousSeason = Season::where('id', '!=', Season::current()->id)
+            ->whereNotNull('ended_at')
+            ->orderByDesc('ended_at')
+            ->first();
+
+        if (! $previousSeason) {
+            return null;
+        }
+
+        return self::calculateForServer($server, $previousSeason->id)->get($guid)?->kdPct;
     }
 }

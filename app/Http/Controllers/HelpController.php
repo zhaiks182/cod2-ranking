@@ -25,6 +25,16 @@ class HelpController extends Controller
         return view('help.faq', compact('connectString', 'connectUri'));
     }
 
+    /**
+     * Explicacion publica del algoritmo de rango/equipos (2026-09-02, a
+     * pedido del dueño) -- para que quede constancia de como funciona,
+     * documentado en la propia web en vez de solo en CLAUDE.md.
+     */
+    public function rankExplained()
+    {
+        return view('help.rank-explained');
+    }
+
     public function downloads()
     {
         return view('help.downloads');

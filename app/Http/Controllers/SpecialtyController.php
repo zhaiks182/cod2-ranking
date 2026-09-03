@@ -1080,6 +1080,19 @@ class SpecialtyController extends Controller
         // la vista usa el indice del foreach como puesto en el ranking.
         if ($server) {
             $rows = PlayerRankCalculator::calculateForServer($server, $seasonId)->values();
+
+            // Ocultar (mover al final, en gris) a un jugador inactivo --
+            // 2026-09-02, a pedido del dueño. Solo tiene sentido mirando la
+            // temporada VIGENTE (no una cerrada ni "todas") -- una temporada
+            // cerrada ya no tiene a nadie "jugando ahora", el criterio de
+            // inactividad no aplica retroactivamente sobre su propia
+            // historia (misma nota del dueño: "que las temporadas pasadas
+            // no se vean afectadas luego de que se dejen de jugar" --
+            // resuelto simplemente no aplicando el filtro fuera de la
+            // temporada activa, sin necesitar ningun snapshot aparte).
+            if ($seasonId === Season::current()->id) {
+                $rows = $this->markInactivePlayers($rows, $server, $matchIds);
+            }
         }
 
         return view('specialties.rango', [
@@ -1328,6 +1341,42 @@ class SpecialtyController extends Controller
             ->where('rounds.gametype', 'sd')
             ->where('kills.is_suicide', false)
             ->whereIn('kills.match_id', $matchIds);
+    }
+
+    /**
+     * Marca $row->inactive en cada fila (2026-09-02) -- dos condiciones, las
+     * DOS a la vez: 15+ dias sin jugar (players.last_seen_at) Y horas
+     * jugadas esta temporada por debajo del PROMEDIO GENERAL de horas
+     * jugadas de la temporada (entre los jugadores calificados de /rango,
+     * no un promedio global de todo el sitio). Los inactivos se mueven al
+     * final de la lista, conservando el orden relativo por score entre
+     * ellos -- no se borran ni se sacan del ranking, la vista los pinta en
+     * gris.
+     */
+    private function markInactivePlayers($rows, Server $server, $matchIds)
+    {
+        if ($rows->isEmpty()) {
+            return $rows;
+        }
+
+        $secondsByPlayer = PlaytimeCalculator::secondsByPlayer($server->id, $matchIds);
+        $hoursByPlayer = collect($secondsByPlayer)->map(fn ($seconds) => $seconds / 3600);
+        $rowsPlayerIds = $rows->pluck('player.id');
+        $averageHours = $hoursByPlayer->only($rowsPlayerIds)->avg() ?? 0;
+        $inactiveSince = now()->subDays(15);
+
+        $rows = $rows->map(function ($row) use ($hoursByPlayer, $averageHours, $inactiveSince) {
+            $lastSeen = $row->player->last_seen_at;
+            $hoursThisSeason = $hoursByPlayer[$row->player->id] ?? 0;
+
+            $row->inactive = $lastSeen && $lastSeen->lt($inactiveSince) && $hoursThisSeason < $averageHours;
+
+            return $row;
+        });
+
+        // Estable: el orden original (por score) se conserva DENTRO de cada
+        // grupo -- Collection::sortBy() de Laravel ya es estable.
+        return $rows->sortBy(fn ($row) => $row->inactive ? 1 : 0)->values();
     }
 
     /**
