@@ -4185,6 +4185,98 @@ guarda `discord_id` (el snowflake real de Discord), el dato exacto que un
 bot con permiso "Mover miembros" necesita para saber a quién mover, una
 vez que el jugador reclamó su perfil.
 
+## Transición de rank_score en el arranque de temporada (diseño en curso, 2026-09-02)
+
+**NO IMPLEMENTADO TODAVÍA — esto es un diseño en progreso (brainstorming
+arquitectural), pausado a pedido del dueño antes de terminarlo.** Documentado
+acá para no perder las decisiones ya tomadas si se retoma en otra sesión.
+
+**Motivo:** el mecanismo de semilla de MMR ya existente
+(`PlayerRankCalculator::seasonSeedScore()`, ver "Módulo de íconos..." — no, ver
+la sección de PlayerRankCalculator más arriba en el historial de este archivo,
+agregada 2026-09-02 junto al resto del overhaul de rango) usa un score binario:
+o el jugador ya calificó esta temporada (M≥9 partidas, usa el score real de
+percentiles) o cae de golpe al score semilla completo (100% percentil KD de
+la temporada anterior cerrada) o a un neutro fijo de 50 si nunca jugó antes.
+El dueño pidió que la transición sea gradual, partida a partida, en vez de un
+salto de golpe al llegar a la partida 9.
+
+**Fórmula pedida por el dueño, textual:**
+
+- Si `M < 9` (no calificado todavía): `rank_score = (1 - M/9)×rank_score_semilla + (M/9)×Rank_Score_T2_Actual`
+- Si `M ≥ 9` (calificado): `rank_score = 0.50×P_WR + 0.30×P_KD + 0.20×P_IMP` (sin cambios, la fórmula que ya existe)
+- Jugador nuevo en la temporada (nunca jugó la anterior): `rank_score_semilla = 50` (neutro).
+
+**Decisiones ya tomadas con el dueño, vía brainstorming (AskUserQuestion):**
+
+1. **Sigue siendo 100% interno a Equipos/TeamBalancer, nunca público.**
+   `/especialidades/rango` no cambia — sigue exigiendo M≥9 para aparecer, sin
+   mostrar ningún rango S-D provisional durante la transición. Confirmado
+   explícitamente ("No debe aparecer, solo cuando se complete las 9
+   partidas").
+2. **Pool de percentil para `Rank_Score_T2_Actual`:** se calculan los
+   percentiles WR/KD/Impacto del jugador en transición insertando sus stats
+   parciales (las que lleva con sus M partidas) dentro de la MISMA
+   distribución de los jugadores YA calificados esta temporada (M≥9) — sin
+   alterar el percentil de nadie que ya califica, sin armar un pool aparte
+   combinado. Elegido explícitamente sobre la alternativa de un pool
+   combinado (todos los participantes, calificados o no).
+3. **Sin persistencia nueva.** `rank_score_semilla` se deriva en vivo cada vez
+   (mismo patrón que el `seasonSeedScore` actual, memoizado solo durante el
+   request) — no hace falta una columna/tabla nueva porque la temporada
+   anterior ya está cerrada e inmutable. Elegido explícitamente sobre
+   persistir un snapshot fijo al cerrar temporada.
+4. **Arquitectura para evitar repetir el bug de performance recién arreglado**
+   (ver el commit `9f56224`, "Equipos/Discord recalculaba toda la temporada
+   anterior por cada jugador conectado"): nuevo método **batch**
+   `PlayerRankCalculator::transitionScoresForServer(Server $server, array $guids): array`
+   que calcula el pool de calificados de la temporada actual UNA sola vez
+   (no una vez por jugador conectado) y devuelve `guid => rank_score` para
+   todos los guids pedidos de una. `TeamBalancer::suggest()` lo va a llamar
+   una sola vez antes de su loop, igual que ya recibe `$ranks` precalculado
+   del caller — nunca dentro del loop por jugador. Elegido explícitamente
+   sobre la alternativa de un método por-guid memoizado internamente (más
+   parecido a la convención de `seasonSeedScore` actual, pero más fácil de
+   volver a romper si alguien llama una ruta no memoizada en el futuro).
+
+**Algoritmo de `transitionScoresForServer()` (diseñado, sección 2 del
+brainstorming, presentada pero sin confirmar el último punto):**
+
+1. `M` = partidas jugadas esta temporada por ese guid (reusa
+   `PlayerRankCalculator::matchesPlayedByPlayer()`, ya existe).
+2. `rank_score_semilla` = `seasonSeedScore($server, $guid) ?? 50.0`.
+3. Si `M = 0` → `rank_score = semilla` directo, sin calcular
+   `Rank_Score_T2_Actual` (no hace falta, evita trabajo de más).
+4. Si `M ≥ 1` → ubica las stats parciales del jugador (KD/WR/Impacto reales
+   con sus M partidas) dentro de la distribución del pool de calificados
+   (calculado una sola vez para todos los guids pedidos) via percentil por
+   **interpolación de posición** (no búsqueda exacta -- el valor del jugador
+   en transición probablemente no está en la lista de calificados).
+   `Rank_Score_T2_Actual = 0.50×P_WR + 0.30×P_KD + 0.20×P_IMP` con esos tres
+   percentiles interpolados.
+5. `rank_score = (1 - M/9)×semilla + (M/9)×Rank_Score_T2_Actual`.
+
+**Caso borde presentado, todavía sin confirmar por el dueño (se retomó la
+conversación acá):** si todavía nadie llegó a 9 partidas esta temporada (pool
+de calificados vacío -- la situación real ahora mismo, Temporada 2 recién
+arrancada), no hay distribución contra la cual ubicar a nadie →
+`Rank_Score_T2_Actual` no se puede calcular → esos jugadores usarían
+`rank_score = semilla` hasta que exista al menos 1 jugador calificado. Sin
+confirmación explícita todavía de que este es el comportamiento deseado.
+
+**Pendiente antes de implementar (retomar desde acá):**
+- Confirmar el caso borde del pool vacío (arriba).
+- Terminar de presentar el resto del diseño (`TeamBalancer::suggest()` en
+  detalle, testing plan, archivos tocados).
+- Escribir el spec formal en `docs/superpowers/specs/` y que el dueño lo
+  revise (todavía no se escribió ningún archivo de spec).
+- El dueño pidió explícitamente, al pedir este análisis, que al terminar se
+  le presenten **dos opciones de implementación**: vía subagente
+  (`subagent-driven-development`/`writing-plans`) o directamente en esta
+  sesión (código inline, el patrón que prefiere normalmente -- ver memoria
+  `feedback_inline_execution_no_subagents.md`). Todavía no se llegó a esa
+  decisión.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
