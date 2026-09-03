@@ -127,10 +127,22 @@ class PlayerRankCalculator
             ->with('rounds:id,match_id,winner_guids')
             ->get();
 
+        // Una sola query para las kills de TODAS las partidas del scope, no
+        // una por partida (2026-09-02, bug real de performance: con la
+        // temporada anterior completa -- 73 partidas en producción -- esto
+        // eran 73+ queries separadas solo para esta parte del cálculo, y
+        // TeamBalancer::suggest() puede disparar este método entero una vez
+        // por cada jugador conectado sin rango en la temporada actual, ver
+        // más abajo. Agrupada por match_id en PHP en vez de repetir el
+        // query dentro del loop).
+        $killsByMatch = Kill::whereIn('match_id', $matches->pluck('id'))
+            ->get(['match_id', 'attacker_player_id', 'attacker_guid', 'victim_player_id', 'victim_guid'])
+            ->groupBy('match_id');
+
         $played = [];
         $won = [];
         foreach ($matches as $match) {
-            $kills = Kill::where('match_id', $match->id)->get(['attacker_player_id', 'attacker_guid', 'victim_player_id', 'victim_guid']);
+            $kills = $killsByMatch->get($match->id, collect());
 
             // Guid -> player_id valido para esta partida puntual (un guid
             // historico puede no tener fila en `players` si el jugador se
@@ -269,18 +281,44 @@ class PlayerRankCalculator
      * vieja). Devuelve null si no hay temporada anterior cerrada, o si el
      * jugador no calificaba (MIN_MATCHES) en esa temporada -- en ambos casos
      * TeamBalancer cae al score neutro de siempre.
+     *
+     * Memoizado en memoria por server (2026-09-02, bug real de performance:
+     * TeamBalancer::suggest() llama a este método una vez POR CADA jugador
+     * conectado sin rango todavía en la temporada actual -- con una
+     * temporada nueva recién arrancada, eso es prácticamente todo el
+     * roster. Sin memoizar, cada llamada recalculaba desde cero la
+     * temporada anterior completa (73 partidas reales en producción, ~1.1s
+     * y 155 queries cada vez) -- con 16 jugadores conectados, ~20s y 2480
+     * queries para un solo click de "Generar equipos" o "Notificar
+     * Discord". Memoizado, el cálculo pesado corre como máximo una vez por
+     * request.
+     *
+     * @var array<int, Collection|null>
      */
+    private static array $previousSeasonRanksCache = [];
+
     public static function seasonSeedScore(Server $server, int $guid): ?float
     {
-        $previousSeason = Season::where('id', '!=', Season::current()->id)
-            ->whereNotNull('ended_at')
-            ->orderByDesc('ended_at')
-            ->first();
+        if (! array_key_exists($server->id, self::$previousSeasonRanksCache)) {
+            $previousSeason = Season::where('id', '!=', Season::current()->id)
+                ->whereNotNull('ended_at')
+                ->orderByDesc('ended_at')
+                ->first();
 
-        if (! $previousSeason) {
-            return null;
+            self::$previousSeasonRanksCache[$server->id] = $previousSeason
+                ? self::calculateForServer($server, $previousSeason->id)
+                : null;
         }
 
-        return self::calculateForServer($server, $previousSeason->id)->get($guid)?->kdPct;
+        return self::$previousSeasonRanksCache[$server->id]?->get($guid)?->kdPct;
+    }
+
+    /**
+     * Solo para tests -- limpia la memoización entre casos que arman
+     * temporadas/servers distintos en la misma ejecución del proceso PHP.
+     */
+    public static function clearSeasonSeedCache(): void
+    {
+        self::$previousSeasonRanksCache = [];
     }
 }
