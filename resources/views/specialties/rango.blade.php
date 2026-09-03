@@ -44,15 +44,27 @@
                         <th class="px-4 py-2 font-medium">#</th>
                         <th class="px-4 py-2 font-medium">{{ __('Jugador') }}</th>
                         <th class="px-4 py-2 font-medium text-center">{{ __('Rango') }}</th>
-                        <th class="px-4 py-2 font-medium text-right">K/D</th>
-                        <th class="px-4 py-2 font-medium text-right">Win rate</th>
-                        <th class="px-4 py-2 font-medium text-right">{{ __('Impacto') }}</th>
-                        <th class="px-4 py-2 font-medium text-right">Headshots</th>
-                        <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
-                        <th class="px-4 py-2 font-medium text-right">Score</th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="kd" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">K/D <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="winpct" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">Win rate <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="impact" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">{{ __('Impacto') }} <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="hspct" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">Headshots <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="nadepct" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">{{ __('Granadas') }} <span class="sort-arrow"></span></button>
+                        </th>
+                        <th class="px-4 py-2 font-medium text-right">
+                            <button type="button" data-sort="score" class="sort-toggle hover:text-gsaccent inline-flex items-center gap-0.5">Score <span class="sort-arrow"></span></button>
+                        </th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="rango-rows">
                     @foreach($rows as $i => $row)
                         @php
                             $tierStyle = match($row->rango) {
@@ -64,8 +76,10 @@
                             };
                         @endphp
                         @php $country = \App\Services\GeoIp::countryFor($row->player->ip); @endphp
-                        <tr class="border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30 {{ ($row->inactive ?? false) ? 'opacity-40' : '' }}">
-                            <td class="px-4 py-2 text-cyan-400">{{ $i + 1 }}</td>
+                        <tr class="rango-row border-b border-slate-800/60 last:border-0 hover:bg-slate-800/30 {{ ($row->inactive ?? false) ? 'opacity-40' : '' }}"
+                            data-kd="{{ $row->kd }}" data-winpct="{{ $row->winPct }}" data-impact="{{ $row->impact }}"
+                            data-hspct="{{ $row->hsPct }}" data-nadepct="{{ $row->nadePct }}" data-score="{{ $row->score }}">
+                            <td class="px-4 py-2 text-cyan-400 row-number">{{ $i + 1 }}</td>
                             <td class="px-4 py-2 font-medium">
                                 @if($country)<span class="mr-1" title="{{ $country['name'] }}">{!! \App\Services\GeoIp::flagIconHtml($country['code']) !!}</span>@endif
                                 <a href="{{ route('players.show', $row->player->guid) }}" class="hover:text-cyan-400">{!! \App\Support\Cod2Colors::toHtml($row->player->last_name) !!}</a>
@@ -91,4 +105,42 @@
         </div>
     @endif
 </div>
+
+<script>
+    (function () {
+        // Mismo mecanismo de orden por columna que /adm_cod2/jugadores/borrar
+        // (2026-09-02, a pedido del dueño) -- puro JS, sin ida y vuelta al
+        // server, reordena las filas ya renderizadas.
+        const tbody = document.getElementById('rango-rows');
+        if (!tbody) return;
+
+        function renumber() {
+            tbody.querySelectorAll('.rango-row').forEach((row, i) => {
+                row.querySelector('.row-number').textContent = i + 1;
+            });
+        }
+
+        document.querySelectorAll('.sort-toggle').forEach((button) => {
+            let direction = 'desc'; // primer click en cualquier columna: mayor a menor
+
+            button.addEventListener('click', () => {
+                const key = button.dataset.sort;
+
+                document.querySelectorAll('.sort-toggle .sort-arrow').forEach((a) => a.textContent = '');
+
+                const rows = Array.from(tbody.querySelectorAll('.rango-row'));
+                rows.sort((a, b) => {
+                    const diff = Number(a.dataset[key]) - Number(b.dataset[key]);
+                    return direction === 'desc' ? -diff : diff;
+                });
+                rows.forEach((row) => tbody.appendChild(row));
+
+                button.querySelector('.sort-arrow').textContent = direction === 'desc' ? '▼' : '▲';
+                renumber();
+
+                direction = direction === 'desc' ? 'asc' : 'desc';
+            });
+        });
+    })();
+</script>
 @endsection
