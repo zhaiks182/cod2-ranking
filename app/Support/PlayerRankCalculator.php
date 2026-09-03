@@ -44,6 +44,21 @@ class PlayerRankCalculator
     public const MIN_MATCHES = 9;
 
     /**
+     * Piso de pool para poder interpolar Rank_Score_T2_Actual (2026-09-03,
+     * a pedido del dueño) -- con un pool de calificados chico, el percentil
+     * interpolado es ruidoso (con pool=1, cualquiera en transicion queda o
+     * mejor -100- o peor -0- que esa unica referencia, sin termino medio) y
+     * ademas volatil (la composicion del pool cambia dia a dia a medida que
+     * mas gente cruza las 9 partidas, asi que el rank_score de alguien en
+     * transicion podia saltar de una generacion de equipos a la siguiente
+     * sin que jugara distinto). Mientras el pool tenga menos de este
+     * numero, todos los jugadores en transicion usan la semilla directo,
+     * sin interpolar nada. Fijo en codigo -- parametro de ajuste fino que
+     * no se espera tocar seguido.
+     */
+    public const MIN_POOL_SIZE = 10;
+
+    /**
      * Cortes de la distribucion normal seccionada, en percentil de posicion
      * dentro de la tabla (100 = el mejor puesto). S/A/B/C/D = 5/20/50/20/5%.
      */
@@ -92,9 +107,18 @@ class PlayerRankCalculator
         return array_map('count', $matchesByPlayer);
     }
 
-    public static function calculateForServer(Server $server, int|string|null $seasonId = null): Collection
+    /**
+     * Ingredientes crudos para un server+temporada -- extraido de
+     * calculateForServer() (2026-09-03, para la transicion gradual de
+     * rank_score) para que transitionScoresForServer() pueda reusar las
+     * MISMAS stats parciales de un jugador que todavia no califica (M<9),
+     * sin duplicar la logica de "que cuenta como jugada/ganada" ni volver a
+     * escribir las queries.
+     *
+     * @return array{statsByGuid: Collection, playedByPlayerId: array<int, int>, wonByPlayerId: array<int, int>, impactByPlayerId: array<int, float>}
+     */
+    private static function buildStats(Server $server, int|string $seasonId): array
     {
-        $seasonId ??= Season::current()->id;
         $matchIds = GameMatch::forSeason($seasonId)->pluck('id');
 
         $sdKills = fn () => Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
@@ -103,7 +127,7 @@ class PlayerRankCalculator
             ->where('kills.is_suicide', false)
             ->whereIn('kills.match_id', $matchIds);
 
-        $stats = KillAggregator::aggregate($sdKills)
+        $statsByGuid = KillAggregator::aggregate($sdKills)
             ->keyBy(fn ($row) => $row->player->guid);
 
         // Mismo proxy de "partidas jugadas/ganadas" que el resto de las
@@ -177,6 +201,24 @@ class PlayerRankCalculator
         }
 
         $impactPoints = ImpactScoreCalculator::calculate($server->id, $matchIds);
+
+        return [
+            'statsByGuid' => $statsByGuid,
+            'playedByPlayerId' => $played,
+            'wonByPlayerId' => $won,
+            'impactByPlayerId' => $impactPoints,
+        ];
+    }
+
+    public static function calculateForServer(Server $server, int|string|null $seasonId = null): Collection
+    {
+        $seasonId ??= Season::current()->id;
+        [
+            'statsByGuid' => $stats,
+            'playedByPlayerId' => $played,
+            'wonByPlayerId' => $won,
+            'impactByPlayerId' => $impactPoints,
+        ] = self::buildStats($server, $seasonId);
 
         $qualified = collect();
         foreach ($stats as $guid => $stat) {
@@ -320,5 +362,141 @@ class PlayerRankCalculator
     public static function clearSeasonSeedCache(): void
     {
         self::$previousSeasonRanksCache = [];
+    }
+
+    /**
+     * Transición gradual de rank_score para jugadores que todavía no llegan
+     * a MIN_MATCHES esta temporada (2026-09-03, a pedido del dueño, para que
+     * el sesgo de la semilla se disuelva partida a partida en vez de un
+     * salto de golpe al llegar a la partida 9) -- SOLO para uso interno de
+     * TeamBalancer, mismo alcance que seasonSeedScore(). Nunca se muestra en
+     * /rango.
+     *
+     * Para cada guid pedido, con M = partidas jugadas esta temporada:
+     *   - M=0, o el pool de calificados (M≥9) todavía tiene menos de
+     *     MIN_POOL_SIZE jugadores: rank_score = rank_score_semilla directo
+     *     (ver seasonSeedScore(), ?? 50.0 si es jugador nuevo).
+     *   - M≥1 y pool suficiente: rank_score = (1 - M/9)×semilla +
+     *     (M/9)×Rank_Score_T2_Actual, donde Rank_Score_T2_Actual usa las
+     *     MISMAS stats parciales del jugador (sus M partidas reales) pero
+     *     percentiladas por interpolación de posición contra la
+     *     distribución del pool ya calificado -- nunca altera el percentil
+     *     de nadie que ya califica, nunca mezcla ambos pools.
+     *
+     * Método BATCH a propósito (2026-09-03): calcula el pool de calificados
+     * y las stats crudas de la temporada UNA sola vez para todos los guids
+     * pedidos, no una vez por guid -- TeamBalancer::suggest() lo llama una
+     * sola vez antes de su loop, igual que ya recibe $ranks precalculado.
+     * Estructuralmente imposible de repetir el bug de performance de
+     * 9f56224 ("Equipos/Discord recalculaba toda la temporada anterior por
+     * cada jugador conectado").
+     *
+     * @param  int[]  $guids
+     * @return array<int, float> guid => rank_score
+     */
+    public static function transitionScoresForServer(Server $server, array $guids): array
+    {
+        if (empty($guids)) {
+            return [];
+        }
+
+        $seasonId = Season::current()->id;
+        $qualified = self::calculateForServer($server, $seasonId);
+        $poolSufficient = $qualified->count() >= self::MIN_POOL_SIZE;
+
+        $poolKd = $poolWinPct = $poolImpact = null;
+        if ($poolSufficient) {
+            $poolKd = $qualified->pluck('kd');
+            $poolWinPct = $qualified->pluck('winPct');
+            $poolImpact = $qualified->pluck('impact');
+        }
+
+        $raw = $poolSufficient ? self::buildStats($server, $seasonId) : null;
+
+        $result = [];
+        foreach ($guids as $guid) {
+            $semilla = self::seasonSeedScore($server, $guid) ?? 50.0;
+
+            if (! $poolSufficient) {
+                $result[$guid] = round($semilla, 1);
+
+                continue;
+            }
+
+            $stat = $raw['statsByGuid']->get($guid);
+            $playerId = $stat?->player->id;
+            $m = $playerId ? ($raw['playedByPlayerId'][$playerId] ?? 0) : 0;
+
+            if ($m === 0 || ! $stat) {
+                $result[$guid] = round($semilla, 1);
+
+                continue;
+            }
+
+            $kd = $stat->deaths > 0 ? round($stat->kills / $stat->deaths, 2) : $stat->kills;
+            $winPct = round(min($raw['wonByPlayerId'][$playerId] ?? 0, $m) / $m * 100, 1);
+            $impact = round($raw['impactByPlayerId'][$playerId] ?? 0.0, 2);
+
+            $actual = self::interpolatePercentile($poolWinPct, $winPct) * 0.5
+                + self::interpolatePercentile($poolKd, $kd) * 0.3
+                + self::interpolatePercentile($poolImpact, $impact) * 0.2;
+
+            $result[$guid] = round((1 - $m / self::MIN_MATCHES) * $semilla + ($m / self::MIN_MATCHES) * $actual, 1);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Percentil 0-100 de un valor que probablemente NO está en el pool
+     * (2026-09-03) -- generaliza el closure $percentiles de
+     * calculateForServer() (que solo ubica valores YA presentes en su
+     * propio pool) a un valor externo arbitrario, por interpolación lineal
+     * de posición entre los dos valores del pool más cercanos. El pool en sí
+     * nunca se modifica ni se re-percentila.
+     */
+    private static function interpolatePercentile(Collection $poolValues, float $value): float
+    {
+        $sorted = $poolValues->sort()->values();
+        $n = $sorted->count();
+
+        if ($n === 0) {
+            return 50.0;
+        }
+
+        // Pool completamente parejo (todos el mismo valor) -- un valor
+        // empatado queda al medio (50, neutro), uno mejor arriba (100), uno
+        // peor abajo (0). Sin este caso aparte, un valor empatado con un
+        // pool 100% plano caía en la rama "<= primero" de abajo y daba 0
+        // incorrectamente (encontrado escribiendo el test de esta función).
+        if ($sorted->first() === $sorted->last()) {
+            if ($value > $sorted->first()) {
+                return 100.0;
+            }
+            if ($value < $sorted->first()) {
+                return 0.0;
+            }
+
+            return 50.0;
+        }
+
+        if ($value <= $sorted->first()) {
+            return 0.0;
+        }
+        if ($value >= $sorted->last()) {
+            return 100.0;
+        }
+
+        for ($i = 0; $i < $n - 1; $i++) {
+            $lo = $sorted[$i];
+            $hi = $sorted[$i + 1];
+            if ($value >= $lo && $value <= $hi) {
+                $fraction = $hi > $lo ? ($value - $lo) / ($hi - $lo) : 0.0;
+
+                return round(($i + $fraction) / ($n - 1) * 100, 2);
+            }
+        }
+
+        return 100.0;
     }
 }

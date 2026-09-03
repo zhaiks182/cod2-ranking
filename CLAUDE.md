@@ -4185,13 +4185,16 @@ guarda `discord_id` (el snowflake real de Discord), el dato exacto que un
 bot con permiso "Mover miembros" necesita para saber a quién mover, una
 vez que el jugador reclamó su perfil.
 
-## Transición de rank_score en el arranque de temporada (diseño en curso, 2026-09-02)
+## Transición gradual de rank_score en el arranque de temporada (2026-09-03)
 
-**NO IMPLEMENTADO TODAVÍA — esto es un diseño en progreso (brainstorming
-arquitectural), pausado a pedido del dueño antes de terminarlo.** Documentado
-acá para no perder las decisiones ya tomadas si se retoma en otra sesión.
+Spec completa: `docs/superpowers/specs/2026-09-03-transicion-rank-score-t2-design.md`.
+Diseñado vía brainstorming arquitectural (pausado una sesión a mitad de camino,
+ver el historial de git de este archivo si hace falta el detalle de esa
+pausa) e implementado inline la sesión siguiente. Sigue siendo 100% interno a
+Equipos/TeamBalancer, igual que el mecanismo de semilla que reemplaza —
+`/especialidades/rango` no cambió, sigue exigiendo M≥9 para aparecer.
 
-**Motivo:** el mecanismo de semilla de MMR ya existente
+**Motivo:** el mecanismo de semilla de MMR anterior
 (`PlayerRankCalculator::seasonSeedScore()`, ver "Módulo de íconos..." — no, ver
 la sección de PlayerRankCalculator más arriba en el historial de este archivo,
 agregada 2026-09-02 junto al resto del overhaul de rango) usa un score binario:
@@ -4207,75 +4210,87 @@ salto de golpe al llegar a la partida 9.
 - Si `M ≥ 9` (calificado): `rank_score = 0.50×P_WR + 0.30×P_KD + 0.20×P_IMP` (sin cambios, la fórmula que ya existe)
 - Jugador nuevo en la temporada (nunca jugó la anterior): `rank_score_semilla = 50` (neutro).
 
-**Decisiones ya tomadas con el dueño, vía brainstorming (AskUserQuestion):**
+**Decisiones de diseño (brainstorming con el dueño, AskUserQuestion):**
 
-1. **Sigue siendo 100% interno a Equipos/TeamBalancer, nunca público.**
-   `/especialidades/rango` no cambia — sigue exigiendo M≥9 para aparecer, sin
-   mostrar ningún rango S-D provisional durante la transición. Confirmado
+1. **100% interno a Equipos/TeamBalancer, nunca público** — confirmado
    explícitamente ("No debe aparecer, solo cuando se complete las 9
    partidas").
-2. **Pool de percentil para `Rank_Score_T2_Actual`:** se calculan los
-   percentiles WR/KD/Impacto del jugador en transición insertando sus stats
+2. **Pool de percentil para `Rank_Score_T2_Actual`:** los percentiles
+   WR/KD/Impacto del jugador en transición se calculan insertando sus stats
    parciales (las que lleva con sus M partidas) dentro de la MISMA
-   distribución de los jugadores YA calificados esta temporada (M≥9) — sin
-   alterar el percentil de nadie que ya califica, sin armar un pool aparte
-   combinado. Elegido explícitamente sobre la alternativa de un pool
-   combinado (todos los participantes, calificados o no).
-3. **Sin persistencia nueva.** `rank_score_semilla` se deriva en vivo cada vez
-   (mismo patrón que el `seasonSeedScore` actual, memoizado solo durante el
-   request) — no hace falta una columna/tabla nueva porque la temporada
-   anterior ya está cerrada e inmutable. Elegido explícitamente sobre
-   persistir un snapshot fijo al cerrar temporada.
-4. **Arquitectura para evitar repetir el bug de performance recién arreglado**
-   (ver el commit `9f56224`, "Equipos/Discord recalculaba toda la temporada
-   anterior por cada jugador conectado"): nuevo método **batch**
+   distribución de los jugadores YA calificados esta temporada (M≥9), por
+   interpolación de posición — sin alterar el percentil de nadie que ya
+   califica, sin pool combinado.
+3. **Sin persistencia nueva** — `rank_score_semilla` se sigue derivando en
+   vivo (mismo patrón que `seasonSeedScore`).
+4. **Método batch, no memoizado por-guid** —
    `PlayerRankCalculator::transitionScoresForServer(Server $server, array $guids): array`
-   que calcula el pool de calificados de la temporada actual UNA sola vez
-   (no una vez por jugador conectado) y devuelve `guid => rank_score` para
-   todos los guids pedidos de una. `TeamBalancer::suggest()` lo va a llamar
-   una sola vez antes de su loop, igual que ya recibe `$ranks` precalculado
-   del caller — nunca dentro del loop por jugador. Elegido explícitamente
-   sobre la alternativa de un método por-guid memoizado internamente (más
-   parecido a la convención de `seasonSeedScore` actual, pero más fácil de
-   volver a romper si alguien llama una ruta no memoizada en el futuro).
+   calcula el pool de calificados UNA sola vez para todos los guids pedidos,
+   nunca dentro de un loop por jugador conectado (mismo motivo que evitó el
+   bug de performance del commit `9f56224`).
+5. **`MIN_POOL_SIZE = 10`, fijo en código — el hallazgo más importante de
+   esta sesión, planteado por el dueño en la revisión del diseño (no por
+   mí):** con un pool de calificados chico, el percentil interpolado es
+   estadísticamente ruidoso (con pool=1, cualquiera en transición queda o
+   mejor -100- o peor -0- que esa única referencia) y volátil (la
+   composición del pool cambia día a día a medida que más gente cruza las 9
+   partidas, así que el `rank_score` de alguien en transición podía saltar
+   de una generación de equipos a la siguiente sin que jugara distinto).
+   Mientras el pool de calificados tenga menos de 10 jugadores, TODOS los
+   jugadores en transición (sin importar su M) usan `rank_score = semilla`
+   directo, sin interpolar nada.
 
-**Algoritmo de `transitionScoresForServer()` (diseñado, sección 2 del
-brainstorming, presentada pero sin confirmar el último punto):**
+**Algoritmo final de `PlayerRankCalculator::transitionScoresForServer()`:**
 
-1. `M` = partidas jugadas esta temporada por ese guid (reusa
-   `PlayerRankCalculator::matchesPlayedByPlayer()`, ya existe).
+1. `M` = partidas jugadas esta temporada por ese guid.
 2. `rank_score_semilla` = `seasonSeedScore($server, $guid) ?? 50.0`.
-3. Si `M = 0` → `rank_score = semilla` directo, sin calcular
-   `Rank_Score_T2_Actual` (no hace falta, evita trabajo de más).
-4. Si `M ≥ 1` → ubica las stats parciales del jugador (KD/WR/Impacto reales
-   con sus M partidas) dentro de la distribución del pool de calificados
-   (calculado una sola vez para todos los guids pedidos) via percentil por
-   **interpolación de posición** (no búsqueda exacta -- el valor del jugador
-   en transición probablemente no está en la lista de calificados).
-   `Rank_Score_T2_Actual = 0.50×P_WR + 0.30×P_KD + 0.20×P_IMP` con esos tres
-   percentiles interpolados.
+3. Si `M = 0`, o el pool de calificados tiene menos de `MIN_POOL_SIZE` (10)
+   jugadores → `rank_score = semilla` directo, sin calcular
+   `Rank_Score_T2_Actual`.
+4. Si no → ubica las stats parciales del jugador (KD/WR/Impacto reales con
+   sus M partidas) dentro de la distribución del pool de calificados via
+   percentil por **interpolación de posición** (`interpolatePercentile()`,
+   nuevo método privado — generaliza el closure `$percentiles` de
+   `calculateForServer()`, que solo ubica valores YA presentes en su propio
+   pool, a un valor externo arbitrario que probablemente no está en la
+   lista; un pool completamente parejo empata al valor entrante en 50
+   neutro en vez de la trampa de caer en la rama "≤ primero" y dar 0
+   incorrectamente — encontrado escribiendo el test de esta función).
+   `Rank_Score_T2_Actual = 0.50×P_WR + 0.30×P_KD + 0.20×P_IMP`.
 5. `rank_score = (1 - M/9)×semilla + (M/9)×Rank_Score_T2_Actual`.
 
-**Caso borde presentado, todavía sin confirmar por el dueño (se retomó la
-conversación acá):** si todavía nadie llegó a 9 partidas esta temporada (pool
-de calificados vacío -- la situación real ahora mismo, Temporada 2 recién
-arrancada), no hay distribución contra la cual ubicar a nadie →
-`Rank_Score_T2_Actual` no se puede calcular → esos jugadores usarían
-`rank_score = semilla` hasta que exista al menos 1 jugador calificado. Sin
-confirmación explícita todavía de que este es el comportamiento deseado.
+`calculateForServer()` se refactorizó (extrayendo un `buildStats()` privado
+compartido, sin cambio de comportamiento) para que `transitionScoresForServer()`
+pueda reusar las mismas stats parciales de un jugador que todavía no
+califica sin duplicar la lógica de "qué cuenta como jugada/ganada".
+`TeamBalancer::suggest()` calcula `transitionScoresForServer()` una sola vez
+antes de su loop (con la lista de guids conectados sin rango), igual que ya
+recibe `$ranks` precalculado — el `DEFAULT_SCORE=50` plano de antes queda
+solo como red de seguridad para cuando `$server` es null.
 
-**Pendiente antes de implementar (retomar desde acá):**
-- Confirmar el caso borde del pool vacío (arriba).
-- Terminar de presentar el resto del diseño (`TeamBalancer::suggest()` en
-  detalle, testing plan, archivos tocados).
-- Escribir el spec formal en `docs/superpowers/specs/` y que el dueño lo
-  revise (todavía no se escribió ningún archivo de spec).
-- El dueño pidió explícitamente, al pedir este análisis, que al terminar se
-  le presenten **dos opciones de implementación**: vía subagente
-  (`subagent-driven-development`/`writing-plans`) o directamente en esta
-  sesión (código inline, el patrón que prefiere normalmente -- ver memoria
-  `feedback_inline_execution_no_subagents.md`). Todavía no se llegó a esa
-  decisión.
+TDD: `tests/Feature/Support/PlayerRankTransitionTest.php` (10 casos —
+`interpolatePercentile()` probado directo vía reflection para los 5 casos de
+borde: debajo del pool, arriba del pool, empate exacto en los extremos y en
+el medio, interpolación entre dos puntos, y pool completamente parejo; más 5
+casos de integración con DB real para `transitionScoresForServer()`: M=0
+jugador nuevo, M=0 con semilla real de temporada anterior, pool insuficiente
+ignora M, blend completo contra un percentil interpolado calculado a mano, y
+una regresión de performance verificando que pedir 3 guids de una no cuesta
+más queries que pedir 1). `TeamBalancerTest` ganó un caso de integración
+verificando que `suggest()` usa la semilla real (no el `DEFAULT_SCORE` plano)
+cuando se le pasa un `$server`.
+
+**Bug real encontrado escribiendo el test de performance:** comparar 1 guid
+contra 3 guids en el mismo test, sin resetear `PlayerRankCalculator::clearSeasonSeedCache()`
+entre las dos mediciones, mezclaba dos variables — la primera llamada
+"calienta" el cache estático de `seasonSeedScore()` (2026-09-02), así que la
+segunda quedaba artificialmente más barata solo por el orden en que corrían,
+no por la cantidad de guids pedidos. Corregido reseteando el cache antes de
+cada medición, para aislar de verdad lo que el test necesita probar.
+
+Verificado en un clon descartable del VPS: 468/470 tests, mismos 2 fallos
+preexistentes sin relación (`ExampleTest`, `CountriesSeasonTest`). Desplegado
+a producción.
 
 ## Pendientes / conocido-roto
 

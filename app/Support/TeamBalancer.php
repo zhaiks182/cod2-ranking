@@ -27,10 +27,11 @@ class TeamBalancer
     public const MIN_PLAYERS = 4;
 
     /**
-     * Score neutro (mitad de la escala 0-100 de percentiles) para un jugador
-     * conectado que todavia no califica para un rango (pocas partidas/bajas
-     * en este server) -- lo ubica en el medio del draft en vez de sesgar el
-     * balance asumiendo que es el mejor o el peor.
+     * Score neutro (mitad de la escala 0-100 de percentiles) -- red de
+     * seguridad solo para cuando $server es null (algunos usos de tests no
+     * lo necesitan). Con $server presente, un jugador sin rango todavia
+     * usa transitionScoresForServer() en su lugar (2026-09-03), que ya
+     * devuelve 50 el mismo para un jugador nuevo sin partidas.
      */
     public const DEFAULT_SCORE = 50.0;
 
@@ -38,15 +39,30 @@ class TeamBalancer
      * @param  array  $connectedPlayers  status()['players'] de Cod2RconClient
      *                                   (cada uno con slot/score/ping/guid/name/ip)
      * @param  Collection  $ranks  PlayerRankCalculator::calculateForServer($server)
-     * @param  \App\Models\Server|null  $server  Solo para resolver el MMR semilla
-     *      (PlayerRankCalculator::seasonSeedScore(), 2026-09-02) de un jugador sin
-     *      rango todavia en la temporada actual -- opcional para no romper otros
-     *      usos de este metodo que no lo necesiten (tests, etc.).
+     * @param  \App\Models\Server|null  $server  Solo para resolver la transicion
+     *      gradual de rank_score (PlayerRankCalculator::transitionScoresForServer(),
+     *      2026-09-03) de un jugador sin rango todavia en la temporada actual --
+     *      opcional para no romper otros usos de este metodo que no lo necesiten
+     *      (tests, etc.).
      */
     public static function suggest(array $connectedPlayers, Collection $ranks, ?\App\Models\Server $server = null): object
     {
         $bots = 0;
         $pool = collect();
+
+        // Guids conectados sin rango todavía esta temporada -- para pedirle
+        // a transitionScoresForServer() el score de transición de todos de
+        // una sola vez, antes del loop (2026-09-03, a pedido del dueño).
+        // Nunca uno por jugador dentro del loop: mismo motivo que ya evitó
+        // el bug de performance de 9f56224 con seasonSeedScore().
+        $unrankedGuids = collect($connectedPlayers)
+            ->map(fn ($p) => (int) ($p['guid'] ?? 0))
+            ->filter(fn ($guid) => $guid !== 0 && ! $ranks->has($guid))
+            ->unique()
+            ->values()
+            ->all();
+
+        $transitionScores = $server ? PlayerRankCalculator::transitionScoresForServer($server, $unrankedGuids) : [];
 
         foreach ($connectedPlayers as $p) {
             $guid = (int) ($p['guid'] ?? 0);
@@ -62,17 +78,11 @@ class TeamBalancer
 
             $rank = $ranks->get($guid);
 
-            // Sin rango todavia esta temporada -- antes de caer al score
-            // neutro, intenta el MMR semilla de la temporada anterior
-            // (2026-09-02, a pedido del dueño). Devuelve null (sin efecto)
-            // si no hay temporada anterior o el jugador no calificaba ahi.
-            $seedScore = ! $rank && $server ? PlayerRankCalculator::seasonSeedScore($server, $guid) : null;
-
             $pool->push((object) [
                 'guid' => $guid,
                 'name' => $p['name'] ?? '(sin nombre)',
                 'rango' => $rank->rango ?? null,
-                'score' => $rank->score ?? $seedScore ?? self::DEFAULT_SCORE,
+                'score' => $rank->score ?? $transitionScores[$guid] ?? self::DEFAULT_SCORE,
             ]);
         }
 
