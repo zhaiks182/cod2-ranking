@@ -37,7 +37,7 @@ class ClanTest extends TestCase
 
     private function makeClan(SiteUser $founder, string $tag = 'TAG'): Clan
     {
-        $clan = Clan::create(['name' => "Clan {$tag}", 'tag' => $tag, 'founder_site_user_id' => $founder->id]);
+        $clan = Clan::create(['name' => "Clan {$tag}", 'tag' => $tag, 'founded_on' => '2020-01-01', 'founder_site_user_id' => $founder->id]);
         ClanMember::create(['clan_id' => $clan->id, 'site_user_id' => $founder->id, 'role' => 'founder', 'joined_at' => now()]);
 
         return $clan;
@@ -131,12 +131,48 @@ class ClanTest extends TestCase
         $siteUser = $this->makeSiteUser(1);
 
         $this->actingAs($siteUser, 'site')
-            ->post(route('clans.store'), ['name' => 'Destino', 'tag' => 'DEST'])
+            ->post(route('clans.store'), ['name' => 'Destino', 'tag' => 'DEST', 'founded_on' => '2020-01-01'])
             ->assertRedirect();
 
         $clan = Clan::where('tag', 'DEST')->first();
         $this->assertNotNull($clan);
         $this->assertSame('founder', ClanMember::where('clan_id', $clan->id)->where('site_user_id', $siteUser->id)->first()->role);
+    }
+
+    public function test_founded_on_is_required_and_stored_as_entered(): void
+    {
+        $siteUser = $this->makeSiteUser(1);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('clans.store'), ['name' => 'Destino', 'tag' => 'DEST'])
+            ->assertSessionHasErrors('founded_on');
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('clans.store'), ['name' => 'Destino', 'tag' => 'DEST', 'founded_on' => '2015-06-20'])
+            ->assertRedirect();
+
+        $this->assertSame('2015-06-20', Clan::where('tag', 'DEST')->first()->founded_on->toDateString());
+    }
+
+    public function test_founded_on_cannot_be_in_the_future(): void
+    {
+        $siteUser = $this->makeSiteUser(1);
+
+        $this->actingAs($siteUser, 'site')
+            ->post(route('clans.store'), ['name' => 'Destino', 'tag' => 'DEST', 'founded_on' => now()->addDay()->toDateString()])
+            ->assertSessionHasErrors('founded_on');
+    }
+
+    public function test_a_manager_can_edit_the_founded_on_date(): void
+    {
+        $founder = $this->makeSiteUser(1);
+        $clan = $this->makeClan($founder, 'DEST');
+
+        $this->actingAs($founder, 'site')->put(route('clans.update', $clan), [
+            'name' => $clan->name, 'tag' => $clan->tag, 'founded_on' => '2010-03-15',
+        ])->assertRedirect();
+
+        $this->assertSame('2010-03-15', $clan->fresh()->founded_on->toDateString());
     }
 
     public function test_clan_name_and_tag_must_be_unique(): void
@@ -146,7 +182,7 @@ class ClanTest extends TestCase
         $other = $this->makeSiteUser(2);
 
         $this->actingAs($other, 'site')
-            ->post(route('clans.store'), ['name' => 'Otro', 'tag' => 'DEST'])
+            ->post(route('clans.store'), ['name' => 'Otro', 'tag' => 'DEST', 'founded_on' => '2020-01-01'])
             ->assertSessionHasErrors('tag');
     }
 
@@ -156,7 +192,7 @@ class ClanTest extends TestCase
         $this->makeClan($founder, 'DEST');
 
         $this->actingAs($founder, 'site')
-            ->post(route('clans.store'), ['name' => 'Segundo', 'tag' => 'SEG'])
+            ->post(route('clans.store'), ['name' => 'Segundo', 'tag' => 'SEG', 'founded_on' => '2020-01-01'])
             ->assertSessionHasErrors('clan');
 
         $this->assertDatabaseCount('clans', 1);

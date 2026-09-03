@@ -66,6 +66,10 @@ class ClanController extends Controller
             'name' => ['required', 'string', 'max:60', 'unique:clans,name'],
             'tag' => [...self::URL_SAFE_TAG, 'unique:clans,tag'],
             'description' => ['nullable', 'string', 'max:1000'],
+            // El clan real puede ser mucho mas viejo que su registro en el
+            // sitio (2026-09-03) -- el fundador la elige a mano, nunca se
+            // infiere de created_at. No permite fechas futuras.
+            'founded_on' => ['required', 'date', 'before_or_equal:today'],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
 
@@ -74,6 +78,7 @@ class ClanController extends Controller
                 'name' => $data['name'],
                 'tag' => $data['tag'],
                 'description' => $data['description'] ?? null,
+                'founded_on' => $data['founded_on'],
                 'founder_site_user_id' => $siteUser->id,
             ]);
 
@@ -139,6 +144,7 @@ class ClanController extends Controller
             'name' => ['required', 'string', 'max:60', Rule::unique('clans', 'name')->ignore($clan->id)],
             'tag' => [...self::URL_SAFE_TAG, Rule::unique('clans', 'tag')->ignore($clan->id)],
             'description' => ['nullable', 'string', 'max:1000'],
+            'founded_on' => ['required', 'date', 'before_or_equal:today'],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
         ]);
 

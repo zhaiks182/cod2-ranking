@@ -24,8 +24,8 @@
                 <div class="w-12 h-12 rounded-lg bg-panel2 border border-slate-700 flex items-center justify-center text-slate-600 shrink-0">🛡️</div>
             @endif
             <div class="min-w-0">
-                <div class="font-medium text-slate-200">[{{ $clan->tag }}] {{ $clan->name }}</div>
-                <div class="text-xs text-slate-500">{{ __(':n miembro(s) · fundado :date', ['n' => $clan->members_count, 'date' => $clan->created_at->format('d/m/Y')]) }}</div>
+                <div class="font-medium text-slate-200">{{ $clan->name }}</div>
+                <div class="text-xs text-slate-500">{{ __(':n miembro(s) · fundado :date', ['n' => $clan->members_count, 'date' => $clan->founded_on->format('d/m/Y')]) }}</div>
             </div>
         </a>
     @empty

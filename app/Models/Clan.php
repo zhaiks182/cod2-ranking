@@ -14,7 +14,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class Clan extends Model
 {
-    protected $fillable = ['name', 'tag', 'description', 'logo_path', 'founder_site_user_id'];
+    protected $fillable = ['name', 'tag', 'description', 'founded_on', 'logo_path', 'founder_site_user_id'];
+
+    protected $casts = ['founded_on' => 'date'];
 
     public function getRouteKeyName(): string
     {

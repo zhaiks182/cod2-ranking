@@ -28,6 +28,11 @@
             <textarea name="description" maxlength="1000" rows="3" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">{{ old('description') }}</textarea>
         </div>
         <div>
+            <label class="block text-xs text-slate-500 mb-1">{{ __('Fecha de fundación') }}</label>
+            <input type="date" name="founded_on" value="{{ old('founded_on', now()->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+            <p class="text-[11px] text-slate-600 mt-1">{{ __('Cuándo se fundó el clan realmente, no necesariamente hoy.') }}</p>
+        </div>
+        <div>
             <label class="block text-xs text-slate-500 mb-1">{{ __('Logo (opcional)') }}</label>
             <input type="file" name="logo" accept="image/png,image/jpeg" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gsprimary file:text-white file:text-xs file:font-semibold hover:file:bg-gsprimary/80">
         </div>

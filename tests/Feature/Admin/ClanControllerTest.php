@@ -18,7 +18,7 @@ class ClanControllerTest extends TestCase
     {
         $player = Player::create(['guid' => 1, 'last_name' => 'F', 'last_name_plain' => 'F']);
         $founder = SiteUser::create(['discord_id' => '1', 'discord_username' => 'f', 'player_id' => $player->id]);
-        $clan = Clan::create(['name' => 'Destino', 'tag' => 'DEST', 'founder_site_user_id' => $founder->id]);
+        $clan = Clan::create(['name' => 'Destino', 'tag' => 'DEST', 'founded_on' => '2020-01-01', 'founder_site_user_id' => $founder->id]);
         ClanMember::create(['clan_id' => $clan->id, 'site_user_id' => $founder->id, 'role' => 'founder', 'joined_at' => now()]);
 
         return $clan;

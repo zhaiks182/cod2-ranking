@@ -25,7 +25,7 @@
             @if($clan->description)<p class="text-sm text-slate-400 mt-1">{{ $clan->description }}</p>@endif
             <p class="text-xs text-slate-500 mt-1">
                 {{ __('Fundador') }}: <span class="text-slate-300">{{ $clan->founder->player->last_name_plain ?? $clan->founder->discord_username }}</span>
-                · {{ __('Fundado') }} {{ $clan->created_at->format('d/m/Y') }}
+                · {{ __('Fundado') }} {{ $clan->founded_on->format('d/m/Y') }}
                 · {{ __(':n miembro(s)', ['n' => $clan->members->count()]) }}
             </p>
         </div>
@@ -179,6 +179,10 @@
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">{{ __('Descripción') }}</label>
                     <textarea name="description" maxlength="1000" rows="3" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">{{ old('description', $clan->description) }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-500 mb-1">{{ __('Fecha de fundación') }}</label>
+                    <input type="date" name="founded_on" value="{{ old('founded_on', $clan->founded_on->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">{{ __('Logo') }}</label>
