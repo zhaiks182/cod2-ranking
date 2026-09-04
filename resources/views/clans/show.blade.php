@@ -122,7 +122,7 @@
         {{-- Invitar --}}
         <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-2">
             <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold">{{ __('Invitar jugador') }}</h2>
-            <div class="relative">
+            <div class="relative max-w-sm">
                 <input type="text" id="clan-invite-search" placeholder="{{ __('Buscar jugador por nombre...') }}" autocomplete="off"
                     class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
                 <div id="clan-invite-results" class="hidden absolute left-0 right-0 mt-1 bg-panel border border-slate-800 rounded-lg shadow-xl z-20 max-h-56 overflow-y-auto"></div>
@@ -164,29 +164,33 @@
         @endif
 
         {{-- Editar clan --}}
-        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4 space-y-3">
-            <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold">{{ __('Editar clan') }}</h2>
-            <form method="POST" action="{{ route('clans.update', $clan) }}" enctype="multipart/form-data" class="space-y-3">
+        <div class="rounded-xl border border-slate-800 bg-panel px-4 py-4">
+            <h2 class="text-xs uppercase tracking-wide text-slate-500 font-semibold mb-3">{{ __('Editar clan') }}</h2>
+            <form method="POST" action="{{ route('clans.update', $clan) }}" enctype="multipart/form-data" class="max-w-xl space-y-3">
                 @csrf @method('PUT')
-                <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ __('Nombre') }}</label>
-                    <input type="text" name="name" value="{{ old('name', $clan->name) }}" maxlength="60" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ __('Tag') }}</label>
-                    <input type="text" name="tag" value="{{ old('tag', $clan->tag) }}" maxlength="15" required pattern="[A-Za-z0-9_-]+" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                <div class="grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">{{ __('Nombre') }}</label>
+                        <input type="text" name="name" value="{{ old('name', $clan->name) }}" maxlength="60" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">{{ __('Tag') }}</label>
+                        <input type="text" name="tag" value="{{ old('tag', $clan->tag) }}" maxlength="15" required pattern="[A-Za-z0-9_-]+" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">{{ __('Descripción') }}</label>
-                    <textarea name="description" maxlength="1000" rows="3" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">{{ old('description', $clan->description) }}</textarea>
+                    <textarea name="description" maxlength="1000" rows="2" class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">{{ old('description', $clan->description) }}</textarea>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ __('Fecha de fundación') }}</label>
-                    <input type="date" name="founded_on" value="{{ old('founded_on', $clan->founded_on->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 [color-scheme:dark]">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-500 mb-1">{{ __('Logo') }}</label>
-                    <input type="file" name="logo" accept="image/png,image/jpeg" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gsprimary file:text-white file:text-xs file:font-semibold hover:file:bg-gsprimary/80">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">{{ __('Fecha de fundación') }}</label>
+                        <input type="date" name="founded_on" value="{{ old('founded_on', $clan->founded_on->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 [color-scheme:dark]">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">{{ __('Logo') }}</label>
+                        <input type="file" name="logo" accept="image/png,image/jpeg" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gsprimary file:text-white file:text-xs file:font-semibold hover:file:bg-gsprimary/80">
+                    </div>
                 </div>
                 <button type="submit" class="px-4 py-2 rounded-lg bg-gsprimary hover:bg-gsprimary/80 text-white text-sm font-semibold">{{ __('Guardar cambios') }}</button>
             </form>
