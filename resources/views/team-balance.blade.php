@@ -41,7 +41,11 @@
                     <div class="text-[11px] uppercase tracking-[0.15em] text-slate-500">{{ __('Jugadores conectados ahora') }}</div>
                 @endif
             </div>
-            <a href="{{ route('team-balance', ['server' => $server->slug, 'generar' => 1, 'mantener' => request()->boolean('mantener') ? 1 : 0]) }}"
+            {{-- Sin "mantener" en el link a propósito -- shouldPreserve()
+                 decide sola: si ya hay algo guardado para este server, lo
+                 respeta por default; si no hay nada, arma todo desde cero
+                 (ver TeamBalancer::shouldPreserve()). --}}
+            <a href="{{ route('team-balance', ['server' => $server->slug, 'generar' => 1]) }}"
                 class="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold whitespace-nowrap {{ !$status ? 'opacity-40 pointer-events-none' : '' }}">
                 {{ __('Generar equipos') }}
             </a>

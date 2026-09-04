@@ -4405,6 +4405,51 @@ modo que evita el reordenamiento.
   502/504 tests, mismos 2 fallos preexistentes sin relación (`ExampleTest`,
   `CountriesSeasonTest`). Sin migración — solo cache, nada de esquema nuevo.
 
+### Seguimiento el mismo día: default a "mantener" cuando ya hay algo guardado
+
+El dueño preguntó algo clave: si cerrás la página y volvés a abrir, ¿se
+pierde lo guardado? La respuesta reveló una asimetría real entre las dos
+páginas que usan este módulo:
+
+- **`/equipos` (público) es segura tal cual** — solo genera/recalcula
+  cuando se aprieta "Generar equipos" (`?generar=1` explícito), así que
+  abrir/cerrar la pestaña nunca dispara `suggest()` por sí solo.
+- **La consola admin (`/adm_cod2/console/{server}`) NO era segura** —
+  `ConsoleController::show()` recalcula la sugerencia en **cada** carga o
+  refresh de la página, sin ningún trigger explícito (así funcionaba desde
+  antes de este módulo). Con el mecanismo de arriba, cada una de esas
+  recargas también actualizaba `rememberAssignments()` — así que con solo
+  abrir/refrescar esa página sin haber activado el candado primero, se
+  pisaba silenciosamente lo guardado antes de que el admin llegara a
+  tocar nada.
+
+**Fix:** `TeamBalancer::shouldPreserve(?bool $requestedMantener, Server $server): bool`
+— si el request trae un valor explícito de `mantener` (el candado tocado a
+mano, o el campo oculto del form de Discord), gana ese valor; si no vino
+nada (`null`, una carga de página normal), el default pasa a ser **"preservar
+si ya hay algo guardado"** en vez de "recalcular todo" — ya no hace falta
+acordarse de activar el candado antes de volver a entrar, alcanza con que
+exista una sugerencia reciente (dentro de las 6 horas). Sin nada guardado
+todavía (primera vez), sigue armando todo desde cero como siempre — no hay
+nada que preservar.
+
+Las 4 llamadas a `TeamBalancer::suggest()` (`TeamBalanceController::index()`/
+`notifyDiscord()`, `Admin\ConsoleController::show()`/`notifyTeams()`) pasaron
+de `$request->boolean('mantener') ? previousAssignments() : null` a resolver
+primero `$requestedMantener = $request->has('mantener') ? $request->boolean('mantener') : null`
+y consultar `shouldPreserve()` con eso. La vista (`partials/team-balance.blade.php`)
+ahora recibe `$mantenerActive` ya resuelto por el controller (el estado
+*real*, no la query cruda) para dibujar el candado 🔒/🔓 y el campo oculto
+del form de Discord correctamente — sin esto, la consola admin podía estar
+preservando de verdad (por el nuevo default) mientras la UI seguía
+mostrando el candado abierto, por no haber `?mantener=1` en la URL.
+
+TDD: 2 casos nuevos en `TeamBalancerTest.php` (`shouldPreserve()` default a
+`true` solo cuando hay algo guardado, `false` sin nada; una elección
+explícita del candado siempre gana por encima de lo guardado, en cualquier
+dirección). Verificado junto a la suite completa en un clon descartable
+del VPS: 504/506 tests, mismos 2 fallos preexistentes sin relación.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

@@ -211,6 +211,26 @@ class TeamBalancer
     }
 
     /**
+     * Decide si esta corrida debe preservar la última asignación (2026-09-04,
+     * seguimiento directo de "mantener asignaciones anteriores" -- el dueño
+     * preguntó qué pasaba al cerrar y volver a abrir la consola admin, que
+     * recalcula todo en CADA carga de página, no solo cuando se aprieta un
+     * botón: sin esto, alguien podía perder lo guardado sin querer, con solo
+     * refrescar, antes de llegar a activar el candado).
+     *
+     * $requestedMantener: `true`/`false` si vino explícito en el
+     * request (el toggle 🔒/🔓, o el campo oculto del form de Discord),
+     * `null` si no vino nada (una carga de página normal, sin tocar el
+     * toggle). Con `null`, el default pasa a ser "preservar si hay algo
+     * guardado" -- ya no hace falta acordarse de activar el candado ANTES
+     * de volver a entrar, alcanza con que exista una sugerencia reciente.
+     */
+    public static function shouldPreserve(?bool $requestedMantener, Server $server): bool
+    {
+        return $requestedMantener ?? (self::previousAssignments($server) !== null);
+    }
+
+    /**
      * Guarda la sugerencia actual como "la última" para este server, para
      * que una futura llamada con mantener=true pueda partir de acá. Se
      * llama siempre que se genera una sugerencia nueva (con o sin

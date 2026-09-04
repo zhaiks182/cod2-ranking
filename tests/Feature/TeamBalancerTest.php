@@ -333,4 +333,42 @@ class TeamBalancerTest extends TestCase
 
         $this->assertSame([1 => 'A'], TeamBalancer::previousAssignments($server));
     }
+
+    /**
+     * La consola admin recalcula en CADA carga/refresh de página (a
+     * diferencia de /equipos, que solo genera con "?generar=1" explícito) --
+     * sin este default, con solo abrir/refrescar esa página se pisaba lo
+     * guardado antes de llegar a activar el candado a mano (2026-09-04,
+     * pregunta real del dueño: "si cierro y vuelvo a abrir, ¿se pierde?").
+     */
+    public function test_should_preserve_defaults_to_true_only_when_something_is_already_remembered(): void
+    {
+        $server = Server::create([
+            'name' => 'Test Server', 'slug' => 'test-server-cache-3', 'log_path' => '/tmp/x.log',
+            'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true,
+        ]);
+        Cache::forget("team-balance:last-assignments:{$server->id}");
+
+        $this->assertFalse(TeamBalancer::shouldPreserve(null, $server));
+
+        Cache::put("team-balance:last-assignments:{$server->id}", [1 => 'A'], now()->addHour());
+
+        $this->assertTrue(TeamBalancer::shouldPreserve(null, $server));
+    }
+
+    public function test_should_preserve_respects_an_explicit_choice_over_what_is_remembered(): void
+    {
+        $server = Server::create([
+            'name' => 'Test Server', 'slug' => 'test-server-cache-4', 'log_path' => '/tmp/x.log',
+            'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true,
+        ]);
+        Cache::put("team-balance:last-assignments:{$server->id}", [1 => 'A'], now()->addHour());
+
+        // Aunque haya algo guardado, un candado explícitamente apagado gana
+        // -- es la vía para recalcular todo desde cero a propósito.
+        $this->assertFalse(TeamBalancer::shouldPreserve(false, $server));
+        $this->assertTrue(TeamBalancer::shouldPreserve(true, $server));
+    }
 }

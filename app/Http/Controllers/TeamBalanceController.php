@@ -29,15 +29,18 @@ class TeamBalanceController extends Controller
 
         $status = $server ? Cod2RconClient::forServer($server)->status() : null;
         $teamBalance = null;
+        $mantenerActive = false;
 
         if ($server && $status && $request->boolean('generar')) {
             $ranks = PlayerRankCalculator::calculateForServer($server);
-            $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+            $requestedMantener = $request->has('mantener') ? $request->boolean('mantener') : null;
+            $mantenerActive = TeamBalancer::shouldPreserve($requestedMantener, $server);
+            $previous = $mantenerActive ? TeamBalancer::previousAssignments($server) : null;
             $teamBalance = TeamBalancer::suggest($status['players'] ?? [], $ranks, $server, $previous);
             TeamBalancer::rememberAssignments($server, $teamBalance);
         }
 
-        return view('team-balance', compact('servers', 'server', 'status', 'teamBalance'));
+        return view('team-balance', compact('servers', 'server', 'status', 'teamBalance', 'mantenerActive'));
     }
 
     /**
@@ -64,7 +67,8 @@ class TeamBalanceController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
         }
 
-        $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+        $requestedMantener = $request->has('mantener') ? $request->boolean('mantener') : null;
+        $previous = TeamBalancer::shouldPreserve($requestedMantener, $server) ? TeamBalancer::previousAssignments($server) : null;
         $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
         if (! $teamBalance->enough) {
             return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');

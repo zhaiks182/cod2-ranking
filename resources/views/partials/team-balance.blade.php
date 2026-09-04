@@ -8,16 +8,20 @@
      admin/console.blade.php postea a admin.console.notify-teams (auth admin);
      team-balance.blade.php (pagina publica /equipos) postea a
      team-balance.notify, sin auth -- a pedido explicito del dueño, cualquier
-     visitante puede notificar los equipos armados, no solo un admin. --}}
+     visitante puede notificar los equipos armados, no solo un admin.
+
+     $mantenerActive (opcional, bool) -- el estado REAL de "mantener
+     asignaciones anteriores" ya resuelto por el controller
+     (TeamBalancer::shouldPreserve(), 2026-09-04), no la query cruda: la
+     consola admin recalcula en cada carga de página y por default respeta
+     lo guardado aunque el link no traiga "?mantener=1" explícito, así que
+     leer request()->boolean('mantener') acá directo mostraría el candado
+     abierto aunque en los hechos SÍ se haya preservado. Si no se pasa,
+     cae a la query cruda (compatibilidad con cualquier otro include
+     futuro que no la calcule). --}}
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
     @php
-        // "Mantener asignaciones anteriores" (2026-09-04) -- si alguien nuevo
-        // se conecta a mitad de partida y se vuelve a generar, los jugadores
-        // ya asignados no se mueven de equipo; solo los nuevos se reparten.
-        // Estado leído/escrito por query string (?mantener=1), así funciona
-        // igual en /equipos (GET) y en la consola admin (GET), sin JS -- ver
-        // TeamBalancer::suggest()/previousAssignments().
-        $mantener = request()->boolean('mantener');
+        $mantener = $mantenerActive ?? request()->boolean('mantener');
     @endphp
     <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
         <span class="text-xs uppercase tracking-wide text-slate-400">{{ __('Balanceo sugerido de equipos') }}</span>

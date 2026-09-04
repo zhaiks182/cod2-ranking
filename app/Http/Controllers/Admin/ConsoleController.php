@@ -28,13 +28,22 @@ class ConsoleController extends Controller
         // conectados. Ver TeamBalancer para el porque del snake draft y por
         // que solo sugiere en vez de mover jugadores por RCON.
         $teamBalance = null;
+        $mantenerActive = false;
         if ($status) {
-            $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+            // shouldPreserve() con null (nadie tocó el candado en este
+            // request) respeta lo ya guardado por default -- esta página se
+            // recalcula en CADA carga/refresh, así que sin este default
+            // cualquier F5 pisaba silenciosamente lo guardado antes de que
+            // el admin llegara a activar el candado a mano (2026-09-04,
+            // reportado por el dueño).
+            $requestedMantener = $request->has('mantener') ? $request->boolean('mantener') : null;
+            $mantenerActive = TeamBalancer::shouldPreserve($requestedMantener, $server);
+            $previous = $mantenerActive ? TeamBalancer::previousAssignments($server) : null;
             $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
             TeamBalancer::rememberAssignments($server, $teamBalance);
         }
 
-        return view('admin.console', compact('server', 'status', 'teamBalance'));
+        return view('admin.console', compact('server', 'status', 'teamBalance', 'mantenerActive'));
     }
 
     /**
@@ -53,7 +62,8 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
         }
 
-        $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+        $requestedMantener = $request->has('mantener') ? $request->boolean('mantener') : null;
+        $previous = TeamBalancer::shouldPreserve($requestedMantener, $server) ? TeamBalancer::previousAssignments($server) : null;
         $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
 
         if (! $teamBalance->enough) {
