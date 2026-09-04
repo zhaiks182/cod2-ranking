@@ -41,7 +41,7 @@
                     <div class="text-[11px] uppercase tracking-[0.15em] text-slate-500">{{ __('Jugadores conectados ahora') }}</div>
                 @endif
             </div>
-            <a href="{{ route('team-balance', ['server' => $server->slug, 'generar' => 1]) }}"
+            <a href="{{ route('team-balance', ['server' => $server->slug, 'generar' => 1, 'mantener' => request()->boolean('mantener') ? 1 : 0]) }}"
                 class="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold whitespace-nowrap {{ !$status ? 'opacity-40 pointer-events-none' : '' }}">
                 {{ __('Generar equipos') }}
             </a>

@@ -10,15 +10,30 @@
      team-balance.notify, sin auth -- a pedido explicito del dueño, cualquier
      visitante puede notificar los equipos armados, no solo un admin. --}}
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
-    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
+    @php
+        // "Mantener asignaciones anteriores" (2026-09-04) -- si alguien nuevo
+        // se conecta a mitad de partida y se vuelve a generar, los jugadores
+        // ya asignados no se mueven de equipo; solo los nuevos se reparten.
+        // Estado leído/escrito por query string (?mantener=1), así funciona
+        // igual en /equipos (GET) y en la consola admin (GET), sin JS -- ver
+        // TeamBalancer::suggest()/previousAssignments().
+        $mantener = request()->boolean('mantener');
+    @endphp
+    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
         <span class="text-xs uppercase tracking-wide text-slate-400">{{ __('Balanceo sugerido de equipos') }}</span>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+            <a href="{{ request()->fullUrlWithQuery(['mantener' => $mantener ? 0 : 1]) }}"
+                class="text-[11px] inline-flex items-center gap-1 {{ $mantener ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300' }}"
+                title="{{ __('Si está activado, los jugadores que ya quedaron asignados no se mueven al regenerar — solo reparte a los que se conectaron después entre los dos equipos.') }}">
+                {{ $mantener ? '🔒' : '🔓' }} {{ __('Mantener asignaciones anteriores') }}
+            </a>
             @if($teamBalance && $teamBalance->enough)
                 <span class="text-[11px] text-slate-500">{{ __('Score total') }}: <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreA }}</span> vs <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreB }}</span></span>
             @endif
             @if(isset($discordNotifyAction) && $teamBalance && $teamBalance->enough)
                 <form method="POST" action="{{ $discordNotifyAction }}" onsubmit="return confirm('¿Notificar estos equipos al canal de Discord?')">
                     @csrf
+                    <input type="hidden" name="mantener" value="{{ $mantener ? 1 : 0 }}">
                     @foreach($discordNotifyFields ?? [] as $field => $value)
                         <input type="hidden" name="{{ $field }}" value="{{ $value }}">
                     @endforeach

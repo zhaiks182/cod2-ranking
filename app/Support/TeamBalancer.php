@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Server;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Arma 2 equipos sugeridos a partir de los jugadores conectados ahora mismo
@@ -36,6 +38,15 @@ class TeamBalancer
     public const DEFAULT_SCORE = 50.0;
 
     /**
+     * Cuanto dura en cache la ultima sugerencia mostrada/notificada por
+     * server (2026-09-04, "mantener asignaciones anteriores") -- una
+     * sesion de juego tipica, ni tan corto que se pierda entre dos
+     * regeneraciones normales del mismo rato, ni tan largo que arrastre
+     * una asignacion de un dia completamente distinto.
+     */
+    private const REMEMBER_HOURS = 6;
+
+    /**
      * @param  array  $connectedPlayers  status()['players'] de Cod2RconClient
      *                                   (cada uno con slot/score/ping/guid/name/ip)
      * @param  Collection  $ranks  PlayerRankCalculator::calculateForServer($server)
@@ -44,8 +55,17 @@ class TeamBalancer
      *      2026-09-03) de un jugador sin rango todavia en la temporada actual --
      *      opcional para no romper otros usos de este metodo que no lo necesiten
      *      (tests, etc.).
+     * @param  array<int, string>|null  $previousAssignments  guid => 'A'|'B'
+     *      (2026-09-04, "mantener asignaciones anteriores") -- si se pasa, los
+     *      jugadores conectados que ya aparecen acá NO se recalculan ni se
+     *      mueven de equipo; solo los jugadores nuevos (conectados desde la
+     *      última sugerencia, ej. alguien que se sumó a mitad de partida) se
+     *      reparten entre los dos equipos, cada uno al que tenga el total más
+     *      bajo en ese momento. Sin esto (null, el default), se recalcula todo
+     *      desde cero como siempre. Ver TeamBalancer::previousAssignments()/
+     *      rememberAssignments() para de dónde sale y cómo se guarda esta info.
      */
-    public static function suggest(array $connectedPlayers, Collection $ranks, ?\App\Models\Server $server = null): object
+    public static function suggest(array $connectedPlayers, Collection $ranks, ?\App\Models\Server $server = null, ?array $previousAssignments = null): object
     {
         $bots = 0;
         $pool = collect();
@@ -96,6 +116,20 @@ class TeamBalancer
             ];
         }
 
+        if ($previousAssignments) {
+            [$teamA, $teamB] = self::assignPreservingExisting($pool, $previousAssignments);
+
+            return (object) [
+                'enough' => true,
+                'eligible' => $pool->count(),
+                'bots' => $bots,
+                'teamA' => $teamA,
+                'teamB' => $teamB,
+                'scoreA' => round($teamA->sum('score'), 1),
+                'scoreB' => round($teamB->sum('score'), 1),
+            ];
+        }
+
         $sorted = $pool->sortByDesc('score')->values();
         $n = $sorted->count();
 
@@ -125,5 +159,84 @@ class TeamBalancer
             'scoreA' => round($teamA->sum('score'), 1),
             'scoreB' => round($teamB->sum('score'), 1),
         ];
+    }
+
+    /**
+     * Los jugadores ya presentes en $previousAssignments quedan tal cual
+     * estaban (mismo equipo, sin recalcular nada) -- solo los que no
+     * aparecen ahí (conectados nuevos desde la última sugerencia) se
+     * reparten, de mayor a menor score, cada uno al equipo con el total
+     * más bajo en ese momento (balance greedy simple, no snake draft --
+     * acá ya no se está armando todo desde cero, solo agregando de a poco
+     * sin desarmar lo que ya había).
+     *
+     * @return array{0: Collection, 1: Collection}
+     */
+    private static function assignPreservingExisting(Collection $pool, array $previousAssignments): array
+    {
+        $teamA = collect();
+        $teamB = collect();
+        $new = collect();
+
+        foreach ($pool as $player) {
+            $side = $previousAssignments[$player->guid] ?? null;
+            if ($side === 'A') {
+                $teamA->push($player);
+            } elseif ($side === 'B') {
+                $teamB->push($player);
+            } else {
+                $new->push($player);
+            }
+        }
+
+        foreach ($new->sortByDesc('score')->values() as $player) {
+            if ($teamA->sum('score') <= $teamB->sum('score')) {
+                $teamA->push($player);
+            } else {
+                $teamB->push($player);
+            }
+        }
+
+        return [$teamA, $teamB];
+    }
+
+    /**
+     * La última sugerencia mostrada/notificada para $server, si hay una
+     * reciente (ver REMEMBER_HOURS) -- guid => 'A'|'B'. Null si nunca se
+     * generó una en las últimas horas, o si el cache se venció.
+     */
+    public static function previousAssignments(Server $server): ?array
+    {
+        return Cache::get(self::cacheKey($server));
+    }
+
+    /**
+     * Guarda la sugerencia actual como "la última" para este server, para
+     * que una futura llamada con mantener=true pueda partir de acá. Se
+     * llama siempre que se genera una sugerencia nueva (con o sin
+     * mantener), no solo en el modo "mantener" -- así la próxima vez que
+     * se use ese modo construye sobre la sugerencia real más reciente, no
+     * sobre una vieja y ya desactualizada.
+     */
+    public static function rememberAssignments(Server $server, object $teamBalance): void
+    {
+        if (! $teamBalance->enough) {
+            return;
+        }
+
+        $map = [];
+        foreach ($teamBalance->teamA as $player) {
+            $map[$player->guid] = 'A';
+        }
+        foreach ($teamBalance->teamB as $player) {
+            $map[$player->guid] = 'B';
+        }
+
+        Cache::put(self::cacheKey($server), $map, now()->addHours(self::REMEMBER_HOURS));
+    }
+
+    private static function cacheKey(Server $server): string
+    {
+        return "team-balance:last-assignments:{$server->id}";
     }
 }

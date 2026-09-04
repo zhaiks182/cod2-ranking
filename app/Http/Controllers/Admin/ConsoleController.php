@@ -18,7 +18,7 @@ use Symfony\Component\Process\Process;
 
 class ConsoleController extends Controller
 {
-    public function show(Server $server)
+    public function show(Request $request, Server $server)
     {
         $status = Cod2RconClient::forServer($server)->status();
 
@@ -27,9 +27,12 @@ class ConsoleController extends Controller
         // server respondio por RCON, ya que depende de la lista de
         // conectados. Ver TeamBalancer para el porque del snake draft y por
         // que solo sugiere en vez de mover jugadores por RCON.
-        $teamBalance = $status
-            ? TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server)
-            : null;
+        $teamBalance = null;
+        if ($status) {
+            $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+            $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
+            TeamBalancer::rememberAssignments($server, $teamBalance);
+        }
 
         return view('admin.console', compact('server', 'status', 'teamBalance'));
     }
@@ -42,7 +45,7 @@ class ConsoleController extends Controller
      * vivo, no confia en lo que la pagina tenia renderizado unos segundos
      * antes) para no notificar un roster que ya cambio.
      */
-    public function notifyTeams(Server $server)
+    public function notifyTeams(Request $request, Server $server)
     {
         $status = Cod2RconClient::forServer($server)->status();
 
@@ -50,11 +53,13 @@ class ConsoleController extends Controller
             return back()->with('error', 'No se pudo conectar al servidor por RCON — no se notificó nada.');
         }
 
-        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server);
+        $previous = $request->boolean('mantener') ? TeamBalancer::previousAssignments($server) : null;
+        $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
 
         if (! $teamBalance->enough) {
             return back()->with('error', 'No hay suficientes jugadores conectados para armar equipos — no se notificó nada.');
         }
+        TeamBalancer::rememberAssignments($server, $teamBalance);
 
         if (! DiscordTeamsNotifier::notify($server, $teamBalance->teamA, $teamBalance->teamB)) {
             return back()->with('error', 'No se pudo postear a Discord — revisá que el webhook de equipos esté configurado en /adm_cod2/discord.');

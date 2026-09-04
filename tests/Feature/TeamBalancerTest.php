@@ -10,6 +10,7 @@ use App\Models\Season;
 use App\Models\Server;
 use App\Support\TeamBalancer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -209,5 +210,127 @@ class TeamBalancerTest extends TestCase
         // calificados en T1), no el DEFAULT_SCORE=50 plano.
         $this->assertNotSame(TeamBalancer::DEFAULT_SCORE, $veteranRow->score);
         $this->assertSame(100.0, $veteranRow->score);
+    }
+
+    // -- "Mantener asignaciones anteriores" (2026-09-04) -----------------
+
+    public function test_previous_assignments_keeps_already_assigned_players_and_only_places_new_ones(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'a'],
+            ['guid' => 2, 'name' => 'b'],
+            ['guid' => 3, 'name' => 'c'],
+            ['guid' => 4, 'name' => 'new-player'],
+        ];
+
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'),
+            2 => $this->rank(2, 10, 'D'),
+            3 => $this->rank(3, 50, 'B'),
+            4 => $this->rank(4, 30, 'C'),
+        ]);
+
+        // 1 y 3 ya estaban en A (total 150), 2 ya estaba en B (total 10) --
+        // el 4 es nuevo, nunca vio una sugerencia antes.
+        $previous = [1 => 'A', 2 => 'B', 3 => 'A'];
+
+        $result = TeamBalancer::suggest($players, $ranks, null, $previous);
+
+        $this->assertTrue($result->enough);
+        // Los ya asignados no se movieron -- 1 y 3 siguen en A, 2 sigue en B.
+        $this->assertSame([1, 3], $result->teamA->pluck('guid')->sort()->values()->all());
+        // El nuevo (guid 4) fue al equipo con el total mas bajo en ese
+        // momento (B=10 contra A=150), no a un snake draft desde cero.
+        $this->assertSame([2, 4], $result->teamB->pluck('guid')->sort()->values()->all());
+    }
+
+    public function test_previous_assignments_ignores_entries_for_players_no_longer_connected(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'a'],
+            ['guid' => 2, 'name' => 'b'],
+            ['guid' => 3, 'name' => 'c'],
+            ['guid' => 4, 'name' => 'd'],
+        ];
+
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'),
+            2 => $this->rank(2, 80, 'B'),
+            3 => $this->rank(3, 60, 'C'),
+            4 => $this->rank(4, 40, 'D'),
+        ]);
+
+        // guid 999 ya no esta conectado -- no debe romper nada, se ignora.
+        $previous = [1 => 'A', 999 => 'B'];
+
+        $result = TeamBalancer::suggest($players, $ranks, null, $previous);
+
+        $this->assertTrue($result->enough);
+        $this->assertSame(4, $result->teamA->count() + $result->teamB->count());
+        $this->assertTrue($result->teamA->contains('guid', 1));
+    }
+
+    public function test_previous_assignments_still_requires_the_minimum_player_count(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'a'],
+            ['guid' => 2, 'name' => 'b'],
+        ];
+
+        $result = TeamBalancer::suggest($players, collect(), null, [1 => 'A']);
+
+        $this->assertFalse($result->enough);
+    }
+
+    public function test_remember_and_previous_assignments_roundtrip(): void
+    {
+        $server = Server::create([
+            'name' => 'Test Server', 'slug' => 'test-server-cache', 'log_path' => '/tmp/x.log',
+            'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true,
+        ]);
+        Cache::forget("team-balance:last-assignments:{$server->id}");
+
+        $this->assertNull(TeamBalancer::previousAssignments($server));
+
+        $players = [
+            ['guid' => 1, 'name' => 'a'],
+            ['guid' => 2, 'name' => 'b'],
+            ['guid' => 3, 'name' => 'c'],
+            ['guid' => 4, 'name' => 'd'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'),
+            2 => $this->rank(2, 80, 'B'),
+            3 => $this->rank(3, 60, 'C'),
+            4 => $this->rank(4, 40, 'D'),
+        ]);
+
+        $result = TeamBalancer::suggest($players, $ranks);
+        TeamBalancer::rememberAssignments($server, $result);
+
+        $stored = TeamBalancer::previousAssignments($server);
+
+        $this->assertNotNull($stored);
+        // Snake draft con estos 4 scores: A,B,B,A -- 1 y 4 en A, 2 y 3 en B.
+        $this->assertSame('A', $stored[1]);
+        $this->assertSame('B', $stored[2]);
+        $this->assertSame('B', $stored[3]);
+        $this->assertSame('A', $stored[4]);
+    }
+
+    public function test_remember_assignments_does_nothing_when_not_enough_players(): void
+    {
+        $server = Server::create([
+            'name' => 'Test Server', 'slug' => 'test-server-cache-2', 'log_path' => '/tmp/x.log',
+            'rcon_host' => '127.0.0.1', 'rcon_port' => 28960, 'rcon_password' => 'test',
+            'connect_ip' => '127.0.0.1', 'connect_port' => 28960, 'max_clients' => 30, 'is_active' => true,
+        ]);
+        Cache::put("team-balance:last-assignments:{$server->id}", [1 => 'A'], now()->addHour());
+
+        $notEnough = (object) ['enough' => false, 'eligible' => 2, 'bots' => 0, 'teamA' => collect(), 'teamB' => collect()];
+        TeamBalancer::rememberAssignments($server, $notEnough);
+
+        $this->assertSame([1 => 'A'], TeamBalancer::previousAssignments($server));
     }
 }

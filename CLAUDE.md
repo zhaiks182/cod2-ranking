@@ -4355,6 +4355,56 @@ Verificado en un clon descartable del VPS: 468/470 tests, mismos 2 fallos
 preexistentes sin relación (`ExampleTest`, `CountriesSeasonTest`). Desplegado
 a producción.
 
+## Equipos: "Mantener asignaciones anteriores" (2026-09-04)
+
+Motivo: `TeamBalancer::suggest()` siempre recalculaba todo desde cero (snake
+draft completo sobre TODOS los conectados) — si dos jugadores se sumaban a
+mitad de partida y alguien volvía a generar equipos, la sugerencia nueva
+podía reordenar hasta a los que ya estaban bien ubicados, no solo agregar a
+los nuevos. El dueño preguntó explícitamente por este caso; se agregó un
+modo que evita el reordenamiento.
+
+- **`TeamBalancer::suggest()`** gana un 4to parámetro opcional
+  `?array $previousAssignments` (`guid => 'A'|'B'`). Si se pasa: los
+  jugadores conectados que ya aparecen ahí quedan tal cual estaban (mismo
+  equipo, sin recalcular nada); solo los que no aparecen (conectados nuevos
+  desde la última sugerencia) se reparten — de mayor a menor score, cada uno
+  al equipo con el total más bajo en ese momento (balance greedy simple, no
+  snake draft — ya no se arma todo desde cero). Entradas de
+  `$previousAssignments` para guids que ya no están conectados se ignoran
+  sin romper nada. Sin este parámetro (default `null`), se comporta
+  exactamente igual que antes.
+- **`TeamBalancer::rememberAssignments(Server, $teamBalance)`** guarda la
+  sugerencia actual en cache (`Cache::put`, clave por `server_id`, vence a
+  las 6 horas — una sesión de juego típica) y
+  **`TeamBalancer::previousAssignments(Server)`** la lee. Se llama SIEMPRE
+  que se genera una sugerencia nueva (con o sin el modo activado), no solo
+  cuando se usa "mantener" — así la próxima vez que se active parte de la
+  sugerencia real más reciente, nunca de una vieja desactualizada. No
+  guarda nada si `enough=false` (no hay sugerencia real que recordar).
+- **UI, sin JS, todo por query string (`?mantener=1`)** — un link 🔒/🔓
+  "Mantener asignaciones anteriores" agregado a `partials/team-balance.blade.php`
+  (compartido por `/equipos` público y la consola admin), que recarga la
+  página actual con el toggle prendido/apagado
+  (`request()->fullUrlWithQuery(['mantener' => ...])` — conserva el resto de
+  los parámetros ya presentes, `server`/`generar` incluidos). El botón
+  "Generar equipos" de `/equipos` y el botón "Notificar Discord" (los dos
+  lugares, público y admin) también respetan el estado actual del toggle —
+  este último vía un campo oculto `mantener` en su form, para que notificar
+  no ignore silenciosamente el modo que se estaba mostrando en pantalla.
+  `TeamBalanceController::index()`/`notifyDiscord()` y
+  `Admin\ConsoleController::show()`/`notifyTeams()` leen
+  `$request->boolean('mantener')`, cargan `previousAssignments()` si
+  corresponde, y siempre llaman `rememberAssignments()` después de generar.
+- TDD: `tests/Feature/TeamBalancerTest.php` ganó 6 casos (mantiene a los ya
+  asignados y solo reparte al nuevo; ignora entradas de jugadores que ya se
+  desconectaron; sigue exigiendo el mínimo de jugadores igual que siempre;
+  ida y vuelta completa de `rememberAssignments()`/`previousAssignments()`
+  contra el cache real; no pisa el cache existente cuando `enough=false`).
+  Verificado junto a la suite completa en un clon descartable del VPS:
+  502/504 tests, mismos 2 fallos preexistentes sin relación (`ExampleTest`,
+  `CountriesSeasonTest`). Sin migración — solo cache, nada de esquema nuevo.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
