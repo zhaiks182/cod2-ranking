@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', "[{$clan->tag}] {$clan->name}")
+@section('title', $clan->name)
 
 @section('content')
 <div class="space-y-6">
@@ -21,7 +21,7 @@
             <div class="w-20 h-20 rounded-xl bg-panel2 border border-slate-700 flex items-center justify-center text-3xl shrink-0">🛡️</div>
         @endif
         <div class="min-w-0 flex-1">
-            <h1 class="text-xl font-semibold">[{{ $clan->tag }}] {{ $clan->name }}</h1>
+            <h1 class="text-xl font-semibold">{{ $clan->name }}</h1>
             @if($clan->description)<p class="text-sm text-slate-400 mt-1">{{ $clan->description }}</p>@endif
             <p class="text-xs text-slate-500 mt-1">
                 {{ __('Fundador') }}: <span class="text-slate-300">{{ $clan->founder->player->last_name_plain ?? $clan->founder->discord_username }}</span>
@@ -182,7 +182,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">{{ __('Fecha de fundación') }}</label>
-                    <input type="date" name="founded_on" value="{{ old('founded_on', $clan->founded_on->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
+                    <input type="date" name="founded_on" value="{{ old('founded_on', $clan->founded_on->toDateString()) }}" max="{{ now()->toDateString() }}" required class="w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 [color-scheme:dark]">
                 </div>
                 <div>
                     <label class="block text-xs text-slate-500 mb-1">{{ __('Logo') }}</label>
@@ -203,27 +203,33 @@
         const form = document.getElementById('clan-invite-form');
         let timer = null;
 
-        input.addEventListener('input', () => {
-            clearTimeout(timer);
-            const q = input.value.trim();
-            if (q.length < 2) { results.classList.add('hidden'); results.innerHTML = ''; return; }
-            timer = setTimeout(() => {
-                fetch('{{ route('clans.search-invitable', $clan) }}?q=' + encodeURIComponent(q))
-                    .then(r => r.json())
-                    .then(players => {
-                        if (!players.length) { results.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">{{ __('Sin resultados') }}</div>'; results.classList.remove('hidden'); return; }
-                        results.innerHTML = players.map(p =>
-                            `<button type="button" data-id="${p.id}" class="clan-invite-option block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">${p.name}</button>`
-                        ).join('');
-                        results.classList.remove('hidden');
-                        results.querySelectorAll('.clan-invite-option').forEach(btn => {
-                            btn.addEventListener('click', () => {
-                                hiddenId.value = btn.dataset.id;
-                                form.submit();
-                            });
+        // Con q vacío el endpoint devuelve el listado completo de usuarios
+        // ya registrados elegibles (2026-09-04, a pedido del dueño) -- se
+        // pide al enfocar el campo, no solo al escribir, para que el
+        // manager pueda tildar directo a alguien sin tener que tipear nada.
+        function loadResults(q) {
+            fetch('{{ route('clans.search-invitable', $clan) }}?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(players => {
+                    if (!players.length) { results.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">{{ __('Sin resultados') }}</div>'; results.classList.remove('hidden'); return; }
+                    results.innerHTML = players.map(p =>
+                        `<button type="button" data-id="${p.id}" class="clan-invite-option block w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">${p.name}</button>`
+                    ).join('');
+                    results.classList.remove('hidden');
+                    results.querySelectorAll('.clan-invite-option').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            hiddenId.value = btn.dataset.id;
+                            form.submit();
                         });
                     });
-            }, 300);
+                });
+        }
+
+        input.addEventListener('focus', () => loadResults(input.value.trim()));
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(() => loadResults(input.value.trim()), 300);
         });
 
         document.addEventListener('click', (e) => {

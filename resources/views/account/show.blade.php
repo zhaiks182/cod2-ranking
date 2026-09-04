@@ -28,7 +28,7 @@
                 <h2 class="text-sm font-semibold text-cyan-300">{{ __('Invitaciones de clan recibidas') }}</h2>
                 @foreach($siteUser->receivedClanInvitations as $invitation)
                     <div class="flex items-center justify-between gap-3 text-sm">
-                        <span class="text-slate-300">[{{ $invitation->clan->tag }}] {{ $invitation->clan->name }}</span>
+                        <span class="text-slate-300">{{ $invitation->clan->name }}</span>
                         <div class="flex gap-2">
                             <form method="POST" action="{{ route('clans.invitations.respond', $invitation) }}">
                                 @csrf
@@ -75,7 +75,7 @@
                             <label class="block text-xs text-slate-500 mb-1">{{ __('Clan') }}</label>
                             @if($siteUser->clanMembership)
                                 <a href="{{ route('clans.show', $siteUser->clanMembership->clan) }}" class="block w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-cyan-400 hover:underline">
-                                    [{{ $siteUser->clanMembership->clan->tag }}] {{ $siteUser->clanMembership->clan->name }}
+                                    {{ $siteUser->clanMembership->clan->name }}
                                 </a>
                             @else
                                 <a href="{{ route('clans.index') }}" class="block w-full bg-panel2 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 hover:text-cyan-400">{{ __('No pertenecés a ningún clan — buscar o crear uno') }}</a>

@@ -22,7 +22,7 @@
                     <p class="text-base text-slate-400 mt-1">
                         {{ __('Clan') }}:
                         <a href="{{ route('clans.show', $player->siteUser->clanMembership->clan) }}" class="text-cyan-400 hover:underline">
-                            [{{ $player->siteUser->clanMembership->clan->tag }}] {{ $player->siteUser->clanMembership->clan->name }}
+                            {{ $player->siteUser->clanMembership->clan->name }}
                         </a>
                     </p>
                 @endif

@@ -113,6 +113,33 @@ class ClanTest extends TestCase
         $this->assertSame(['SearchableAvailable'], $names->all());
     }
 
+    /**
+     * Sin texto de búsqueda (2026-09-04, a pedido del dueño) devuelve el
+     * listado completo de elegibles, no una lista vacía -- así el manager
+     * puede tildar directo a alguien sin tener que tipear su nombre.
+     */
+    public function test_search_invitable_without_a_query_lists_all_eligible_users(): void
+    {
+        $founder = $this->makeSiteUser(1);
+        $clan = $this->makeClan($founder, 'DEST');
+
+        $unclaimedPlayer = Player::create(['guid' => 910, 'last_name' => 'Unclaimed', 'last_name_plain' => 'Unclaimed']);
+        SiteUser::create(['discord_id' => '910', 'discord_username' => 'u910']);
+
+        $inClanPlayer = Player::create(['guid' => 911, 'last_name' => 'InClan', 'last_name_plain' => 'InClan']);
+        $inClanSiteUser = SiteUser::create(['discord_id' => '911', 'discord_username' => 'u911', 'player_id' => $inClanPlayer->id]);
+        $this->makeClan($inClanSiteUser, 'OTHER2');
+
+        $availablePlayer = Player::create(['guid' => 912, 'last_name' => 'Available', 'last_name_plain' => 'Available']);
+        SiteUser::create(['discord_id' => '912', 'discord_username' => 'u912', 'player_id' => $availablePlayer->id]);
+
+        $response = $this->actingAs($founder, 'site')
+            ->getJson(route('clans.search-invitable', $clan));
+
+        $names = collect($response->json())->pluck('name');
+        $this->assertSame(['Available'], $names->all());
+    }
+
     // -- Creacion -----------------------------------------------------
 
     public function test_creating_a_clan_requires_a_claimed_profile(): void

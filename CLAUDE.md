@@ -4248,6 +4248,29 @@ pertenece el jugador, si pertenece a uno.
   mismos 2 fallos preexistentes sin relación (`ExampleTest`,
   `CountriesSeasonTest`).
 
+### Ajustes de UX (2026-09-04)
+
+- **Tag sacado de todas las vistas públicas** (`/clanes`, la página del
+  clan, `/mi-cuenta`, el perfil de jugador) — a pedido del dueño, "no es
+  necesario" mostrar `[TAG] Nombre` en todos lados. El tag sigue existiendo
+  (sigue siendo la clave de la URL `/clanes/{tag}`, y editable desde la
+  página del clan) — solo se sacó del texto visible. **Se dejó en el
+  listado de `/adm_cod2/clanes`** a propósito, ahí sirve para identificar
+  rápido un clan por su tag corto.
+- **`founded_on` (fecha de fundación) gana `[color-scheme:dark]`** en el
+  input `type="date"` de crear/editar — el selector de calendario nativo
+  del navegador usaba su ícono claro por default sobre el fondo oscuro del
+  sitio, prácticamente invisible.
+- **"Invitar jugador" muestra el listado completo de usuarios elegibles al
+  enfocar el campo**, no solo al escribir — antes `searchInvitable()`
+  devolvía vacío sin al menos 2 caracteres de búsqueda, así que el manager
+  tenía que saber de antemano el nombre exacto de a quién quería invitar.
+  Ahora, sin texto, devuelve hasta 50 candidatos elegibles (con perfil
+  reclamado, sin clan) ordenados alfabéticamente; con texto, sigue
+  acotando como antes. TDD: 1 caso nuevo en `ClanTest.php`. Verificado
+  junto a la suite completa en un clon descartable del VPS: 505/507 tests,
+  mismos 2 fallos preexistentes sin relación.
+
 ## Transición gradual de rank_score en el arranque de temporada (2026-09-03)
 
 Spec completa: `docs/superpowers/specs/2026-09-03-transicion-rank-score-t2-design.md`.

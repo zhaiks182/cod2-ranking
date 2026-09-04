@@ -219,24 +219,30 @@ class ClanController extends Controller
         return back()->with('status', __('Invitación enviada.'));
     }
 
-    /** Buscador JSON para el form de invitar -- solo jugadores con perfil reclamado y sin clan. */
+    /**
+     * Buscador JSON para el form de invitar -- solo jugadores con perfil
+     * reclamado y sin clan. Sin texto de búsqueda (2026-09-04, a pedido del
+     * dueño) devuelve el listado completo de usuarios ya registrados
+     * elegibles (hasta 50, alfabético) en vez de nada -- así el manager
+     * puede tildar directo a alguien de la lista sin tener que saber/tipear
+     * su nombre exacto de antemano. Con texto, acota como antes.
+     */
     public function searchInvitable(Request $request, Clan $clan)
     {
         $this->authorizeManage($clan);
 
         $q = trim((string) $request->query('q', ''));
-        if (mb_strlen($q) < 2) {
-            return response()->json([]);
+
+        $query = SiteUser::whereNotNull('player_id')
+            ->whereDoesntHave('clanMembership')
+            ->with('player');
+
+        if ($q !== '') {
+            $aliasPlayerIds = PlayerAlias::where('name_plain', 'like', "%{$q}%")->pluck('player_id');
+            $query->whereHas('player', fn ($pq) => $pq->where('last_name_plain', 'like', "%{$q}%")->orWhereIn('id', $aliasPlayerIds));
         }
 
-        $aliasPlayerIds = PlayerAlias::where('name_plain', 'like', "%{$q}%")->pluck('player_id');
-
-        $results = SiteUser::whereNotNull('player_id')
-            ->whereDoesntHave('clanMembership')
-            ->whereHas('player', fn ($pq) => $pq->where('last_name_plain', 'like', "%{$q}%")->orWhereIn('id', $aliasPlayerIds))
-            ->with('player')
-            ->limit(8)
-            ->get();
+        $results = $query->limit(50)->get()->sortBy(fn (SiteUser $su) => $su->player->last_name_plain)->values();
 
         return response()->json($results->map(fn (SiteUser $su) => [
             'id' => $su->id,
