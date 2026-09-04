@@ -38,6 +38,14 @@ class TeamBalanceController extends Controller
             $previous = $mantenerActive ? TeamBalancer::previousAssignments($server) : null;
             $teamBalance = TeamBalancer::suggest($status['players'] ?? [], $ranks, $server, $previous);
             TeamBalancer::rememberAssignments($server, $teamBalance);
+
+            // Reaplica los badges "↔ cambió de equipo" de un rebalanceo
+            // recién hecho -- el POST de rebalance() flashea los guids
+            // movidos y redirige acá (PRG), pero suggest() nunca setea
+            // ->moved, así que hay que reaplicarlo del lado de la vista.
+            if (session()->has('team_balance_moved_guids')) {
+                TeamBalancer::markMoved($teamBalance, session('team_balance_moved_guids'));
+            }
         }
 
         return view('team-balance', compact('servers', 'server', 'status', 'teamBalance', 'mantenerActive'));
@@ -80,5 +88,44 @@ class TeamBalanceController extends Controller
         }
 
         return back()->with('status', 'Equipos notificados a Discord.');
+    }
+
+    /**
+     * Boton publico "Rebalancear equipos" (2026-09-04, ver
+     * docs/superpowers/specs/2026-09-04-rebalanceo-minimo-equipos-design.md)
+     * -- a diferencia de "mantener asignaciones anteriores" (que nunca
+     * mueve a un jugador ya asignado), esto SI puede moverlos, pero busca
+     * la combinacion que mueva a la menor cantidad posible. Accion
+     * separada y explicita, no cambia el comportamiento del candado.
+     */
+    public function rebalance(Request $request)
+    {
+        $data = $request->validate(['server' => ['required', 'string']]);
+
+        $server = Server::where('is_active', true)->where('slug', $data['server'])->first();
+        if (! $server) {
+            return back()->with('error', 'Servidor no encontrado.');
+        }
+
+        $status = Cod2RconClient::forServer($server)->status();
+        if (! $status) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — no se rebalanceó nada.');
+        }
+
+        $previous = TeamBalancer::previousAssignments($server) ?? [];
+        $teamBalance = TeamBalancer::rebalance($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
+        if (! $teamBalance->enough) {
+            return back()->with('error', 'No hay suficientes jugadores conectados para rebalancear.');
+        }
+        TeamBalancer::rememberAssignments($server, $teamBalance);
+
+        // Flasheado para que el redirect (PRG) a index() pueda mostrar los
+        // badges de quién se movió y el aviso si no se llegó al umbral --
+        // ver TeamBalancer::markMoved().
+        session()->flash('team_balance_moved_guids', $teamBalance->teamA->concat($teamBalance->teamB)->filter(fn ($p) => $p->moved)->pluck('guid')->all());
+        session()->flash('team_balance_met_threshold', $teamBalance->metThreshold);
+        session()->flash('team_balance_diff', $teamBalance->diff);
+
+        return redirect()->route('team-balance', ['server' => $server->slug, 'generar' => 1]);
     }
 }

@@ -4473,6 +4473,64 @@ explícita del candado siempre gana por encima de lo guardado, en cualquier
 dirección). Verificado junto a la suite completa en un clon descartable
 del VPS: 504/506 tests, mismos 2 fallos preexistentes sin relación.
 
+## Rebalanceo de equipos con mínimo de movimientos (2026-09-04)
+
+Spec completa: `docs/superpowers/specs/2026-09-04-rebalanceo-minimo-equipos-design.md`.
+Seguimiento directo de "mantener asignaciones anteriores" (arriba) — ese
+modo nunca mueve a un jugador ya asignado, solo reparte a los nuevos; el
+dueño pidió una forma de rebalancear cuando eso no alcanza (jugadores
+nuevos con scores muy distintos entre sí), moviendo la **menor cantidad
+posible** de los ya asignados.
+
+- **Botón separado "🔁 Rebalancear equipos"**, junto al candado — no
+  cambia el comportamiento de "mantener asignaciones" en absoluto, es una
+  acción explícita aparte.
+- **`TeamBalancer::rebalance()`** (nuevo) — a diferencia de `suggest()`
+  con `$previousAssignments` (nunca mueve a los ya asignados),
+  `rebalance()` SÍ puede moverlos, pero busca la combinación con la menor
+  cantidad posible que logre una diferencia de score ≤
+  **`MAX_SCORE_DIFF = 20`** (fijo en código, mismo criterio que
+  `MIN_POOL_SIZE` de la transición de rank_score) entre los dos equipos.
+  Búsqueda exhaustiva por cantidad de movimientos (0, 1, 2...), fuerza
+  bruta por bitmask sobre qué jugadores fijos "voltear" de equipo × todas
+  las formas de ubicar a los nuevos, deteniéndose en el primer nivel de
+  movimientos que ya alcanza el umbral (con **restricción dura**: los
+  tamaños de los dos equipos nunca quedan a más de 1 de diferencia, sin
+  importar qué tan buen balance de score lograría ignorando esto). Si
+  ningún nivel alcanza el umbral, devuelve la mejor combinación
+  encontrada en toda la búsqueda con `metThreshold=false` y el `diff`
+  real, en vez de fallar o mentir que está balanceado. Salvaguarda de
+  performance (`MAX_EXHAUSTIVE_SEARCH_SIZE=22`): con más gente conectada
+  de la que un pug real jamás tiene, cae a un fallback greedy (nunca
+  mueve a nadie fijo) en vez de una búsqueda 2^n que podría colgar la
+  request — no se espera alcanzar esto nunca en la práctica.
+- **`buildPool()` extraído** de `suggest()` (sin cambio de comportamiento)
+  para que `rebalance()` reuse el mismo cálculo de score (incluida la
+  transición gradual de rank_score) sin duplicarlo.
+- **Badges "↔ cambió de equipo"** en cada jugador movido, más un aviso si
+  no se pudo bajar del umbral — el resultado de `rebalance()` marca
+  `->moved` en cada jugador, pero como el flujo es POST→redirect (PRG,
+  mismo patrón que "Notificar Discord"), la página que se re-renderiza
+  llama a `suggest()` normal (que nunca setea `->moved`) — se flashea la
+  lista de guids movidos + `metThreshold`/`diff` a la sesión, y
+  `TeamBalancer::markMoved()` los reaplica en el próximo render.
+- Rutas nuevas `POST /equipos/rebalancear` (público,
+  `team-balance.rebalance`) y `POST /adm_cod2/console/{server}/rebalance-teams`
+  (admin, auditado vía `AdminAction`) — mismo patrón que
+  `notifyDiscord`/`notifyTeams`, recalculan en el momento (RCON en vivo).
+  El resultado se guarda como la nueva asignación (`rememberAssignments()`,
+  mecanismo ya existente).
+- TDD: 6 casos nuevos en `TeamBalancerTest.php` (0 movimientos cuando
+  ubicar bien a los nuevos ya resuelve; exactamente 1 movimiento cuando
+  hace falta —verificado con un escenario armado a mano donde solo un
+  jugador puntual puede mover la aguja—; acepta una diferencia
+  exactamente en el límite de 20; reporta cuando el umbral no se puede
+  alcanzar con el `diff` real; sin nada guardado previamente se comporta
+  como un armado nuevo, sin marcar a nadie como movido; sigue exigiendo
+  el mínimo de jugadores). Verificado junto a la suite completa en un
+  clon descartable del VPS: 511/513 tests, mismos 2 fallos preexistentes
+  sin relación. Sin migración.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

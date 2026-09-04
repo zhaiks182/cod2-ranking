@@ -56,6 +56,8 @@
                 'teamBalance' => $teamBalance,
                 'discordNotifyAction' => route('team-balance.notify'),
                 'discordNotifyFields' => ['server' => $server->slug],
+                'rebalanceAction' => route('team-balance.rebalance'),
+                'rebalanceFields' => ['server' => $server->slug],
             ])
         @endif
     @endif

@@ -371,4 +371,144 @@ class TeamBalancerTest extends TestCase
         $this->assertFalse(TeamBalancer::shouldPreserve(false, $server));
         $this->assertTrue(TeamBalancer::shouldPreserve(true, $server));
     }
+
+    // -- "Rebalancear equipos" con mínimo de movimientos (2026-09-04) --------
+
+    public function test_rebalance_needs_zero_moves_when_placing_new_players_is_enough(): void
+    {
+        // Fijos: A={p1=100}, B={p2=90} -- 2 nuevos (p3=10, p4=20) sin
+        // asignación previa. La única distribución de tamaño válido (2v2)
+        // que ubica un nuevo en cada equipo puede llegar a diff=0
+        // (p1+p3=110, p2+p4=110) sin mover a nadie ya asignado.
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+            ['guid' => 3, 'name' => 'p3'], ['guid' => 4, 'name' => 'p4'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'), 2 => $this->rank(2, 90, 'B'),
+            3 => $this->rank(3, 10, 'C'), 4 => $this->rank(4, 20, 'D'),
+        ]);
+        $previous = [1 => 'A', 2 => 'B'];
+
+        $result = TeamBalancer::rebalance($players, $ranks, null, $previous);
+
+        $this->assertTrue($result->enough);
+        $this->assertSame(0, $result->moves);
+        $this->assertSame(0.0, $result->diff);
+        $this->assertTrue($result->metThreshold);
+        $moved = $result->teamA->concat($result->teamB)->filter(fn ($p) => $p->moved);
+        $this->assertCount(0, $moved);
+    }
+
+    public function test_rebalance_moves_exactly_one_player_when_necessary(): void
+    {
+        // Fijos MUY desbalanceados: A={p1=100,p2=100}=200, B={p3=1,p4=1}=2.
+        // Con 0 movimientos (solo ubicando al nuevo p5=1) el mejor caso da
+        // diff~197, muy por encima del umbral -- hace falta mover
+        // exactamente a uno (p1 o p2) para bajar de 20.
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+            ['guid' => 3, 'name' => 'p3'], ['guid' => 4, 'name' => 'p4'],
+            ['guid' => 5, 'name' => 'p5'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'), 2 => $this->rank(2, 100, 'A'),
+            3 => $this->rank(3, 1, 'D'), 4 => $this->rank(4, 1, 'D'),
+            5 => $this->rank(5, 1, 'D'),
+        ]);
+        $previous = [1 => 'A', 2 => 'A', 3 => 'B', 4 => 'B'];
+
+        $result = TeamBalancer::rebalance($players, $ranks, null, $previous);
+
+        $this->assertTrue($result->enough);
+        $this->assertSame(1, $result->moves);
+        $this->assertTrue($result->metThreshold);
+        $this->assertLessThanOrEqual(TeamBalancer::MAX_SCORE_DIFF, $result->diff);
+
+        $moved = $result->teamA->concat($result->teamB)->filter(fn ($p) => $p->moved);
+        $this->assertCount(1, $moved);
+        // El movido tiene que ser p1 o p2 (los únicos que pueden mejorar
+        // algo moviéndose) -- nunca p3/p4 (ya estaban del lado bajo) ni p5
+        // (es nuevo, nunca cuenta como "movido").
+        $this->assertContains($moved->first()->guid, [1, 2]);
+
+        // Tamaños de equipo siempre parejos (a lo sumo 1 de diferencia),
+        // sin importar el movimiento -- restricción dura del algoritmo.
+        $this->assertLessThanOrEqual(1, abs($result->teamA->count() - $result->teamB->count()));
+    }
+
+    public function test_rebalance_accepts_a_difference_of_exactly_the_threshold(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+            ['guid' => 3, 'name' => 'p3'], ['guid' => 4, 'name' => 'p4'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'), 2 => $this->rank(2, 10, 'D'),
+            3 => $this->rank(3, 80, 'B'), 4 => $this->rank(4, 10, 'D'),
+        ]);
+        // A={p1,p2}=110, B={p3,p4}=90 -- diff=20, exactamente el umbral.
+        $previous = [1 => 'A', 2 => 'A', 3 => 'B', 4 => 'B'];
+
+        $result = TeamBalancer::rebalance($players, $ranks, null, $previous);
+
+        $this->assertSame(0, $result->moves);
+        $this->assertSame(20.0, $result->diff);
+        $this->assertTrue($result->metThreshold);
+    }
+
+    public function test_rebalance_reports_when_the_threshold_cannot_be_reached(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+            ['guid' => 3, 'name' => 'p3'], ['guid' => 4, 'name' => 'p4'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'), 2 => $this->rank(2, 10, 'D'),
+            3 => $this->rank(3, 79, 'B'), 4 => $this->rank(4, 10, 'D'),
+        ]);
+        // A={p1,p2}=110, B={p3,p4}=89 -- diff=21. Sin nuevos que ayuden a
+        // parejar el tamaño, cualquier cambio real es un swap 1x1 -- ningún
+        // swap posible entre estos 4 valores baja de 21 (probado a mano).
+        $previous = [1 => 'A', 2 => 'A', 3 => 'B', 4 => 'B'];
+
+        $result = TeamBalancer::rebalance($players, $ranks, null, $previous);
+
+        $this->assertTrue($result->enough);
+        $this->assertFalse($result->metThreshold);
+        $this->assertSame(21.0, $result->diff);
+    }
+
+    public function test_rebalance_without_any_previous_assignment_behaves_like_a_fresh_assignment(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+            ['guid' => 3, 'name' => 'p3'], ['guid' => 4, 'name' => 'p4'],
+            ['guid' => 5, 'name' => 'p5'],
+        ];
+        $ranks = collect([
+            1 => $this->rank(1, 100, 'A'), 2 => $this->rank(2, 10, 'D'),
+            3 => $this->rank(3, 10, 'D'), 4 => $this->rank(4, 10, 'D'),
+            5 => $this->rank(5, 10, 'D'),
+        ]);
+
+        $result = TeamBalancer::rebalance($players, $ranks, null, []);
+
+        $this->assertTrue($result->enough);
+        $this->assertLessThanOrEqual(1, abs($result->teamA->count() - $result->teamB->count()));
+        // Nadie "se mueve" -- sin asignación previa, no hay de dónde moverse.
+        $moved = $result->teamA->concat($result->teamB)->filter(fn ($p) => $p->moved);
+        $this->assertCount(0, $moved);
+    }
+
+    public function test_rebalance_still_requires_the_minimum_player_count(): void
+    {
+        $players = [
+            ['guid' => 1, 'name' => 'p1'], ['guid' => 2, 'name' => 'p2'],
+        ];
+
+        $result = TeamBalancer::rebalance($players, collect(), null, []);
+
+        $this->assertFalse($result->enough);
+    }
 }

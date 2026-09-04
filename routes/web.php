@@ -56,6 +56,9 @@ Route::get('/equipos', [TeamBalanceController::class, 'index'])->name('team-bala
 Route::post('/equipos/notificar', [TeamBalanceController::class, 'notifyDiscord'])
     ->middleware('throttle:10,1')
     ->name('team-balance.notify');
+Route::post('/equipos/rebalancear', [TeamBalanceController::class, 'rebalance'])
+    ->middleware('throttle:10,1')
+    ->name('team-balance.rebalance');
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');
@@ -230,6 +233,7 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
             Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
             Route::post('/console/{server}/notify-teams', [ConsoleController::class, 'notifyTeams'])->name('console.notify-teams');
+            Route::post('/console/{server}/rebalance-teams', [ConsoleController::class, 'rebalanceTeams'])->name('console.rebalance-teams');
             Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');
             Route::get('/console/{server}/resources', [ConsoleController::class, 'resources'])->name('console.resources');
             Route::get('/console/{server}/resource-usage', [ConsoleController::class, 'resourceUsage'])->name('console.resource-usage');

@@ -18,7 +18,13 @@
      leer request()->boolean('mantener') acá directo mostraría el candado
      abierto aunque en los hechos SÍ se haya preservado. Si no se pasa,
      cae a la query cruda (compatibilidad con cualquier otro include
-     futuro que no la calcule). --}}
+     futuro que no la calcule).
+
+     $rebalanceAction (opcional) es la URL del boton "Rebalancear equipos"
+     (2026-09-04, ver docs/superpowers/specs/2026-09-04-rebalanceo-minimo-equipos-design.md)
+     -- si se omite, el boton no se muestra. Cada jugador movido por un
+     rebalanceo trae ->moved=true (via TeamBalancer::markMoved(), aplicado
+     por el controller despues del redirect-tras-POST). --}}
 <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden">
     @php
         $mantener = $mantenerActive ?? request()->boolean('mantener');
@@ -33,6 +39,15 @@
             </a>
             @if($teamBalance && $teamBalance->enough)
                 <span class="text-[11px] text-slate-500">{{ __('Score total') }}: <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreA }}</span> vs <span class="text-cyan-400 font-medium">{{ $teamBalance->scoreB }}</span></span>
+            @endif
+            @if(isset($rebalanceAction) && $teamBalance && $teamBalance->enough)
+                <form method="POST" action="{{ $rebalanceAction }}" onsubmit="return confirm('¿Buscar la combinación que menos jugadores ya asignados mueva para bajar el desbalance?')">
+                    @csrf
+                    @foreach($rebalanceFields ?? [] as $field => $value)
+                        <input type="hidden" name="{{ $field }}" value="{{ $value }}">
+                    @endforeach
+                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-950/40 border border-amber-700 text-amber-300 hover:bg-amber-900/40 px-3 py-1.5 text-xs font-semibold whitespace-nowrap">🔁 {{ __('Rebalancear equipos') }}</button>
+                </form>
             @endif
             @if(isset($discordNotifyAction) && $teamBalance && $teamBalance->enough)
                 <form method="POST" action="{{ $discordNotifyAction }}" onsubmit="return confirm('¿Notificar estos equipos al canal de Discord?')">
@@ -57,6 +72,11 @@
         @else
             @if($teamBalance->bots)
                 <p class="text-xs text-slate-500 mb-3">{{ __(':n bot(s) conectado(s) — no se incluyen en el balanceo.', ['n' => $teamBalance->bots]) }}</p>
+            @endif
+            @if(session()->has('team_balance_met_threshold') && ! session('team_balance_met_threshold'))
+                <p class="text-xs text-amber-400 mb-3">
+                    {{ __('No se pudo bajar de :diff puntos de diferencia moviendo menos gente — esta es la mejor combinación encontrada.', ['diff' => session('team_balance_diff')]) }}
+                </p>
             @endif
             @php
                 // Iconos personalizados (2026-08-28), batcheado una sola vez para
@@ -86,7 +106,12 @@
                                     };
                                 @endphp
                                 <li class="px-3 py-2 flex items-center justify-between gap-2 text-sm">
-                                    <span class="min-w-0 truncate">{!! \App\Support\Cod2Colors::toHtml($p->name) !!} <x-player-icon :player="$balanceIconByGuid[$p->guid] ?? null" /></span>
+                                    <span class="min-w-0 truncate">
+                                        {!! \App\Support\Cod2Colors::toHtml($p->name) !!} <x-player-icon :player="$balanceIconByGuid[$p->guid] ?? null" />
+                                        @if($p->moved ?? false)
+                                            <span class="text-[10px] text-amber-400 font-semibold" title="{{ __('Cambió de equipo en el último rebalanceo') }}">↔ {{ __('cambió de equipo') }}</span>
+                                        @endif
+                                    </span>
                                     <span class="inline-flex items-center justify-center w-6 h-6 shrink-0 rounded border text-[11px] font-bold {{ $tierStyle }}" title="{{ $p->rango ? __('Rango :r', ['r' => $p->rango]) : __('Sin rango suficiente') }}">{{ $p->rango ?? '?' }}</span>
                                 </li>
                             @endforeach

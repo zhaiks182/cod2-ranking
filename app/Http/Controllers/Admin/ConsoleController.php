@@ -41,6 +41,10 @@ class ConsoleController extends Controller
             $previous = $mantenerActive ? TeamBalancer::previousAssignments($server) : null;
             $teamBalance = TeamBalancer::suggest($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
             TeamBalancer::rememberAssignments($server, $teamBalance);
+
+            if (session()->has('team_balance_moved_guids')) {
+                TeamBalancer::markMoved($teamBalance, session('team_balance_moved_guids'));
+            }
         }
 
         return view('admin.console', compact('server', 'status', 'teamBalance', 'mantenerActive'));
@@ -78,6 +82,39 @@ class ConsoleController extends Controller
         AdminAction::record('console.notify-teams', "Notificó los equipos armados de {$server->name} a Discord");
 
         return back()->with('status', 'Equipos notificados a Discord.');
+    }
+
+    /**
+     * Boton "Rebalancear equipos" (2026-09-04, ver
+     * docs/superpowers/specs/2026-09-04-rebalanceo-minimo-equipos-design.md)
+     * -- version admin del mismo boton publico de
+     * TeamBalanceController::rebalance(). Auditado, a diferencia de la
+     * version publica.
+     */
+    public function rebalanceTeams(Server $server)
+    {
+        $status = Cod2RconClient::forServer($server)->status();
+
+        if (! $status) {
+            return back()->with('error', 'No se pudo conectar al servidor por RCON — no se rebalanceó nada.');
+        }
+
+        $previous = TeamBalancer::previousAssignments($server) ?? [];
+        $teamBalance = TeamBalancer::rebalance($status['players'] ?? [], PlayerRankCalculator::calculateForServer($server), $server, $previous);
+
+        if (! $teamBalance->enough) {
+            return back()->with('error', 'No hay suficientes jugadores conectados para rebalancear.');
+        }
+        TeamBalancer::rememberAssignments($server, $teamBalance);
+
+        $movedGuids = $teamBalance->teamA->concat($teamBalance->teamB)->filter(fn ($p) => $p->moved)->pluck('guid')->all();
+        session()->flash('team_balance_moved_guids', $movedGuids);
+        session()->flash('team_balance_met_threshold', $teamBalance->metThreshold);
+        session()->flash('team_balance_diff', $teamBalance->diff);
+
+        AdminAction::record('console.rebalance-teams', "Rebalanceó los equipos de {$server->name} (movió ".count($movedGuids).' jugador(es))');
+
+        return redirect()->route('admin.console.show', $server);
     }
 
     /**
