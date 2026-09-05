@@ -12,6 +12,7 @@ use App\Support\MapCatalog;
 use App\Support\PlayerRankCalculator;
 use App\Support\PlaytimeCalculator;
 use App\Support\TeamSideAnalyzer;
+use App\Support\WinRateCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -90,11 +91,17 @@ class LeaderboardController extends Controller
             // inventar un conteo aparte.
             $matchesByPlayer = PlayerRankCalculator::matchesPlayedByPlayer($server->id, $tableMatchIds, $mapCodes);
 
-            $rows = $rows->map(function ($row) use ($secondsByPlayer, $matchesByPlayer) {
+            // "Partidas ganadas" (2026-09-05, seguimiento directo de "Partidas") --
+            // $tableMatchIds no está acotado por mapa por sí solo (solo por fecha),
+            // así que hay que pasarle $mapCodes igual que matchesPlayedByPlayer.
+            $wonByPlayer = WinRateCalculator::wonMatchesCountByPlayer($tableMatchIds, $mapCodes);
+
+            $rows = $rows->map(function ($row) use ($secondsByPlayer, $matchesByPlayer, $wonByPlayer) {
                 $hours = round(($secondsByPlayer[$row->player->id] ?? 0) / 3600, 1);
                 $row->hours_played = $hours;
                 $row->kills_per_hour = $hours > 0 ? round($row->kills / $hours, 1) : 0.0;
                 $row->matches_played = $matchesByPlayer[$row->player->id] ?? 0;
+                $row->matches_won = $wonByPlayer[$row->player->id] ?? 0;
 
                 return $row;
             });

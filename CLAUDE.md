@@ -4531,30 +4531,44 @@ posible** de los ya asignados.
   clon descartable del VPS: 511/513 tests, mismos 2 fallos preexistentes
   sin relación. Sin migración.
 
-## "Partidas" en /ranking (2026-09-05)
+## "Partidas jugadas" y "Partidas ganadas" en /ranking (2026-09-05)
 
-A pedido del dueño: la tabla general de `/ranking` gana una columna
-"Partidas" (partidas jugadas), entre K/D y Headshots — orden final de la
-tabla: Kills, Muertes, K/D, Partidas, Headshots, Granadas, Horas, Kills/h.
+A pedido del dueño: la tabla general de `/ranking` gana dos columnas,
+"Jugadas" y "Ganadas", entre K/D y Headshots — orden final de la tabla:
+Kills, Muertes, K/D, Jugadas, Ganadas, Headshots, Granadas, Horas, Kills/h.
+
+**"Jugadas" se agregó primero como "Partidas" a secas — el dueño preguntó
+si eso era lo ganado, y no lo era** (era participación, no victorias). Se
+renombró el header a "Jugadas" y se agregó "Ganadas" al lado en la misma
+sesión, en vez de dejar la columna original ambigua.
 
 - **`PlayerRankCalculator::matchesPlayedByPlayer()`** gana un 3er parámetro
   opcional `array $mapCodes = []` para poder acotar el conteo a las
   variantes de un mapa puntual (mismo patrón que el resto de `/ranking`) —
   sin romper a sus otros consumidores (`/rango`, Combate), que siguen
   llamándolo sin ese argumento y se comportan exactamente igual que antes.
-- **`LeaderboardController::index()`** calcula `$row->matches_played`
-  reusando ese mismo método — mismo criterio de "partida jugada" que ya usa
-  `PlayerRankCalculator` para el mínimo de `/rango` (apareció como atacante
-  o víctima en al menos una baja SD de esa partida), sin inventar un
-  segundo conteo.
+- **`WinRateCalculator::wonMatchesCountByPlayer(Collection $matchIds, array $mapCodes = [])`**
+  (nuevo) — versión por lote de la misma noción de "ganó esta partida" que
+  ya usa `forPlayer()`/`byMapForPlayer()` del perfil de jugador
+  (`TeamSideAnalyzer::winningRosterGuids()`, clustering por overlap de
+  guids), pero calculando el roster ganador **una vez por partida en el
+  scope**, no una vez por jugador — mismo patrón de batching que
+  `TeamSideAnalyzer::winningSideForMatch()` ya usa para el listado de
+  `/partidas`. Sin esto, mostrar "Ganadas" en una tabla de ~40 jugadores
+  hubiera significado repetir la query+clustering 40 veces.
+- **`LeaderboardController::index()`** calcula `$row->matches_played` y
+  `$row->matches_won` reusando esos dos métodos, ambos scopeados por
+  `$tableMatchIds`+`$mapCodes` (fecha/temporada y pestaña de mapa activas).
 - **Solo la tabla general** (no los paneles Axis/Allies de `/ranking`, que
   ya muestran un set reducido de columnas a propósito).
-- TDD: `tests/Feature/LeaderboardSeasonTest.php` ganó 2 casos (partidas
+- TDD: `tests/Feature/LeaderboardSeasonTest.php` ganó 4 casos (partidas
   jugadas correctas — 2 partidas reales cuentan, 1 abandonada sin
-  resultado real no cuenta; respeta la pestaña de mapa seleccionada).
-  Verificado junto a la suite completa en un clon descartable del VPS:
-  513/515 tests, mismos 2 fallos preexistentes sin relación (`ExampleTest`,
-  `CountriesSeasonTest`). Sin migración.
+  resultado real no cuenta; jugadas respeta la pestaña de mapa; ganadas
+  cuenta solo las partidas con resultado real donde el jugador terminó del
+  lado ganador, ni las perdidas ni las abandonadas; ganadas respeta la
+  pestaña de mapa). Verificado junto a la suite completa en un clon
+  descartable del VPS: 515/517 tests, mismos 2 fallos preexistentes sin
+  relación (`ExampleTest`, `CountriesSeasonTest`). Sin migración.
 
 ## Pendientes / conocido-roto
 

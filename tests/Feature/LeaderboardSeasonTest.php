@@ -131,6 +131,26 @@ class LeaderboardSeasonTest extends TestCase
         return $match;
     }
 
+    /**
+     * Como realMatch() pero con winner_guids en las 13 rondas, para que
+     * TeamSideAnalyzer::winningRosterGuids() pueda determinar un ganador --
+     * necesario para las pruebas de "Ganadas", ver WinRateCalculatorTest::makeMatch()
+     * (mismo patron).
+     */
+    private function realMatchWithWinner(int $seasonId, Player $attacker, Player $victim, string $winnerGuid, string $map = 'mp_toujane_fix'): GameMatch
+    {
+        $match = $this->realMatch($seasonId, $attacker, $victim, $map);
+
+        // ->rounds()->update([...]) es un query builder mass-update -- bypassa el
+        // cast 'array' de winner_guids (guardaria el PHP array crudo, no JSON).
+        // Guardar ronda por ronda via Eloquent para que el cast se aplique.
+        foreach ($match->rounds as $round) {
+            $round->update(['winner_guids' => [$winnerGuid]]);
+        }
+
+        return $match;
+    }
+
     public function test_ranking_without_season_param_shows_only_the_active_season(): void
     {
         $oldSeason = Season::current();
@@ -440,5 +460,38 @@ class LeaderboardSeasonTest extends TestCase
 
         $row = collect($response->viewData('rows'))->firstWhere('player.guid', $attacker->guid);
         $this->assertSame(1, $row->matches_played);
+    }
+
+    public function test_ranking_shows_matches_won_per_player(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+
+        $this->realMatchWithWinner($season->id, $attacker, $victim, (string) $attacker->guid); // ganada
+        $this->realMatchWithWinner($season->id, $attacker, $victim, (string) $victim->guid); // perdida
+        $this->abandonedMatch($season->id, $attacker, $victim); // ni jugada ni ganada
+
+        $response = $this->get(route('leaderboard', ['server' => $this->server->slug]));
+
+        $row = collect($response->viewData('rows'))->firstWhere('player.guid', $attacker->guid);
+        $this->assertSame(2, $row->matches_played);
+        $this->assertSame(1, $row->matches_won);
+    }
+
+    /** El filtro de mapa también debe acotar la columna "Ganadas", no solo "Jugadas". */
+    public function test_matches_won_respects_the_selected_map_tab(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+
+        $this->realMatchWithWinner($season->id, $attacker, $victim, (string) $attacker->guid, 'mp_toujane_fix');
+        $this->realMatchWithWinner($season->id, $attacker, $victim, (string) $attacker->guid, 'mp_burgundy_fix');
+
+        $response = $this->get(route('leaderboard', ['server' => $this->server->slug, 'map' => 'mp_toujane']));
+
+        $row = collect($response->viewData('rows'))->firstWhere('player.guid', $attacker->guid);
+        $this->assertSame(1, $row->matches_won);
     }
 }

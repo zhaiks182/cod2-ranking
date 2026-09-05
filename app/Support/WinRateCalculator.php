@@ -72,6 +72,72 @@ class WinRateCalculator
     }
 
     /**
+     * Version por lote de la misma nocion de "gano esta partida" que usa
+     * forPlayer(), para un listado con muchos jugadores a la vez (ej. /ranking) sin
+     * repetir la query de participacion + el clustering por partida N veces (una
+     * vez por partida en el scope, no una vez por jugador — mismo patron de
+     * batching que TeamSideAnalyzer::winningSideForMatch() ya usa para /partidas).
+     *
+     * @param  Collection  $matchIds  Ya scopeadas a la temporada elegida.
+     * @param  array<int, string>  $mapCodes  Códigos crudos de mapa a incluir (todas
+     *      las variantes de la pestaña de mapa activa), o vacío para "General" --
+     *      mismo contrato que PlayerRankCalculator::matchesPlayedByPlayer(), ya que
+     *      $matchIds por sí solo no está acotado por mapa.
+     * @return array<int, int> player_id => cantidad de partidas ganadas
+     */
+    public static function wonMatchesCountByPlayer(Collection $matchIds, array $mapCodes = []): array
+    {
+        $killsByMatch = Kill::query()
+            ->join('rounds', 'rounds.id', '=', 'kills.round_id')
+            ->where('rounds.gametype', 'sd')
+            ->whereIn('kills.match_id', $matchIds)
+            ->get(['kills.match_id', 'kills.attacker_player_id', 'kills.attacker_guid', 'kills.victim_player_id', 'kills.victim_guid'])
+            ->groupBy('match_id');
+
+        if ($killsByMatch->isEmpty()) {
+            return [];
+        }
+
+        $matchesQuery = GameMatch::whereIn('id', $killsByMatch->keys())->with('rounds');
+        if ($mapCodes) {
+            $matchesQuery->whereIn('map', $mapCodes);
+        }
+        $matches = $matchesQuery->get()->keyBy('id');
+
+        $wins = [];
+
+        foreach ($killsByMatch as $matchId => $matchKills) {
+            $match = $matches->get($matchId);
+            if (! $match) {
+                continue;
+            }
+
+            $winningGuids = TeamSideAnalyzer::winningRosterGuids($match->rounds);
+            if ($winningGuids === null) {
+                continue;
+            }
+
+            $guidsByPlayerId = [];
+            foreach ($matchKills as $kill) {
+                if ($kill->attacker_player_id) {
+                    $guidsByPlayerId[$kill->attacker_player_id][] = $kill->attacker_guid;
+                }
+                if ($kill->victim_player_id) {
+                    $guidsByPlayerId[$kill->victim_player_id][] = $kill->victim_guid;
+                }
+            }
+
+            foreach ($guidsByPlayerId as $playerId => $guids) {
+                if (array_intersect($guids, $winningGuids)) {
+                    $wins[$playerId] = ($wins[$playerId] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $wins;
+    }
+
+    /**
      * @return array{wins: int, played: int, rate: float}
      */
     public static function forPlayer(Player $player, Collection $matchIds): array
