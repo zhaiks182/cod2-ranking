@@ -20,6 +20,34 @@ use Throwable;
  */
 class ServiceUptime
 {
+    /**
+     * "4d 3h 21m". Omite las unidades de mayor orden que esten en cero, asi un
+     * servicio recien reiniciado muestra "12m" y no "0d 0h 12m".
+     *
+     * Ojo si se cambia el formato: el mismo calculo esta duplicado en JS dentro
+     * de admin/console.blade.php, que es el que refresca la etiqueta cada minuto
+     * sin recargar la pagina. Los dos tienen que coincidir, si no el numero
+     * "salta" al primer tick.
+     */
+    public static function format(Carbon $since, ?Carbon $now = null): string
+    {
+        $diff = $since->diff($now ?? Carbon::now());
+
+        $days = (int) $diff->days;
+        $hours = (int) $diff->h;
+        $minutes = (int) $diff->i;
+
+        if ($days > 0) {
+            return "{$days}d {$hours}h {$minutes}m";
+        }
+
+        if ($hours > 0) {
+            return "{$hours}h {$minutes}m";
+        }
+
+        return "{$minutes}m";
+    }
+
     public static function startedAt(Server $server): ?Carbon
     {
         // Mismo regex que ConsoleController::service(). El nombre sale de la BD y

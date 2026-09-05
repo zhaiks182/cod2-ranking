@@ -12,7 +12,7 @@
                 Mapa actual: {{ \App\Support\MapCatalog::mapLabel($status['map'] ?? null) }}
                 @isset($serviceStartedAt)
                     @if($serviceStartedAt)
-                        · <span class="text-emerald-400" title="El servicio {{ $server->systemd_service }} está activo desde {{ $serviceStartedAt->format('d/m/Y H:i') }}">Servicio activo hace {{ $serviceStartedAt->diffForHumans(null, true) }}</span>
+                        · <span class="text-emerald-400" title="El servicio {{ $server->systemd_service }} está activo desde {{ $serviceStartedAt->format('d/m/Y H:i') }}">Servicio activo hace <span id="cod2-service-uptime" data-since="{{ $serviceStartedAt->toIso8601String() }}">{{ \App\Support\ServiceUptime::format($serviceStartedAt) }}</span></span>
                     @elseif($server->systemd_service)
                         · <span class="text-red-400">Servicio detenido</span>
                     @endif
@@ -247,6 +247,31 @@
             document.getElementById('map-select-submit').disabled = false;
         });
     });
+
+    // Uptime del servicio: se renderiza ya calculado desde el server (asi es
+    // correcto aunque el JS no corra) y desde ahi lo lleva el navegador solo,
+    // cada minuto, contra la fecha de arranque que vino en data-since. No le
+    // pega al servidor: el unico dato que necesita ya esta en el HTML. El
+    // formato tiene que coincidir con ServiceUptime::format().
+    (function () {
+        var el = document.getElementById('cod2-service-uptime');
+        if (!el) return;
+
+        var since = new Date(el.dataset.since).getTime();
+
+        function tick() {
+            var minutes = Math.max(0, Math.floor((Date.now() - since) / 60000));
+            var days = Math.floor(minutes / 1440);
+            var hours = Math.floor((minutes % 1440) / 60);
+            var mins = minutes % 60;
+
+            el.textContent = days > 0 ? (days + 'd ' + hours + 'h ' + mins + 'm')
+                : hours > 0 ? (hours + 'h ' + mins + 'm')
+                : (mins + 'm');
+        }
+
+        setInterval(tick, 60000);
+    })();
 
     (function () {
         var box = document.getElementById('cod2-log-tail');

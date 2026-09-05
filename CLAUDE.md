@@ -4790,6 +4790,26 @@ activo.
   trata como restricción y, si no coincidiera con la fecha, correría el
   resultado al próximo día con ese nombre en vez de fallar.
 
+**Formato y refresco (ajustado el mismo día, a pedido del dueño).** Empezó con
+`diffForHumans()` ("hace 4 días") y pasó a `ServiceUptime::format()`, que da
+`4d 3h 21m` omitiendo las unidades de mayor orden en cero (`12m`, no
+`0d 0h 12m`).
+
+El dueño preguntó cada cuánto se actualizaba, y la respuesta era **solo al
+recargar la página** — la consola ya tenía un `setInterval` de 3s, pero
+alimenta únicamente el tail del log, no el header. Ahora el valor se
+**renderiza ya calculado desde el server** (correcto aunque el JS no corra) y
+desde ahí lo lleva el navegador solo, cada minuto, contra la fecha de arranque
+que viaja en un `data-since` — **sin pegarle al servidor**, porque el único
+dato que hace falta ya está en el HTML. Mismo patrón que el contador de
+reclamo pendiente del nav público.
+
+**El cálculo está duplicado en PHP y en JS a propósito** (uno para el render
+inicial, otro para los ticks). Si se cambia el formato hay que cambiar los
+dos, si no el número "salta" en el primer tick. `ServiceUptimeTest` cubre la
+mitad de PHP; `startedAt()` no se testea porque corre `systemctl` real, mismo
+criterio que el resto del módulo de consola.
+
 ## Bug real: ninguna reproducción de la galería se estaba contando (2026-09-05)
 
 Reportado por el dueño ("las reproducciones de los videos no cuentan").
