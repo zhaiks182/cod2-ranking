@@ -4531,6 +4531,31 @@ posible** de los ya asignados.
   clon descartable del VPS: 511/513 tests, mismos 2 fallos preexistentes
   sin relación. Sin migración.
 
+## "Partidas" en /ranking (2026-09-05)
+
+A pedido del dueño: la tabla general de `/ranking` gana una columna
+"Partidas" (partidas jugadas), entre K/D y Headshots — orden final de la
+tabla: Kills, Muertes, K/D, Partidas, Headshots, Granadas, Horas, Kills/h.
+
+- **`PlayerRankCalculator::matchesPlayedByPlayer()`** gana un 3er parámetro
+  opcional `array $mapCodes = []` para poder acotar el conteo a las
+  variantes de un mapa puntual (mismo patrón que el resto de `/ranking`) —
+  sin romper a sus otros consumidores (`/rango`, Combate), que siguen
+  llamándolo sin ese argumento y se comportan exactamente igual que antes.
+- **`LeaderboardController::index()`** calcula `$row->matches_played`
+  reusando ese mismo método — mismo criterio de "partida jugada" que ya usa
+  `PlayerRankCalculator` para el mínimo de `/rango` (apareció como atacante
+  o víctima en al menos una baja SD de esa partida), sin inventar un
+  segundo conteo.
+- **Solo la tabla general** (no los paneles Axis/Allies de `/ranking`, que
+  ya muestran un set reducido de columnas a propósito).
+- TDD: `tests/Feature/LeaderboardSeasonTest.php` ganó 2 casos (partidas
+  jugadas correctas — 2 partidas reales cuentan, 1 abandonada sin
+  resultado real no cuenta; respeta la pestaña de mapa seleccionada).
+  Verificado junto a la suite completa en un clon descartable del VPS:
+  513/515 tests, mismos 2 fallos preexistentes sin relación (`ExampleTest`,
+  `CountriesSeasonTest`). Sin migración.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

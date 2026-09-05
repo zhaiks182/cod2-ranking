@@ -9,6 +9,7 @@ use App\Models\Season;
 use App\Models\Server;
 use App\Support\KillAggregator;
 use App\Support\MapCatalog;
+use App\Support\PlayerRankCalculator;
 use App\Support\PlaytimeCalculator;
 use App\Support\TeamSideAnalyzer;
 use Carbon\Carbon;
@@ -82,10 +83,18 @@ class LeaderboardController extends Controller
         if ($server) {
             $secondsByPlayer = PlaytimeCalculator::secondsByPlayer($server->id, $tableMatchIds, $mapCodes);
 
-            $rows = $rows->map(function ($row) use ($secondsByPlayer) {
+            // "Partidas" (2026-09-05, a pedido del dueño) -- mismo proxy de
+            // "jugó esta partida" que ya usa PlayerRankCalculator para el
+            // mínimo de /rango (apareció como atacante o víctima en al
+            // menos una baja SD de esa partida), reusado en vez de
+            // inventar un conteo aparte.
+            $matchesByPlayer = PlayerRankCalculator::matchesPlayedByPlayer($server->id, $tableMatchIds, $mapCodes);
+
+            $rows = $rows->map(function ($row) use ($secondsByPlayer, $matchesByPlayer) {
                 $hours = round(($secondsByPlayer[$row->player->id] ?? 0) / 3600, 1);
                 $row->hours_played = $hours;
                 $row->kills_per_hour = $hours > 0 ? round($row->kills / $hours, 1) : 0.0;
+                $row->matches_played = $matchesByPlayer[$row->player->id] ?? 0;
 
                 return $row;
             });

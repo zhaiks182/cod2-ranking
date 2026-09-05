@@ -405,4 +405,40 @@ class LeaderboardSeasonTest extends TestCase
         $this->assertTrue($response->viewData('usingDateFilter'));
         $this->assertTrue(collect($response->viewData('rows'))->isEmpty());
     }
+
+    /**
+     * Columna "Partidas" (2026-09-05, a pedido del dueño) -- mismo proxy de
+     * "jugó esta partida" que ya usa PlayerRankCalculator para el mínimo de
+     * /rango, reusado acá en vez de inventar un conteo aparte. Una partida
+     * abandonada (sin resultado real) no debe sumar.
+     */
+    public function test_ranking_shows_matches_played_per_player(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+        $this->realMatch($season->id, $attacker, $victim);
+        $this->realMatch($season->id, $attacker, $victim);
+        $this->abandonedMatch($season->id, $attacker, $victim);
+
+        $response = $this->get(route('leaderboard', ['server' => $this->server->slug]));
+
+        $row = collect($response->viewData('rows'))->firstWhere('player.guid', $attacker->guid);
+        $this->assertSame(2, $row->matches_played);
+    }
+
+    /** El filtro de mapa también debe acotar la columna "Partidas", no solo kills/muertes. */
+    public function test_matches_played_respects_the_selected_map_tab(): void
+    {
+        $season = Season::current();
+        $attacker = Player::create(['guid' => 111, 'last_name' => 'Attacker', 'last_name_plain' => 'Attacker']);
+        $victim = Player::create(['guid' => 222, 'last_name' => 'Victim', 'last_name_plain' => 'Victim']);
+        $this->realMatch($season->id, $attacker, $victim, 'mp_toujane_fix');
+        $this->realMatch($season->id, $attacker, $victim, 'mp_burgundy_fix');
+
+        $response = $this->get(route('leaderboard', ['server' => $this->server->slug, 'map' => 'mp_toujane']));
+
+        $row = collect($response->viewData('rows'))->firstWhere('player.guid', $attacker->guid);
+        $this->assertSame(1, $row->matches_played);
+    }
 }

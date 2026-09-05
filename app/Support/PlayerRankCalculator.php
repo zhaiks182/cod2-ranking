@@ -84,15 +84,25 @@ class PlayerRankCalculator
      * (/eficiencia), que solo exigia un minimo de BAJAS (20), nunca de
      * partidas -- una muestra chica infla facil un ratio.
      *
+     * $mapCodes (2026-09-05, para la columna "Partidas" de /ranking) -- códigos
+     * crudos de mapa a incluir (todas las variantes del mapa normalizado
+     * seleccionado, ver `MapCatalog::mergeVariants()`); vacío (default) no
+     * filtra por mapa, mismo comportamiento que antes de este parámetro.
+     *
      * @return array<int, int> player_id => cantidad de partidas
      */
-    public static function matchesPlayedByPlayer(int $serverId, Collection $matchIds): array
+    public static function matchesPlayedByPlayer(int $serverId, Collection $matchIds, array $mapCodes = []): array
     {
-        $rows = Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
+        $query = Kill::query()->join('rounds', 'rounds.id', '=', 'kills.round_id')
             ->where('rounds.server_id', $serverId)
             ->where('rounds.gametype', 'sd')
-            ->whereIn('kills.match_id', $matchIds)
-            ->select('kills.match_id', 'kills.attacker_player_id', 'kills.victim_player_id')
+            ->whereIn('kills.match_id', $matchIds);
+
+        if ($mapCodes) {
+            $query->whereIn('rounds.map', $mapCodes);
+        }
+
+        $rows = $query->select('kills.match_id', 'kills.attacker_player_id', 'kills.victim_player_id')
             ->get();
 
         $matchesByPlayer = [];
