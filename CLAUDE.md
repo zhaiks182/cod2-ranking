@@ -4594,6 +4594,63 @@ del `onclick` del botón). Cambio puramente de vista, sin tocar
 `LeaderboardController` ni tests (`matches_played`/`matches_won` ya
 existían igual en el row, solo cambió cómo se renderizan).
 
+## Auditoría responsive del sitio público (2026-09-05)
+
+A pedido del dueño, auditoría de las ~15 páginas públicas en un navegador
+real a 375px (celular) y 768px (tablet), detectando desbordes con un script
+que compara `getBoundingClientRect().right` de cada elemento contra el ancho
+del viewport, ignorando lo que ya vive dentro de un contenedor con
+`overflow-x` scrolleable (eso es el patrón correcto, no un bug).
+
+**Un solo bug real encontrado, ya corregido: `/jugadores/{guid}` desbordaba
+100px en celular** (`document.scrollWidth` 475px contra un viewport de
+375px, o sea scroll horizontal de toda la página). Causa: las dos
+`<section class="flex flex-col">` del grid "Desempeño general por mapa" /
+"Historial de partidas" son **items de grid**, y un item de grid/flex tiene
+`min-width: auto` por default — no puede achicarse por debajo del ancho de
+contenido de su tabla, así que el `overflow-x-auto` interno nunca llegaba a
+activarse y el desborde se propagaba hasta el `<body>`. Fix: `min-w-0` en
+ambas secciones (verificado en vivo antes de tocar el código: agregando la
+clase por consola, `scrollWidth` pasaba de 475 a 375).
+
+**Este es el patrón a revisar primero ante cualquier futuro desborde
+horizontal en este sitio** — un `overflow-x-auto` que "no funciona" casi
+siempre es un ancestro flex/grid sin `min-w-0`, no un problema de la tabla.
+
+Verificadas sin desbordes: `/`, `/ranking` (10 columnas, scrollea bien
+dentro de su caja), `/partidas`, `/partidas/{id}`, `/clanes`,
+`/clanes/{tag}`, `/equipos`, `/rango`, `/armas`, `/paises`, `/demos`,
+`/galeria`, `/servidores/crear`, `/descargas`, `/descargas/archivos`,
+`/como-funciona-el-rango`, `/jugadores/{guid}/perfil`. Sin errores de
+consola JS en ninguna.
+
+**Pendientes detectados, NO corregidos (no son bugs, son decisiones):**
+
+- **El nav no tiene menú hamburguesa** — a 375px ocupa 102px de alto (5
+  líneas, 47 items entre links y botones de dropdown), o sea que el
+  contenido real arranca recién a los 142px. Funciona (no desborda, ver
+  "Nav responsive" del 2026-09-04) pero se come casi 1/5 de la pantalla en
+  celular. Es el mayor margen de mejora responsive que queda.
+- **3 blades con `<table>` sin envoltorio `overflow-x-auto`**:
+  `help/downloads-browse.blade.php` y `help/rank-explained.blade.php`
+  (verificadas en vivo a 375px, no desbordan porque su contenido es
+  angosto — no urgente) y `admin/clans/index.blade.php` (**sin verificar**,
+  el panel admin necesita login y no se probó en esta auditoría).
+- **El panel `/adm_cod2` completo quedó fuera de la auditoría** por
+  requerir sesión.
+
+**Estado del log de errores de producción:** limpio. `storage/logs/laravel.log`
+cubre desde el 2026-08-09 y acumula 472 líneas `ERROR`, pero **en los
+últimos 3 días solo hay 2**, ambas `tempnam(): file created in the system's
+temporary directory` durante la compilación de vistas Blade — la ventana de
+segundos del propio deploy entre que `php artisan optimize` recrea
+`storage/framework/views/` como root y el segundo `chown` de `deploy.sh` lo
+devuelve a `www-data` (ver "Deploy"). Confirmado que los permisos quedan
+correctos después (`www-data`, 0 archivos root-owned, escritura OK), así que
+es transitorio y no afecta a ningún visitante fuera de esos segundos. El
+resto de los 472 son históricos de bugs ya documentados y resueltos en la
+bitácora de más arriba.
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
