@@ -4572,17 +4572,19 @@ sesión, en vez de dejar la columna original ambigua.
 
 **Fusionadas en una sola columna "Partidas" el mismo día, a pedido del
 dueño ("como podemos simplificarlo?"):** las dos columnas separadas
-"Jugadas"/"Ganadas" pasaron a una sola celda. Primera vuelta: `42 (28)`
-con el número de ganadas visible al lado, en verde — el dueño lo vio en
-producción y pidió sacarlo ("por que agregas el (3), si al dar click en
-el 8 aparecen las partidas ganadas"), ya que el popup de abajo lo hace
-redundante. Versión final: la celda muestra solo `42` (jugadas); el
-número es clickeable (`data-matches-trigger`, función local
-`showMatchesDetail()` en `leaderboard.blade.php`) y abre el mismo popover
-compartido (`#teamkill-popover`) que ya usan Kills/Headshots/Granadas/
-Muertes, mostrando ahí adentro tanto jugadas como ganadas — poblado
-directo desde `data-played`/`data-won` sin fetch al server, mismo patrón
-que `showRivalryDetail()` en `rivalries.blade.php`, ya que ambos números
+"Jugadas"/"Ganadas" pasaron a una sola celda, con dos iteraciones antes de
+quedar así: primero `42 (28)` con las ganadas entre paréntesis — el dueño
+pidió sacarlo por redundante con el popup ("por que agregas el (3), si al
+dar click en el 8 aparecen las partidas ganadas"); después, solo `42`
+(jugadas) sin nada más visible — el dueño pidió devolver el número de
+ganadas pero como fracción, no paréntesis. **Formato final: `42/28`**
+(jugadas/ganadas, el segundo número en verde esmeralda). El número entero
+es clickeable (`data-matches-trigger`, función local `showMatchesDetail()`
+en `leaderboard.blade.php`) y abre el mismo popover compartido
+(`#teamkill-popover`) que ya usan Kills/Headshots/Granadas/Muertes,
+mostrando ahí el mismo detalle en texto — poblado directo desde
+`data-played`/`data-won` sin fetch al server, mismo patrón que
+`showRivalryDetail()` en `rivalries.blade.php`, ya que ambos números
 vienen calculados de antemano en la misma fila. Hubo que agregar
 `data-matches-trigger` al listener global de "cerrar popover al clickear
 afuera" (`layouts/app.blade.php`) junto a `data-rivalry-trigger`/
