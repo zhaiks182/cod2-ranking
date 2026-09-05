@@ -85,32 +85,57 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {{-- Mismo selector visual que /servidores/crear: miniatura del mapa +
+                     marco al pasar/elegir. Aca el "elegir" es banear, asi que el marco
+                     de hover es rojo y el mapa baneado queda con la etiqueta encima. --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-0.5">
                     @foreach($pug->veto_pool ?? [] as $code)
                         @php
                             $isBanned = in_array($code, array_column($pug->veto_bans ?? [], 'map'), true);
                             $canBan = !$isBanned && $myTeam && $turn === $myTeam;
+                            $mapImageUrl = \App\Support\MapImage::url($code);
+                            $bannedBy = $isBanned
+                                ? collect($pug->veto_bans)->firstWhere('map', $code)['team'] ?? null
+                                : null;
                         @endphp
-                        <form method="POST" action="{{ route('pugs.ban', $pug) }}">
+                        <form method="POST" action="{{ route('pugs.ban', $pug) }}"
+                            @if($canBan) onsubmit="return confirm('{{ __('¿Banear') }} {{ \App\Support\MapCatalog::mapLabel($code) }}?')" @endif>
                             @csrf
                             <input type="hidden" name="map" value="{{ $code }}">
                             <button type="submit" @disabled(!$canBan)
-                                class="w-full px-3 py-2 rounded-lg border text-xs text-left transition-colors
+                                class="group w-full flex flex-col items-start gap-1.5 rounded-lg border-2 overflow-hidden text-left transition-colors
                                 {{ $isBanned
-                                    ? 'border-slate-800 bg-slate-900/60 text-slate-600 line-through'
-                                    : ($canBan ? 'border-slate-700 text-slate-200 hover:border-red-500 hover:text-red-400' : 'border-slate-800 text-slate-500') }}">
-                                {{ \App\Support\MapCatalog::mapLabel($code) }}
+                                    ? 'border-red-900/70 bg-red-950/20'
+                                    : ($canBan ? 'border-slate-700 hover:border-red-500 cursor-pointer' : 'border-slate-800') }}">
+                                <span class="relative w-full aspect-video bg-panel2 flex items-center justify-center">
+                                    @if($mapImageUrl)
+                                        <img src="{{ $mapImageUrl }}" alt=""
+                                            class="w-full h-full object-cover {{ $isBanned ? 'grayscale opacity-40' : ($canBan ? '' : 'opacity-70') }}">
+                                    @else
+                                        <svg class="w-9 h-9 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                    @endif
+
+                                    @if($isBanned)
+                                        <span class="absolute inset-0 flex items-center justify-center">
+                                            <span class="px-2 py-1 rounded bg-red-600/90 text-white text-[10px] font-bold uppercase tracking-widest">
+                                                {{ __('Baneado') }}@if($bannedBy) · {{ $bannedBy }}@endif
+                                            </span>
+                                        </span>
+                                    @elseif($canBan)
+                                        <span class="absolute inset-0 items-center justify-center bg-red-950/70 hidden group-hover:flex">
+                                            <span class="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest">
+                                                {{ __('Banear') }}
+                                            </span>
+                                        </span>
+                                    @endif
+                                </span>
+                                <span class="px-2 pb-2 text-sm font-medium truncate w-full {{ $isBanned ? 'text-slate-600 line-through' : 'text-slate-200' }}">
+                                    {{ \App\Support\MapCatalog::mapLabel($code) }}
+                                </span>
                             </button>
                         </form>
                     @endforeach
                 </div>
-
-                @if($pug->veto_bans)
-                    <div class="text-[11px] text-slate-600">
-                        {{ __('Baneos:') }}
-                        {{ collect($pug->veto_bans)->map(fn ($b) => $b['team'].' → '.\App\Support\MapCatalog::mapLabel($b['map']))->implode(' · ') }}
-                    </div>
-                @endif
             </div>
 
             {{-- Refresco simple mientras no es tu turno: el otro capitan puede banear
@@ -136,16 +161,30 @@
 
                 <div>
                     <div class="text-[11px] uppercase tracking-wide text-slate-500 mb-2">{{ __('Mapas de la noche') }}</div>
-                    <ol class="space-y-1">
+                    <ol class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-0.5">
                         @foreach($pug->maps ?? [] as $i => $code)
-                            <li class="flex items-center gap-2 text-sm {{ $i === $pug->current_map_index ? 'text-cyan-400 font-semibold' : ($i < $pug->current_map_index ? 'text-slate-600' : 'text-slate-300') }}">
-                                <span class="tabular-nums text-slate-600">{{ $i + 1 }}.</span>
-                                {{ \App\Support\MapCatalog::mapLabel($code) }}
-                                @if($i === $pug->current_map_index)
-                                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-800">{{ __('jugando') }}</span>
-                                @elseif($i < $pug->current_map_index)
-                                    <span class="text-[10px] text-slate-600">{{ __('jugado') }}</span>
-                                @endif
+                            @php
+                                $mapImageUrl = \App\Support\MapImage::url($code);
+                                $isCurrent = $i === $pug->current_map_index;
+                                $isPlayed = $i < $pug->current_map_index;
+                            @endphp
+                            <li class="rounded-lg border-2 overflow-hidden {{ $isCurrent ? 'border-cyan-400 ring-2 ring-cyan-500/40' : ($isPlayed ? 'border-slate-800' : 'border-slate-700') }}">
+                                <span class="relative block w-full aspect-video bg-panel2 flex items-center justify-center">
+                                    @if($mapImageUrl)
+                                        <img src="{{ $mapImageUrl }}" alt="" class="w-full h-full object-cover {{ $isPlayed ? 'grayscale opacity-40' : '' }}">
+                                    @else
+                                        <svg class="w-9 h-9 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+                                    @endif
+                                    <span class="absolute top-1.5 left-1.5 w-5 h-5 rounded bg-black/70 text-white text-[11px] font-semibold tabular-nums flex items-center justify-center">{{ $i + 1 }}</span>
+                                    @if($isCurrent)
+                                        <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-cyan-600 text-white text-[10px] font-bold uppercase tracking-wide">{{ __('jugando') }}</span>
+                                    @elseif($isPlayed)
+                                        <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] uppercase tracking-wide">{{ __('jugado') }}</span>
+                                    @endif
+                                </span>
+                                <span class="block px-2 py-2 text-sm font-medium truncate {{ $isCurrent ? 'text-cyan-400 font-semibold' : ($isPlayed ? 'text-slate-600' : 'text-slate-200') }}">
+                                    {{ \App\Support\MapCatalog::mapLabel($code) }}
+                                </span>
                             </li>
                         @endforeach
                     </ol>
