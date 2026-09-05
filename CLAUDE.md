@@ -4651,12 +4651,34 @@ es transitorio y no afecta a ningún visitante fuera de esos segundos. El
 resto de los 472 son históricos de bugs ya documentados y resueltos en la
 bitácora de más arriba.
 
-## Menú hamburguesa en el nav público (2026-09-05)
+## Menú de celular: botón flotante abajo a la derecha (2026-09-05)
 
 Seguimiento directo de la auditoría de arriba, a pedido del dueño. Debajo de
-`lg` (1024px) el nav completo pasa a ser una columna desplegable bajo el logo;
-de `lg` para arriba **no cambia absolutamente nada** (mismas clases de
-siempre vía prefijos `lg:`).
+`lg` (1024px) el nav completo deja de vivir en el header; de `lg` para arriba
+**no cambia absolutamente nada** (mismas clases de siempre vía prefijos
+`lg:` — todo lo de celular son resets).
+
+**Pasó por dos formas el mismo día.** Primero fue un botón hamburguesa en el
+header, con el nav desplegándose como columna abajo del logo. Después el dueño
+pasó una referencia visual de otro sitio y pidió un **botón circular flotante
+fijo abajo a la derecha** (`fixed bottom-6 right-4`, 56px) con el nav
+abriéndose como panel hacia arriba. Además de ser lo que pidió, es mejor en
+teléfono: cae en la zona del pulgar en vez de obligar a estirarse hasta la
+esquina de arriba.
+
+- El `<nav>` sigue siendo el mismo elemento; en celular se vuelve
+  `fixed bottom-24 right-4 w-64 max-h-[65vh] overflow-y-auto` con panel propio
+  (borde, fondo, sombra), y en `lg` vuelve a `static` sin nada de eso.
+- **El botón vive fuera del `<header>`** a propósito: es `fixed`, así que su
+  posición no depende de dónde esté en el DOM, y ahí no hereda ningún
+  contenedor con `overflow` que pueda recortarlo.
+- **Los 5 dropdowns pasan a `static` y `w-full` en celular**
+  (`static lg:absolute`), o sea que se despliegan **en línea dentro del panel**
+  tipo acordeón en vez de flotar. Flotando se salían de una columna de 256px —
+  es el mismo problema que antes se había parcheado con `left-0`, ahora
+  resuelto de raíz. En `lg` vuelven a ser overlays `absolute right-0`.
+- Cierra al tocar fuera del panel o con ESC. El handler de "tocar fuera" se
+  saltea arriba de `lg`: ahí el nav ES el header y no debe cerrarse nunca.
 
 - **El toggle usa `style.display`, no `classList.toggle('hidden')`** — a
   diferencia del resto de los dropdowns del sitio. Motivo real, no
@@ -4851,6 +4873,11 @@ sola no alcanzaba.
 El contador del ítem 4, que subí a 1 probando el endpoint con `curl`, se
 devolvió a 0 a mano — mismo criterio que la subida sintética de demos del
 2026-08-31.
+
+**Las tarjetas de `/galeria` muestran las reproducciones** junto a likes y
+comentarios (👁️ N), a pedido del dueño el mismo día. **Solo en video**:
+`views_count` nunca se incrementa para una imagen (ver `registerPlay()`), así
+que mostrarlo ahí sería un "0" fijo y engañoso.
 
 ## Pendientes / conocido-roto
 
