@@ -4938,6 +4938,95 @@ a pasar seguido, la vía sería no pisar `last_name` cuando el nombre entrante
 está a distancia 1 de un alias visto hace segundos Y el jugador sigue
 conectado — pero hoy es un caso aislado y no vale la pena el riesgo.
 
+## Módulo de pugs: veto de mapas y agrupación de partidas (2026-09-05)
+
+A pedido del dueño, inspirado en fpschallenge.eu. **Sin spec escrita**: se
+diseñó por brainstorming en conversación y el dueño pidió ir directo al
+código ("aplica la implementación ya").
+
+**El problema que resuelve:** `matches` registraba cada mapa por separado y no
+había nada que los agrupara. Una noche de pug con 3 mapas eran 3 partidas
+sueltas. Ahora un **pug es la sesión**: equipos congelados + veto + todas las
+partidas de esa noche.
+
+### Flujo
+
+1. `/equipos` arma los equipos como siempre (`TeamBalancer`, sin cambios).
+2. "Iniciar pug" **congela** esos equipos en un snapshot JSON. Es una copia a
+   propósito: si alguien regenera equipos a mitad de la noche, el pug ya
+   empezado no cambia de composición.
+3. Se postula un capitán por equipo — **el primero de cada lado que reclama el
+   rol**. Requiere cuenta de Discord con perfil reclamado: sin eso no hay forma
+   de saber en qué equipo juega. Se valida server-side, no solo en la UI.
+4. Con los dos capitanes, arranca el veto: se copia el pool vigente y **se
+   sortea quién banea primero** (fijar "siempre empieza A" le daría ventaja
+   sistemática a un lado).
+5. Banean alternadamente hasta que quedan los N mapas a jugar.
+6. Al cerrarse el veto, dos efectos automáticos: **anuncio a Discord**
+   (`DiscordPugNotifier`, reusa `discord_teams_webhook_url`) y **carga del
+   primer mapa por RCON**.
+7. Cuando termina un mapa, `cod2:advance-pug-maps` carga el siguiente. Al
+   agotarse la lista, el pug se cierra solo.
+
+### Decisiones que valen la pena recordar
+
+- **Una sola tabla.** El veto empezó siendo `pug_vetoes` aparte, pero al
+  definirse que hay **un solo veto por pug** (que define varios mapas, no uno
+  por mapa) se plegó adentro de `pugs` como columnas JSON. Menos es más.
+- **`matches.pug_id` se asigna UNA vez, al crear la partida** en
+  `ParseCod2Log::openRound()` — mismo patrón que `season_id`, con las mismas
+  consecuencias: una partida que arranca con el pug abierto queda ahí entera, y
+  cerrar el pug no reasigna nada. Nullable porque **casi nunca hay un pug
+  abierto**, a diferencia de las temporadas donde siempre hay una activa.
+- **El marcador de la sesión se DERIVA, no se guarda.** `Pug::scoreboard()`
+  cruza los guids del roster ganador de cada partida
+  (`TeamSideAnalyzer::winningRosterGuids()`) contra el snapshot de equipos. No
+  hay contadores que sincronizar: se autocorrige si se borra una partida desde
+  el admin. Es deliberado — el patrón "acumulador + corrección retroactiva" ya
+  causó tres bugs reales acá (bitácora, entradas 13/15/16).
+- **El avance de mapa usa `readyToNotify()`, NUNCA `ended_at`.** El parser
+  escribe `ended_at` después de *cada ronda* y lo vuelve a poner en null al
+  arrancar la siguiente; usarlo como "la partida terminó" ya causó un incidente
+  real (entrada 15). El scope correcto exige un resultado real **y** que el
+  parser ya no la rastree como `current_match_id`. Consecuencia aceptada: hasta
+  **1 minuto de demora** entre que termina un mapa y arranca el siguiente,
+  igual que el resto del pipeline.
+- **`AdvancePugMaps` es idempotente por construcción**: solo avanza si hay más
+  partidas concluidas que mapas ya consumidos, así que una segunda corrida del
+  scheduler sobre el mismo estado no hace nada.
+- **Regla de paridad del pool**: `(tamaño del pool − mapas a jugar)` tiene que
+  ser par, si no un capitán banea más veces que el otro. El panel lo rechaza.
+- **El pool se copia al pug al arrancar el veto**, no se referencia: si el
+  admin lo cambia después, un pug ya empezado no queda inconsistente.
+- **Fallar en Discord o RCON no tumba el veto.** Los mapas ya quedaron
+  guardados; si algo de eso falla se avisa en pantalla y listo.
+- Config del pool en `settings` (`pug_veto_pool`, `pug_maps_count`), editable
+  desde la consola admin. Sin configurar, cae a los 4 mapas que la comunidad
+  realmente juega.
+
+### Lo que NO se hizo
+
+- **No se tocó el mod.** Se evaluó usar el sistema de match nativo de CoD2x
+  (`_matchinfo.gsc` + `gsc_match_*`, que soporta BO1/BO3/BO5 nativo y es lo que
+  usa fpschallenge), pero exige que **cada jugador escriba `/match login <uuid>`**
+  en su consola y que el server descargue el JSON del match desde la
+  plataforma. Demasiada fricción para un pug casual, y el dueño pidió
+  explícitamente no tocar equipos. Queda como camino conocido si algún día se
+  quiere el enforcement duro del lado del server (bloquea cambios de mapa,
+  avanza solo, sube resultados).
+- Sin temporizador por turno: si un capitán se va, cualquier capitán puede
+  cerrar el pug.
+- El veto no tiene push real: la página se recarga sola cada 6s mientras no es
+  tu turno. Hay WebSocket disponible en `libCoD2x.so` si algún día molesta.
+
+TDD: `tests/Feature/PugTest.php` (11 casos — congelado de equipos, un solo pug
+abierto por server, reglas de capitán, arranque del veto, turnos, veto completo
+dejando la lista de mapas, marcador derivado, partida sin ganador determinable,
+y **el renderizado del panel en sus tres estados**). Ese último es la lección
+directa del bug del contador de la galería del mismo día: el endpoint andaba y
+sus tests pasaban, pero el HTML que lo invocaba estaba roto. Verificado en un
+clon descartable del VPS: 538/540, mismos 2 fallos preexistentes.
+
 ## Pendientes / conocido-roto
 
 - **2 archivos huérfanos en el VPS (detectado 2026-09-05, sin borrar todavía).**

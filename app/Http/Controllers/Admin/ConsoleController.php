@@ -8,13 +8,17 @@ use App\Models\Ban;
 use App\Models\Player;
 use App\Models\Server;
 use App\Models\ServerResourceSample;
+use App\Models\Setting;
 use App\Services\Cod2RconClient;
 use App\Services\DiscordTeamsNotifier;
+use App\Support\MapCatalog;
 use App\Support\PlayerRankCalculator;
+use App\Support\PugManager;
 use App\Support\ServiceUptime;
 use App\Support\TeamBalancer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Symfony\Component\Process\Process;
 
 class ConsoleController extends Controller
@@ -159,6 +163,38 @@ class ConsoleController extends Controller
             ->where('sampled_at', '>=', now()->subDays(2))
             ->orderBy('sampled_at')
             ->get(['cpu_percent', 'memory_bytes', 'swap_bytes', 'sampled_at']);
+    }
+
+    /**
+     * Pool de mapas del veto de pugs. Es config GLOBAL (vive en `settings`), pero
+     * se edita desde la consola porque es donde el admin ya maneja los mapas.
+     *
+     * La regla de paridad no es cosmetica: el veto banea alternando, asi que si
+     * (pool - mapas finales) es impar, un capitan banea uno mas que el otro.
+     */
+    public function updatePugSettings(Request $request)
+    {
+        $data = $request->validate([
+            'pug_veto_pool' => ['required', 'array', 'min:2'],
+            'pug_veto_pool.*' => ['string', Rule::in(array_keys(MapCatalog::pickerOptions()))],
+            'pug_maps_count' => ['required', 'integer', 'min:1', 'max:9'],
+        ]);
+
+        $pool = array_values(array_unique($data['pug_veto_pool']));
+        $count = (int) $data['pug_maps_count'];
+
+        if ($count >= count($pool)) {
+            return back()->withErrors(['pug_veto_pool' => 'El pool tiene que tener más mapas que los que se van a jugar.']);
+        }
+
+        if ((count($pool) - $count) % 2 !== 0) {
+            return back()->withErrors(['pug_veto_pool' => 'La diferencia entre el pool ('.count($pool).') y los mapas a jugar ('.$count.') tiene que ser par, si no un capitán banea más veces que el otro.']);
+        }
+
+        Setting::current()->update(['pug_veto_pool' => $pool, 'pug_maps_count' => $count]);
+        AdminAction::record('console.pug-settings', 'Actualizó el pool de veto de pugs ('.count($pool).' mapas, se juegan '.$count.')');
+
+        return back()->with('status', 'Pool de veto actualizado.');
     }
 
     public function kick(Request $request, Server $server)

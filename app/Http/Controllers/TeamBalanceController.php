@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pug;
 use App\Models\Server;
 use App\Services\Cod2RconClient;
 use App\Services\DiscordTeamsNotifier;
@@ -48,7 +49,11 @@ class TeamBalanceController extends Controller
             }
         }
 
-        return view('team-balance', compact('servers', 'server', 'status', 'teamBalance', 'mantenerActive'));
+        // El pug abierto de este servidor, si hay -- es lo que convierte /equipos en
+        // el paso 1 de una sesion en vez de una sugerencia suelta.
+        $pug = $server ? Pug::openFor($server->id) : null;
+
+        return view('team-balance', compact('servers', 'server', 'status', 'teamBalance', 'mantenerActive', 'pug'));
     }
 
     /**

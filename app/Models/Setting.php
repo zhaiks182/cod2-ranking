@@ -17,6 +17,12 @@ class Setting extends Model
         'discord_teams_webhook_url',
         'gallery_quota_mb',
         'gallery_video_max_mb',
+        'pug_veto_pool',
+        'pug_maps_count',
+    ];
+
+    protected $casts = [
+        'pug_veto_pool' => 'array',
     ];
 
     /** @return array<int, string> Un item de beneficio por linea, vacios descartados. */

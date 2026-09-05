@@ -39,6 +39,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlayerClaimController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
+use App\Http\Controllers\PugController;
 use App\Http\Controllers\SiteAuthController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SpecialtyController;
@@ -59,6 +60,19 @@ Route::post('/equipos/notificar', [TeamBalanceController::class, 'notifyDiscord'
 Route::post('/equipos/rebalancear', [TeamBalanceController::class, 'rebalance'])
     ->middleware('throttle:10,1')
     ->name('team-balance.rebalance');
+
+// Pugs (2026-09-05) -- cuelgan de /equipos porque el veto es el paso 2 del mismo
+// flujo, no una pagina aparte. Abrir el pug es publico (congela lo que ya se ve en
+// pantalla); postularse de capitan y banear exigen cuenta, porque hay que saber en
+// que equipo juega quien lo hace.
+Route::post('/equipos/pug', [PugController::class, 'start'])
+    ->middleware('throttle:10,1')
+    ->name('pugs.start');
+Route::middleware('auth:site')->group(function () {
+    Route::post('/pug/{pug}/capitan', [PugController::class, 'claimCaptain'])->name('pugs.claim-captain');
+    Route::post('/pug/{pug}/banear', [PugController::class, 'ban'])->name('pugs.ban');
+    Route::post('/pug/{pug}/cerrar', [PugController::class, 'close'])->name('pugs.close');
+});
 Route::get('/partidas', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/partidas/{match}', [MatchController::class, 'show'])->name('matches.show');
 Route::get('/demos', [DemosController::class, 'index'])->name('demos.index');
@@ -232,6 +246,9 @@ Route::prefix('adm_cod2')->name('admin.')->group(function () {
             Route::post('/console/{server}/map', [ConsoleController::class, 'changeMap'])->name('console.map');
             Route::post('/console/{server}/command', [ConsoleController::class, 'command'])->name('console.command');
             Route::post('/console/{server}/service', [ConsoleController::class, 'service'])->name('console.service');
+            // Config global del veto de pugs -- se edita desde la consola porque es
+            // donde el admin ya maneja los mapas, aunque no sea por servidor.
+            Route::put('/console/pug-settings', [ConsoleController::class, 'updatePugSettings'])->name('console.pug-settings');
             Route::post('/console/{server}/notify-teams', [ConsoleController::class, 'notifyTeams'])->name('console.notify-teams');
             Route::post('/console/{server}/rebalance-teams', [ConsoleController::class, 'rebalanceTeams'])->name('console.rebalance-teams');
             Route::get('/console/{server}/log-tail', [ConsoleController::class, 'logTail'])->name('console.log-tail');

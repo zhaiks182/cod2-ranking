@@ -51,6 +51,8 @@
             </a>
         </div>
 
+        @include('partials.pug', ['pug' => $pug, 'server' => $server, 'teamBalance' => $teamBalance])
+
         @if($teamBalance)
             @include('partials.team-balance', [
                 'teamBalance' => $teamBalance,

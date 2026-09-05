@@ -11,7 +11,7 @@ class GameMatch extends Model
 {
     protected $table = 'matches';
 
-    protected $fillable = ['server_id', 'season_id', 'map', 'gametype', 'started_at', 'ended_at', 'discord_notified_at'];
+    protected $fillable = ['server_id', 'season_id', 'pug_id', 'map', 'gametype', 'started_at', 'ended_at', 'discord_notified_at'];
 
     protected $casts = [
         'started_at' => 'datetime',

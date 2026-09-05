@@ -12,6 +12,10 @@ Schedule::command('cod2:parse-log')->everyMinute()->withoutOverlapping();
 Schedule::command('cod2:recalculate-stats')->everyMinute()->withoutOverlapping();
 Schedule::command('demos:reconcile-matches')->everyMinute()->withoutOverlapping();
 Schedule::command('cod2:notify-discord-matches')->everyMinute()->withoutOverlapping();
+
+// Avance de mapa de los pugs en curso -- misma cadencia que el resto del
+// pipeline, ver AdvancePugMaps para por que no se puede usar ended_at.
+Schedule::command('cod2:advance-pug-maps')->everyMinute()->withoutOverlapping();
 Schedule::command('cod2:sample-resources')->everyMinute()->withoutOverlapping();
 Schedule::command('geoip:update')->monthly();
 Schedule::command('demos:prune-old')->daily();

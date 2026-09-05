@@ -13,6 +13,7 @@ use App\Models\PlayerMapStat;
 use App\Models\PlayerMatchExtra;
 use App\Models\PlayerServerStat;
 use App\Models\PlayerWeaponPick;
+use App\Models\Pug;
 use App\Models\Round;
 use App\Models\Season;
 use App\Models\Server;
@@ -292,6 +293,11 @@ class ParseCod2Log extends Command
             $currentMatch = GameMatch::create([
                 'server_id' => $server->id,
                 'season_id' => Season::current()->id,
+                // Igual que season_id: se asigna UNA sola vez, al crear la partida,
+                // y nunca se reasigna retroactivamente. Si hay un pug abierto en este
+                // server, la partida queda agrupada ahi; si no, queda en null (que es
+                // el caso normal -- casi nunca hay un pug abierto).
+                'pug_id' => Pug::openFor($server->id)?->id,
                 'map' => $map,
                 'gametype' => $gametype,
                 'started_at' => now(),

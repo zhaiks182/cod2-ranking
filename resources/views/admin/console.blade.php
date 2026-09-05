@@ -47,6 +47,45 @@
         </div>
     </div>
 
+    {{-- Config del veto de pugs (2026-09-05). Es global, no por servidor, pero vive
+    aca porque es donde el admin ya maneja los mapas. --}}
+    <details class="rounded-xl border border-slate-800 bg-panel">
+        <summary class="px-4 py-3 text-sm font-semibold cursor-pointer text-slate-300 hover:text-cyan-400">
+            🎯 Veto de pugs — mapas del pool
+        </summary>
+        <form method="POST" action="{{ route('admin.console.pug-settings') }}" class="px-4 pb-4 space-y-3">
+            @csrf
+            @method('PUT')
+            @if($errors->any())
+                <div class="rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300">{{ $errors->first() }}</div>
+            @endif
+            @php
+                $pool = \App\Support\PugManager::pool();
+                $mapsCount = \App\Models\Setting::current()->pug_maps_count ?? 3;
+            @endphp
+            <p class="text-xs text-slate-500">
+                Los mapas marcados son los que entran al veto. La diferencia entre el pool y los mapas a jugar
+                tiene que ser <strong class="text-slate-400">par</strong>, para que cada capitán banee la misma cantidad.
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                @foreach(\App\Support\MapCatalog::pickerOptions() as $code => $label)
+                    <label class="flex items-center gap-2 text-xs text-slate-300 rounded-lg border border-slate-800 px-2 py-1.5 cursor-pointer hover:border-slate-600">
+                        <input type="checkbox" name="pug_veto_pool[]" value="{{ $code }}" @checked(in_array($code, $pool, true))>
+                        <span class="truncate">{{ $label }}</span>
+                    </label>
+                @endforeach
+            </div>
+            <div class="flex items-end gap-3">
+                <div>
+                    <label class="block text-[11px] uppercase tracking-wide text-slate-500 mb-1">Mapas a jugar</label>
+                    <input type="number" name="pug_maps_count" min="1" max="9" value="{{ $mapsCount }}"
+                        class="w-20 bg-panel2 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-200">
+                </div>
+                <button type="submit" class="px-3 py-1.5 rounded-lg border border-slate-700 text-sm hover:border-cyan-500 hover:text-cyan-400">Guardar</button>
+            </div>
+        </form>
+    </details>
+
     @if(!$status && session('mapChanging'))
         <div class="rounded-xl border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-300">El servidor está cargando el mapa nuevo — puede tardar varios segundos en volver a responder por RCON. Actualizá la página en un momento.</div>
     @elseif(!$status)
