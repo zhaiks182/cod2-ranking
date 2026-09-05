@@ -116,7 +116,7 @@
     @endif
 
     <div class="grid md:grid-cols-2 gap-6 items-stretch">
-        <section class="flex flex-col">
+        <section class="flex flex-col min-w-0">
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">{{ __('Desempeño general por mapa') }}</h2>
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden flex-1 flex flex-col">
                 <div class="overflow-x-auto flex-1">
@@ -164,7 +164,7 @@
             @endif
         </section>
 
-        <section class="flex flex-col">
+        <section class="flex flex-col min-w-0">
             <h2 class="text-sm uppercase tracking-wide text-slate-500 mb-3">{{ __('Historial de partidas') }}</h2>
             <div class="rounded-xl border border-slate-800 bg-panel overflow-hidden flex-1 flex flex-col">
                 <div class="overflow-x-auto flex-1">
