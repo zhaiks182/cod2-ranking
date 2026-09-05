@@ -117,8 +117,7 @@
                     <th class="px-4 py-2 font-medium text-right">Kills</th>
                     <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
-                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Partidas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Jugadas') }}</th>
-                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Partidas SD con resultado real en las que este jugador terminó del lado ganador') }}">{{ __('Ganadas') }}</th>
+                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Partidas jugadas (partidas ganadas)') }}">{{ __('Partidas') }}</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
                     <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
                     <th class="px-4 py-2 font-medium text-right" title="{{ __('Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Horas') }}</th>
@@ -150,8 +149,10 @@
                             <button type="button" data-deaths-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->deaths }}</button>
                         </td>
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">{{ $row->matches_played }}</td>
-                        <td class="px-4 py-2 text-right tabular-nums text-emerald-400">{{ $row->matches_won }}</td>
+                        <td class="px-4 py-2 text-right tabular-nums text-slate-400">
+                            <button type="button" data-matches-trigger data-played="{{ $row->matches_played }}" data-won="{{ $row->matches_won }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200" onclick="showMatchesDetail(this)">{{ $row->matches_played }}</button>
+                            <span class="text-emerald-400">({{ $row->matches_won }})</span>
+                        </td>
                         <td class="px-4 py-2 text-right tabular-nums">
                             <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
                         </td>
@@ -276,4 +277,38 @@
         </div>
     @endif
 </div>
+
+<script>
+    const cod2RankingI18n = {
+        matchesPlayed: @json(__('Partidas jugadas')),
+        matchesWon: @json(__('ganadas')),
+    };
+
+    // Mismo popover compartido (#teamkill-popover) que Kills/Headshots/Granadas/Muertes,
+    // pero poblado directo desde data-* en vez de un fetch -- ambos numeros (jugadas y
+    // ganadas) ya vienen calculados server-side en la misma fila, no hay nada que pedirle
+    // al server (mismo patron que showRivalryDetail() en rivalries.blade.php).
+    function showMatchesDetail(btn) {
+        const popover = document.getElementById('teamkill-popover');
+        const key = 'matches:' + btn.dataset.played + ':' + btn.dataset.won;
+
+        if (!popover.classList.contains('hidden') && popover.dataset.owner === key) {
+            popover.classList.add('hidden');
+            return;
+        }
+
+        const rect = btn.getBoundingClientRect();
+        popover.style.maxHeight = '288px';
+        popover.style.bottom = 'auto';
+        popover.style.top = (rect.bottom + 6) + 'px';
+        popover.style.left = Math.max(8, Math.min(rect.left - 180, document.documentElement.clientWidth - 272)) + 'px';
+        popover.dataset.owner = key;
+
+        popover.innerHTML = `
+            <div class="text-cyan-400 font-semibold mb-1">${cod2RankingI18n.matchesPlayed}: ${btn.dataset.played}</div>
+            <div class="text-emerald-400">(${btn.dataset.won} ${cod2RankingI18n.matchesWon})</div>
+        `;
+        popover.classList.remove('hidden');
+    }
+</script>
 @endsection

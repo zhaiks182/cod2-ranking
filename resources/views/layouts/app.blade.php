@@ -570,7 +570,7 @@
             // Other pages (e.g. rivalidades) populate the same shared popover directly
             // via their own onclick handler instead of the fetch-based flow above —
             // don't let this listener immediately hide what that handler just opened.
-            if (e.target.closest('[data-rivalry-trigger]') || e.target.closest('[data-weapon-trigger]')) {
+            if (e.target.closest('[data-rivalry-trigger]') || e.target.closest('[data-weapon-trigger]') || e.target.closest('[data-matches-trigger]')) {
                 return;
             }
             if (!popover.contains(e.target)) {
