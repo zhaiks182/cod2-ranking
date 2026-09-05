@@ -13,12 +13,18 @@ class DiscordLoginTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function fakeDiscordUser(string $id = '111111111111111111', string $username = 'zhaiks'): SocialiteUser
+    /**
+     * @param  array<string, mixed>  $raw  Payload crudo de /users/@me -- Socialite
+     *      no mapea global_name/locale/verified a su objeto User, el controller los
+     *      lee de getRaw() (ver SiteAuthController::callback).
+     */
+    private function fakeDiscordUser(string $id = '111111111111111111', string $username = 'zhaiks', array $raw = [], ?string $email = null): SocialiteUser
     {
-        return (new SocialiteUser())->setRaw([])->map([
+        return (new SocialiteUser())->setRaw($raw)->map([
             'id' => $id,
             'nickname' => $username,
             'name' => $username,
+            'email' => $email,
             'avatar' => "https://cdn.discordapp.com/avatars/{$id}/abc.png",
         ]);
     }
@@ -61,6 +67,72 @@ class DiscordLoginTest extends TestCase
 
         $this->assertSame(1, SiteUser::where('discord_id', '111111111111111111')->count());
         $this->assertSame('nombrenuevo', SiteUser::first()->discord_username);
+    }
+
+    public function test_callback_stores_the_discord_fields_that_already_came_in_the_payload(): void
+    {
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(
+            raw: ['global_name' => 'Zhaiks', 'locale' => 'es-ES', 'verified' => true],
+            email: 'zhaiks@example.com',
+        ));
+
+        $this->get('/auth/discord/callback');
+
+        $siteUser = SiteUser::first();
+        $this->assertSame('Zhaiks', $siteUser->discord_global_name);
+        $this->assertSame('zhaiks@example.com', $siteUser->discord_email);
+        $this->assertTrue($siteUser->discord_email_verified);
+        $this->assertSame('es-ES', $siteUser->discord_locale);
+    }
+
+    public function test_callback_fills_the_profile_language_from_the_discord_locale(): void
+    {
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(
+            raw: ['locale' => 'en-US'],
+        ));
+
+        $this->get('/auth/discord/callback');
+
+        $this->assertSame('en', SiteUser::first()->language);
+    }
+
+    /**
+     * `language` es editable desde /mi-cuenta, asi que autocompletarlo en CADA
+     * login le revertiria la eleccion a cualquiera que use Discord en un idioma
+     * distinto del que quiere ver el sitio -- solo se completa si esta vacio.
+     */
+    public function test_callback_never_overwrites_a_language_the_player_already_chose(): void
+    {
+        SiteUser::create([
+            'discord_id' => '111111111111111111',
+            'discord_username' => 'zhaiks',
+            'language' => 'en',
+        ]);
+
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(
+            raw: ['locale' => 'es-ES'],
+        ));
+
+        $this->get('/auth/discord/callback');
+
+        $this->assertSame('en', SiteUser::first()->language);
+    }
+
+    /**
+     * Discord tiene decenas de locales; el sitio solo soporta es/en
+     * (SetLocale::SUPPORTED). Uno que no mapea no debe adivinar ni guardar basura.
+     */
+    public function test_an_unsupported_discord_locale_leaves_the_profile_language_empty(): void
+    {
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(
+            raw: ['locale' => 'fr'],
+        ));
+
+        $this->get('/auth/discord/callback');
+
+        $siteUser = SiteUser::first();
+        $this->assertNull($siteUser->language);
+        $this->assertSame('fr', $siteUser->discord_locale);
     }
 
     public function test_guests_hitting_a_site_protected_route_are_sent_to_the_public_login_not_the_admin_one(): void

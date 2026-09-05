@@ -4651,6 +4651,86 @@ es transitorio y no afecta a ningún visitante fuera de esos segundos. El
 resto de los 472 son históricos de bugs ya documentados y resueltos en la
 bitácora de más arriba.
 
+## Menú hamburguesa en el nav público (2026-09-05)
+
+Seguimiento directo de la auditoría de arriba, a pedido del dueño. Debajo de
+`lg` (1024px) el nav completo pasa a ser una columna desplegable bajo el logo;
+de `lg` para arriba **no cambia absolutamente nada** (mismas clases de
+siempre vía prefijos `lg:`).
+
+- **El toggle usa `style.display`, no `classList.toggle('hidden')`** — a
+  diferencia del resto de los dropdowns del sitio. Motivo real, no
+  preferencia: `hidden` y `flex` de Tailwind pelean por la misma propiedad
+  con la misma especificidad, así que cuál gana depende del orden en que el
+  CDN las emita; un estilo inline gana siempre, y volver a `''` le devuelve
+  el control al `lg:flex` de la clase. Si algún día se compila Tailwind en
+  vez de usar el CDN, esto sigue funcionando igual.
+- **Los 5 dropdowns del nav pasaron de `absolute right-0` a
+  `absolute left-0 lg:left-auto lg:right-0`.** En modo columna cada
+  `.relative` padre es apenas el ancho de su botón y está pegado a la
+  izquierda — con `right-0` el panel se desplegaba hacia la izquierda desde
+  ahí y quedaba con `left` negativo, o sea fuera de pantalla. En `lg` vuelven
+  a alinearse a la derecha como siempre.
+- El `<div>` del header ganó `flex-wrap` y el nav `w-full order-last`, para
+  que al abrirse ocupe su propia fila completa en vez de pelear por espacio
+  con el logo.
+- **Los íconos de estado (servidor temporal activo, contador de reclamo
+  pendiente) quedaron adentro del menú**, no en la fila siempre visible. Es
+  una decisión discutible — el contador existe justamente "para no perder de
+  vista cuánto queda mientras se navega" — pero sacarlos afuera implicaba
+  duplicar ese bloque (incluido un `<script>` que busca un id único) o
+  reestructurar el header entero. Si molesta, la salida es moverlos (no
+  duplicarlos) a un cluster propio al lado del botón hamburguesa.
+
+## Datos de Discord que ya llegaban y se descartaban (2026-09-05)
+
+`socialiteproviders/discord` pide los scopes `identify` + `email` **desde el
+día uno** (confirmado leyendo el `Provider.php` instalado), pero
+`SiteAuthController::callback()` solo guardaba 3 campos y tiraba el resto del
+payload de `/users/@me`. Ahora se guardan 4 más. **Nadie tiene que volver a
+autorizar nada** — no cambian los scopes, solo se deja de descartar lo que ya
+venía.
+
+- **`site_users.discord_global_name`** — el nombre para mostrar de Discord,
+  distinto del `username` (el handle único). Es el que Discord muestra en su
+  propia UI desde que eliminó los discriminadores `#1234`.
+- **`site_users.discord_email`** + **`discord_email_verified`** — se guarda
+  el flag además de la dirección porque un mail no verificado en Discord no
+  sirve como vía de contacto real. Visible solo en
+  `/adm_cod2/jugadores/cuentas-discord` (con un aviso ámbar "sin verificar"),
+  nunca en el sitio público.
+- **`site_users.discord_locale`** — el locale crudo (`es-ES`, `en-US`, ...).
+  De ahí se **autocompleta la columna `language`** del perfil, que ya existía
+  pero era 100% manual: `SiteAuthController::languageFromDiscordLocale()`
+  corta el prefijo y solo acepta lo que soporta el sitio
+  (`SetLocale::SUPPORTED`, es/en) — un locale como `fr` deja `language` en
+  null en vez de adivinar. **Solo completa si está vacío**: `language` es
+  editable desde `/mi-cuenta`, y autocompletarlo en cada login le revertiría
+  la elección a cualquiera que use Discord en un idioma distinto del que
+  quiere ver el sitio.
+
+**Lo que NO se agregó, a propósito:** `banner`, `accent_color`,
+`premium_type` (Nitro) y `public_flags` también vienen en el mismo payload,
+pero no hay ninguna pantalla que los use — guardarlos sería adivinar un
+requerimiento futuro. Están a un campo de distancia si algún día se quieren.
+
+**Lo que requeriría scopes nuevos** (o sea, que cada jugador vuelva a
+autorizar una vez, con una pantalla de consentimiento distinta):
+`connections` (cuentas de Steam/Twitch/YouTube/Twitter vinculadas —
+autocompletaría 4 campos que hoy el jugador carga a mano en `/mi-cuenta`;
+Instagram no está, Discord lo eliminó), `guilds` (saber si está en el Discord
+de Pug Latam) y `guilds.members.read` (sus roles reales en el server —
+autocompletaría la columna `role`, hoy cargada a mano desde el admin).
+
+TDD: `tests/Feature/Auth/DiscordLoginTest.php` ganó 4 casos (guarda los 4
+campos nuevos del payload; autocompleta `language` desde el locale; **no**
+pisa un `language` ya elegido; un locale no soportado lo deja en null). El
+helper `fakeDiscordUser()` ganó parámetros `raw`/`email` — antes hacía
+`setRaw([])`, y el controller ahora lee de `getRaw()`. Verificado en un clon
+descartable del VPS: 519/521 tests, mismos 2 fallos preexistentes sin
+relación (`ExampleTest`, `CountriesSeasonTest`). Respaldo de la base tomado
+antes de migrar (`cod2_stats_2026-09-05_135409.sql.gz`).
+
 ## Pendientes / conocido-roto
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,

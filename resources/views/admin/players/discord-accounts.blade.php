@@ -23,7 +23,20 @@
             <tbody>
                 @forelse($siteUsers as $siteUser)
                     <tr class="border-b border-slate-800/60">
-                        <td class="px-4 py-2">{{ $siteUser->discord_username }}</td>
+                        <td class="px-4 py-2">
+                            {{ $siteUser->discord_username }}
+                            @if($siteUser->discord_global_name && $siteUser->discord_global_name !== $siteUser->discord_username)
+                                <span class="text-slate-500">({{ $siteUser->discord_global_name }})</span>
+                            @endif
+                            @if($siteUser->discord_email)
+                                <div class="text-xs text-slate-500">
+                                    {{ $siteUser->discord_email }}
+                                    @unless($siteUser->discord_email_verified)
+                                        <span class="text-amber-500" title="Discord no tiene este correo verificado">· sin verificar</span>
+                                    @endunless
+                                </div>
+                            @endif
+                        </td>
                         <td class="px-4 py-2">
                             @if($siteUser->player)
                                 <a href="{{ route('players.show', $siteUser->player) }}" class="text-cyan-400 hover:underline">{{ $siteUser->player->last_name_plain }}</a>

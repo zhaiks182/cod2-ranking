@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\SetLocale;
 use App\Models\SiteUser;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
@@ -40,17 +41,52 @@ class SiteAuthController extends Controller
                 ->with('error', __('No se pudo completar el login con Discord. Probá de nuevo.'));
         }
 
+        // El payload crudo de /users/@me trae varios campos que Socialite no
+        // mapea a su objeto User (global_name, locale, verified) -- ya venian en
+        // cada login desde siempre con los scopes `identify`+`email` que pide
+        // socialiteproviders/discord, solo que se descartaban (2026-09-05).
+        $raw = $discordUser->getRaw();
+
         $siteUser = SiteUser::updateOrCreate(
             ['discord_id' => $discordUser->getId()],
             [
                 'discord_username' => $discordUser->getNickname() ?? $discordUser->getName(),
                 'discord_avatar_url' => $discordUser->getAvatar(),
+                'discord_global_name' => $raw['global_name'] ?? null,
+                'discord_email' => $discordUser->getEmail(),
+                'discord_email_verified' => $raw['verified'] ?? null,
+                'discord_locale' => $raw['locale'] ?? null,
             ]
         );
+
+        // Autocompletar el idioma del perfil SOLO si el jugador nunca eligio uno
+        // -- es un campo editable en /mi-cuenta, y pisarlo en cada login le
+        // revertiria la eleccion a cualquiera que use Discord en otro idioma
+        // del que quiere ver el sitio.
+        if ($siteUser->language === null && $language = self::languageFromDiscordLocale($siteUser->discord_locale)) {
+            $siteUser->update(['language' => $language]);
+        }
 
         Auth::guard('site')->login($siteUser);
 
         return redirect()->intended(route('account.show'));
+    }
+
+    /**
+     * "es-ES" -> "es". El locale de Discord es mucho mas granular que los dos
+     * idiomas que el sitio soporta (SetLocale::SUPPORTED), y trae muchos que no
+     * mapean a ninguno -- en ese caso devuelve null en vez de adivinar, y el
+     * perfil queda sin idioma como antes.
+     */
+    private static function languageFromDiscordLocale(?string $locale): ?string
+    {
+        if (! $locale) {
+            return null;
+        }
+
+        $language = strtolower(explode('-', $locale)[0]);
+
+        return in_array($language, SetLocale::SUPPORTED, true) ? $language : null;
     }
 
     public function logout(Request $request)

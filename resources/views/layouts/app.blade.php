@@ -63,13 +63,24 @@
 </head>
 <body class="bg-panel2 text-slate-200 min-h-screen font-sans">
     <header class="bg-panel">
-        <div class="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-3">
+        <div class="max-w-6xl mx-auto px-4 py-5 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-1 shrink-0">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5">
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
             </div>
-            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.07em] font-semibold items-center min-w-0">
+            {{-- Menu hamburguesa (2026-09-05) -- hasta acá el nav solo se apoyaba en
+            flex-wrap para achicarse, y en un celular terminaba ocupando 5 líneas /
+            102px de alto antes de que empezara el contenido real (ver "Auditoría
+            responsive" en CLAUDE.md). Debajo de `lg` el nav entero pasa a ser una
+            columna desplegable; de `lg` para arriba no cambia nada. --}}
+            <button type="button" id="mobile-menu-toggle" aria-controls="main-nav" aria-expanded="false"
+                class="lg:hidden p-2 -mr-2 rounded-lg text-slate-300 hover:text-gsaccent transition-colors">
+                <span class="sr-only">{{ __('Abrir menú') }}</span>
+                <svg id="mobile-menu-icon-open" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                <svg id="mobile-menu-icon-close" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <nav id="main-nav" class="hidden w-full order-last flex-col items-start gap-y-3 pt-3 text-sm uppercase tracking-[0.07em] font-semibold min-w-0 lg:flex lg:w-auto lg:order-none lg:flex-row lg:flex-wrap lg:items-center lg:justify-end lg:gap-x-4 lg:gap-y-1 lg:pt-0">
                 @if ($activeHostedServer ?? null)
                     {{-- Sin esto, alguien que crea un server temporal y navega a otra
                     pagina del sitio no tiene forma de volver -- no hay login, la URL
@@ -129,7 +140,7 @@
                         LEADERBOARDS
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="ranking-dropdown" class="hidden absolute right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="ranking-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('leaderboard') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🏆 {{ __('Estadísticas') }}</a>
                         <a href="{{ route('matches.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎮 {{ __('Partidas') }}</a>
                         <a href="{{ route('rango') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎖️ {{ __('Rangos') }}</a>
@@ -142,7 +153,7 @@
                         {{ __('ESPECIALISTA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="specialties-dropdown" class="hidden absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="specialties-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         @php
                             $specialtyGroups = [
                                 __('Combate') => [
@@ -218,7 +229,7 @@
                         {{ __('AYUDA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="help-dropdown" class="hidden absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="help-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ {{ __('Preguntas frecuentes') }}</a>
                         <a href="{{ route('help.rank-explained') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎖️ {{ __('Cómo funciona el rango') }}</a>
                         <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
@@ -243,7 +254,7 @@
                                 @endif
                                 {{ auth('site')->user()->discord_username }}
                             </button>
-                            <div id="account-dropdown" class="hidden absolute right-0 mt-2 w-44 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                            <div id="account-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-44 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                                 <a href="{{ route('account.show') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Mi cuenta') }}</a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
@@ -269,7 +280,7 @@
                         {!! \App\Services\GeoIp::flagIconHtml(app()->getLocale() === 'en' ? 'us' : 'es', 20, 14) !!}
                         <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="lang-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('locale.switch', 'es') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'es' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
                             {!! \App\Services\GeoIp::flagIconHtml('es', 18, 13) !!} Español
                         </a>
@@ -321,6 +332,28 @@
             searchHint: @json(__('Escribí al menos 2 letras...')),
             kills: @json(__('bajas')),
         };
+
+        // Menu hamburguesa (2026-09-05). Se togglea con style.display en vez de la
+        // clase `hidden` a proposito: `hidden` y `flex` de Tailwind pelean por la
+        // misma propiedad con la misma especificidad, asi que cual gana depende del
+        // orden en que el CDN las emita -- el estilo inline gana siempre, y volver
+        // a '' devuelve el control al `lg:flex` de la clase.
+        (function () {
+            var btn = document.getElementById('mobile-menu-toggle');
+            var nav = document.getElementById('main-nav');
+            if (!btn || !nav) return;
+
+            var iconOpen = document.getElementById('mobile-menu-icon-open');
+            var iconClose = document.getElementById('mobile-menu-icon-close');
+
+            btn.addEventListener('click', function () {
+                var isOpen = nav.style.display === 'flex';
+                nav.style.display = isOpen ? '' : 'flex';
+                btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                iconOpen.classList.toggle('hidden', !isOpen);
+                iconClose.classList.toggle('hidden', isOpen);
+            });
+        })();
 
         function toggleSpecGroup(btn) {
             const submenu = btn.nextElementSibling;

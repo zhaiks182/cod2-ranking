@@ -20,6 +20,7 @@ class SiteUser extends Authenticatable
 
     protected $fillable = [
         'discord_id', 'discord_username', 'discord_avatar_url', 'avatar_path', 'role',
+        'discord_global_name', 'discord_email', 'discord_email_verified', 'discord_locale',
         'player_id', 'pending_claim_player_id', 'claim_code', 'claim_code_expires_at',
         'bio', 'country', 'language', 'preferred_role',
         'steam_url', 'twitch_url', 'instagram_url', 'youtube_url', 'twitter_url', 'website_url',
@@ -28,6 +29,7 @@ class SiteUser extends Authenticatable
 
     protected $casts = [
         'claim_code_expires_at' => 'datetime',
+        'discord_email_verified' => 'boolean',
     ];
 
     public function player(): BelongsTo
