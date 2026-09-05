@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\SiteUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
@@ -18,15 +19,19 @@ class DiscordLoginTest extends TestCase
      *      no mapea global_name/locale/verified a su objeto User, el controller los
      *      lee de getRaw() (ver SiteAuthController::callback).
      */
-    private function fakeDiscordUser(string $id = '111111111111111111', string $username = 'zhaiks', array $raw = [], ?string $email = null): SocialiteUser
+    private function fakeDiscordUser(string $id = '111111111111111111', string $username = 'zhaiks', array $raw = [], ?string $email = null, ?string $token = null): SocialiteUser
     {
-        return (new SocialiteUser())->setRaw($raw)->map([
+        $user = (new SocialiteUser())->setRaw($raw)->map([
             'id' => $id,
             'nickname' => $username,
             'name' => $username,
             'email' => $email,
             'avatar' => "https://cdn.discordapp.com/avatars/{$id}/abc.png",
         ]);
+
+        // Sin token el controller ni intenta leer las conexiones -- por eso el
+        // resto de los tests de este archivo no necesitan Http::fake().
+        return $token ? $user->setToken($token) : $user;
     }
 
     /**
@@ -133,6 +138,81 @@ class DiscordLoginTest extends TestCase
         $siteUser = SiteUser::first();
         $this->assertNull($siteUser->language);
         $this->assertSame('fr', $siteUser->discord_locale);
+    }
+
+    public function test_callback_fills_the_social_links_from_the_discord_connections(): void
+    {
+        Http::fake(['discord.com/api/users/@me/connections' => Http::response([
+            ['type' => 'steam', 'id' => '76561198000000000', 'name' => 'zhaiks', 'verified' => true, 'revoked' => false],
+            ['type' => 'twitch', 'id' => '123', 'name' => 'dtn_zhaiks', 'verified' => true, 'revoked' => false],
+            ['type' => 'spotify', 'id' => 'x', 'name' => 'x', 'verified' => true, 'revoked' => false],
+        ])]);
+
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(token: 'token-de-prueba'));
+
+        $this->get('/auth/discord/callback');
+
+        $siteUser = SiteUser::first();
+        // Steam usa el steamid64 de `id`; Twitch el handle de `name`.
+        $this->assertSame('https://steamcommunity.com/profiles/76561198000000000', $siteUser->steam_url);
+        $this->assertSame('https://twitch.tv/dtn_zhaiks', $siteUser->twitch_url);
+    }
+
+    public function test_callback_never_overwrites_a_social_link_the_player_already_saved(): void
+    {
+        SiteUser::create([
+            'discord_id' => '111111111111111111',
+            'discord_username' => 'zhaiks',
+            'steam_url' => 'https://steamcommunity.com/id/mi-url-personalizada',
+        ]);
+
+        Http::fake(['discord.com/api/users/@me/connections' => Http::response([
+            ['type' => 'steam', 'id' => '76561198000000000', 'name' => 'zhaiks', 'verified' => true, 'revoked' => false],
+        ])]);
+
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(token: 'token-de-prueba'));
+
+        $this->get('/auth/discord/callback');
+
+        $this->assertSame('https://steamcommunity.com/id/mi-url-personalizada', SiteUser::first()->steam_url);
+    }
+
+    /**
+     * `verified`/`revoked` los marca Discord: una conexion sin verificar puede
+     * apuntar a una cuenta que no es del jugador, y una revocada ya no vale.
+     */
+    public function test_unverified_and_revoked_connections_are_ignored(): void
+    {
+        Http::fake(['discord.com/api/users/@me/connections' => Http::response([
+            ['type' => 'steam', 'id' => '76561198000000000', 'name' => 'x', 'verified' => false, 'revoked' => false],
+            ['type' => 'twitch', 'id' => '123', 'name' => 'y', 'verified' => true, 'revoked' => true],
+        ])]);
+
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(token: 'token-de-prueba'));
+
+        $this->get('/auth/discord/callback');
+
+        $siteUser = SiteUser::first();
+        $this->assertNull($siteUser->steam_url);
+        $this->assertNull($siteUser->twitch_url);
+    }
+
+    /**
+     * Esto corre en medio del login: si Discord rechaza el pedido (scope no
+     * otorgado todavia, token vencido, caida) el jugador tiene que poder entrar
+     * igual.
+     */
+    public function test_a_failing_connections_request_does_not_break_the_login(): void
+    {
+        Http::fake(['discord.com/api/users/@me/connections' => Http::response(['message' => '401: Unauthorized'], 401)]);
+
+        $this->mockDiscordDriver()->shouldReceive('user')->andReturn($this->fakeDiscordUser(token: 'token-de-prueba'));
+
+        $response = $this->get('/auth/discord/callback');
+
+        $this->assertAuthenticated('site');
+        $response->assertRedirect(route('account.show'));
+        $this->assertNull(SiteUser::first()->steam_url);
     }
 
     public function test_guests_hitting_a_site_protected_route_are_sent_to_the_public_login_not_the_admin_one(): void

@@ -4714,13 +4714,35 @@ venía.
 pero no hay ninguna pantalla que los use — guardarlos sería adivinar un
 requerimiento futuro. Están a un campo de distancia si algún día se quieren.
 
-**Lo que requeriría scopes nuevos** (o sea, que cada jugador vuelva a
-autorizar una vez, con una pantalla de consentimiento distinta):
-`connections` (cuentas de Steam/Twitch/YouTube/Twitter vinculadas —
-autocompletaría 4 campos que hoy el jugador carga a mano en `/mi-cuenta`;
-Instagram no está, Discord lo eliminó), `guilds` (saber si está en el Discord
-de Pug Latam) y `guilds.members.read` (sus roles reales en el server —
-autocompletaría la columna `role`, hoy cargada a mano desde el admin).
+### Scope `connections`: autocompletar Steam/Twitch/YouTube/X (2026-09-05)
+
+Agregado el mismo día, a pedido del dueño. **Este SÍ cambia los scopes**, así
+que Discord le muestra la pantalla de autorización una vez a cada jugador
+(incluso con el `prompt=none` que manda el provider, porque los scopes
+pedidos ya no coinciden con los otorgados antes).
+
+- `redirect()` usa `->scopes(['connections'])`. **`scopes()` de Socialite hace
+  merge, no reemplaza** — verificado en el vendor instalado antes de tocarlo:
+  si reemplazara, se perdería `identify` y el login entero se rompía.
+- Las conexiones **no vienen en `/users/@me`**: son un endpoint aparte
+  (`/users/@me/connections`) que se consulta con el token del login.
+- `SiteAuthController::DISCORD_CONNECTIONS` mapea tipo → columna → cómo se
+  arma la URL. **`id` y `name` no son intercambiables**: Steam expone el
+  steamid64 en `id` (su URL canónica) mientras que Twitch/X usan el handle de
+  `name`. YouTube usa `id` (channel id).
+- Solo se toman conexiones con `verified` de Discord y sin `revoked` — una sin
+  verificar puede apuntar a una cuenta que no es del jugador.
+- **Nunca pisa un link ya cargado** (a mano o de un login anterior), mismo
+  criterio que `language`. Con dos conexiones del mismo tipo gana la primera.
+- **Cualquier falla es silenciosa a propósito**: esto corre en medio del
+  login, y no poder leer las conexiones (scope no otorgado todavía, token
+  vencido, Discord caído) no puede impedirle a nadie entrar. Hay un test
+  específico para eso.
+- **Instagram sigue siendo manual** — Discord eliminó ese tipo de conexión.
+
+**Lo que todavía requeriría otro scope:** `guilds` (saber si está en el
+Discord de Pug Latam) y `guilds.members.read` (sus roles reales en el server,
+que autocompletarían la columna `role`, hoy cargada a mano desde el admin).
 
 TDD: `tests/Feature/Auth/DiscordLoginTest.php` ganó 4 casos (guarda los 4
 campos nuevos del payload; autocompleta `language` desde el locale; **no**
@@ -4730,6 +4752,85 @@ helper `fakeDiscordUser()` ganó parámetros `raw`/`email` — antes hacía
 descartable del VPS: 519/521 tests, mismos 2 fallos preexistentes sin
 relación (`ExampleTest`, `CountriesSeasonTest`). Respaldo de la base tomado
 antes de migrar (`cod2_stats_2026-09-05_135409.sql.gz`).
+
+## Menú hamburguesa también en el panel admin (2026-09-05)
+
+Mismo patrón exacto que el nav público (ver arriba), aplicado a
+`layouts/admin.blade.php`: botón `lg:hidden`, nav `#admin-nav` que pasa a
+columna debajo de `lg`, toggle con `style.display` por el mismo motivo de
+especificidad. **Acá los 3 dropdowns ya eran `absolute left-0`**, así que no
+hizo falta reposicionarlos como en el público.
+
+**No se pudo verificar en un navegador real** — el panel exige sesión y esta
+sesión no tiene credenciales de admin. Se apoya en que las clases son
+idénticas a las del nav público, que sí se verificó en vivo a 375px.
+
+## Uptime del servicio del gameserver en la consola admin (2026-09-05)
+
+`/adm_cod2/console/{server}` ya podía reiniciar/parar/iniciar el servicio pero
+no decía hace cuánto que está arriba. Ahora muestra "Servicio activo hace X"
+(verde) junto a "Mapa actual", o "Servicio detenido" (rojo) si el unit no está
+activo.
+
+- **`app/Support/ServiceUptime::startedAt(Server)`** — corre
+  `systemctl show {unit} -p ActiveEnterTimestamp -p ActiveState`.
+- **No agrega ningún permiso de sistema nuevo.** `systemctl show` es de solo
+  lectura y **no necesita sudo** — verificado con `sudo -u www-data` contra
+  producción antes de escribir el código. Las reglas de
+  `/etc/sudoers.d/cod2-panel` siguen acotadas a `start`/`stop`/`restart`, no
+  hubo que tocarlas.
+- Valida `servers.systemd_service` contra el mismo regex que
+  `ConsoleController::service()` antes de pasarlo a `Process` — el nombre sale
+  de la BD, no del request, pero es defensa en profundidad igual.
+- **Chequea `ActiveState=active` antes de devolver la fecha:** un servicio
+  parado igual reporta `ActiveEnterTimestamp` (de la última vez que arrancó),
+  así que sin eso mostraría "activo hace 3 días" para algo caído.
+- systemd emite `Tue 2026-09-01 14:18:02 -05`. PHP parsea ese formato bien
+  (verificado), pero **se le quita el nombre del día a propósito**: PHP lo
+  trata como restricción y, si no coincidiera con la fecha, correría el
+  resultado al próximo día con ese nombre en vez de fallar.
+
+## Bug real: ninguna reproducción de la galería se estaba contando (2026-09-05)
+
+Reportado por el dueño ("las reproducciones de los videos no cuentan").
+`views_count` estaba en 0 en todos los videos menos uno.
+
+**El backend nunca tuvo nada malo** — confirmado con un POST real contra
+producción: `HTTP 204` y el contador subió. La ruta está bien (sin auth,
+exenta de CSRF, con throttle), el controller también, y
+`GalleryPlayCountTest` tenía 3 casos en verde desde el 2026-09-02.
+
+**La falla estaba en el HTML que invoca ese endpoint, que ningún test
+miraba.** `gallery/show.blade.php` usaba la interpolación escapada de Blade
+sobre un `json_encode(...)`: como esa interpolación pasa su salida por
+`htmlspecialchars`, las comillas del JSON llegaban al navegador como
+`&quot;`, el `<script>` entero moría con `Unexpected token '&'` (visible en
+la consola del navegador) y **el listener del evento `play` nunca se
+registraba**. Cero reproducciones contadas, con la suite entera en verde.
+
+**Dos trampas de Blade encontradas al arreglarlo, ambas a fuerza de romper la
+página en el clon de pruebas:**
+
+1. **La directiva de JSON de Blade no sirve para una llamada con coma.**
+   Hace `explode(',')` sobre su argumento, así que `route('gallery.play', $item)`
+   se parte al medio y el modelo termina pasándose como *flags* de
+   `json_encode`. Compila sin quejarse y explota en runtime. La solución fue
+   echo crudo (`json_encode()` dentro de la interpolación sin escapar) — el
+   valor es una URL generada por la app, no entrada de usuario.
+2. **Un comentario de JS dentro de un `.blade.php` no puede contener sintaxis
+   de Blade.** Al documentar el fix escribí el nombre de la directiva y la
+   interpolación de doble llave dentro del comentario, y Blade los compiló
+   igual — rompiendo la vista dos veces seguidas por el propio comentario que
+   explicaba el bug.
+
+**Test de regresión** en `GalleryPlayCountTest`: renderiza la página de
+detalle y exige que la URL llegue como literal de JS válido. Los 3 tests
+viejos seguían pasando con la página rota, así que la cobertura del endpoint
+sola no alcanzaba.
+
+El contador del ítem 4, que subí a 1 probando el endpoint con `curl`, se
+devolvió a 0 a mano — mismo criterio que la subida sintética de demos del
+2026-08-31.
 
 ## Pendientes / conocido-roto
 

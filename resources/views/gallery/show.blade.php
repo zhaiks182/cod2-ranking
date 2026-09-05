@@ -25,7 +25,15 @@
                         var video = document.getElementById('gallery-video-{{ $galleryItem->id }}');
                         video.addEventListener('play', function onPlay() {
                             video.removeEventListener('play', onPlay);
-                            fetch({{ json_encode(route('gallery.play', $galleryItem)) }}, { method: 'POST' });
+                            // Echo crudo a proposito. La interpolacion escapada de Blade
+                            // pasa su salida por htmlspecialchars: las comillas del JSON
+                            // llegaban al navegador como &quot;, el script reventaba con
+                            // "Unexpected token '&'", el listener no se registraba y no se
+                            // conto ni una reproduccion (bug real, 2026-09-05). La
+                            // directiva de JSON de Blade tampoco sirve aca: hace
+                            // explode(',') sobre su argumento, y una llamada a route() con
+                            // dos parametros se le parte al medio.
+                            fetch({!! json_encode(route('gallery.play', $galleryItem)) !!}, { method: 'POST' });
                         });
                     })();
                 </script>

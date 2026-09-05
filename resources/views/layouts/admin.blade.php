@@ -37,7 +37,17 @@
                 <a href="{{ route('admin.home') }}" class="flex items-center gap-2.5 shrink-0">
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
-                <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                {{-- Menu hamburguesa (2026-09-05) -- mismo patron que el nav publico,
+                ver "Menú hamburguesa" en CLAUDE.md para por que el toggle usa
+                style.display y no la clase `hidden`. Acá los dropdowns ya eran
+                `left-0`, asi que no hizo falta reposicionarlos. --}}
+                <button type="button" id="admin-menu-toggle" aria-controls="admin-nav" aria-expanded="false"
+                    class="lg:hidden p-2 -mr-2 rounded-lg text-slate-300 hover:text-gsaccent transition-colors">
+                    <span class="sr-only">Abrir menú</span>
+                    <svg id="admin-menu-icon-open" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <svg id="admin-menu-icon-close" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <nav id="admin-nav" class="hidden w-full order-last flex-col items-start gap-y-3 pt-3 text-sm lg:flex lg:w-auto lg:order-none lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-4 lg:gap-y-2 lg:pt-0">
                     <a href="{{ route('admin.home') }}" class="text-slate-300 hover:text-gsaccent">Panel</a>
                     @if(auth()->user()->hasModule('servers'))
                         <a href="{{ route('admin.servers.index') }}" class="text-slate-300 hover:text-gsaccent">Servidores</a>
@@ -134,6 +144,27 @@
     </main>
 
     <script>
+        // Menu hamburguesa (2026-09-05). Ver el comentario equivalente en
+        // layouts/app.blade.php: se togglea con style.display y no con la clase
+        // `hidden` porque `hidden` y `flex` de Tailwind compiten por la misma
+        // propiedad con la misma especificidad.
+        (function () {
+            var btn = document.getElementById('admin-menu-toggle');
+            var nav = document.getElementById('admin-nav');
+            if (!btn || !nav) return;
+
+            var iconOpen = document.getElementById('admin-menu-icon-open');
+            var iconClose = document.getElementById('admin-menu-icon-close');
+
+            btn.addEventListener('click', function () {
+                var isOpen = nav.style.display === 'flex';
+                nav.style.display = isOpen ? '' : 'flex';
+                btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                iconOpen.classList.toggle('hidden', !isOpen);
+                iconClose.classList.toggle('hidden', isOpen);
+            });
+        })();
+
         // Los 3 dropdowns del nav (Contenido/Moderación/Sistema) son independientes
         // entre si -- cada toggle() solo miraba SU propio dropdown, asi que abrir uno
         // nunca cerraba los demas y quedaban varios abiertos a la vez a la vez

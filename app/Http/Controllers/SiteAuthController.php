@@ -7,15 +7,36 @@ use App\Models\SiteUser;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
 
 class SiteAuthController extends Controller
 {
+    /**
+     * Mapea cada tipo de conexion de Discord a la columna del perfil y a como se
+     * arma la URL publica. `id` vs `name` no es intercambiable: Steam expone el
+     * steamid64 en `id` (su URL canonica), mientras que Twitch/X usan el handle
+     * de `name`. Instagram no esta -- Discord elimino ese tipo de conexion, asi
+     * que `instagram_url` sigue siendo 100% manual.
+     */
+    private const DISCORD_CONNECTIONS = [
+        'steam' => ['column' => 'steam_url', 'url' => 'https://steamcommunity.com/profiles/%s', 'from' => 'id'],
+        'twitch' => ['column' => 'twitch_url', 'url' => 'https://twitch.tv/%s', 'from' => 'name'],
+        'youtube' => ['column' => 'youtube_url', 'url' => 'https://youtube.com/channel/%s', 'from' => 'id'],
+        'twitter' => ['column' => 'twitter_url', 'url' => 'https://x.com/%s', 'from' => 'name'],
+    ];
+
     public function redirect()
     {
-        return Socialite::driver('discord')->redirect();
+        // `connections` (2026-09-05) se suma a los `identify`+`email` que el
+        // paquete ya pedia -- scopes() de Socialite hace merge, no reemplaza
+        // (verificado en el vendor instalado antes de tocar esto: perder
+        // `identify` habria roto el login entero). Como los scopes cambiaron,
+        // Discord vuelve a mostrar la pantalla de autorizacion una sola vez por
+        // jugador, aunque el provider mande `prompt=none`.
+        return Socialite::driver('discord')->scopes(['connections'])->redirect();
     }
 
     public function callback()
@@ -67,9 +88,78 @@ class SiteAuthController extends Controller
             $siteUser->update(['language' => $language]);
         }
 
+        self::fillSocialLinksFromConnections($siteUser, $discordUser->token);
+
         Auth::guard('site')->login($siteUser);
 
         return redirect()->intended(route('account.show'));
+    }
+
+    /**
+     * Autocompleta Steam/Twitch/YouTube/X desde las cuentas que el jugador ya
+     * tiene vinculadas en Discord (2026-09-05). Las conexiones NO vienen en
+     * /users/@me -- son un endpoint aparte que exige el scope `connections`.
+     *
+     * Nunca pisa un link que el jugador haya cargado a mano en /mi-cuenta, y
+     * cualquier falla acá es silenciosa a proposito: esto corre en medio del
+     * login, y no poder leer las conexiones (scope no otorgado, Discord caido,
+     * token vencido) no puede impedirle a nadie entrar al sitio.
+     */
+    private static function fillSocialLinksFromConnections(SiteUser $siteUser, ?string $token): void
+    {
+        if (! $token) {
+            return;
+        }
+
+        try {
+            $response = Http::withToken($token)
+                ->timeout(5)
+                ->get('https://discord.com/api/users/@me/connections');
+
+            if (! $response->successful()) {
+                return;
+            }
+
+            $connections = $response->json();
+        } catch (Throwable $e) {
+            Log::warning('discord: no se pudieron leer las conexiones', ['error' => $e->getMessage()]);
+
+            return;
+        }
+
+        if (! is_array($connections)) {
+            return;
+        }
+
+        $updates = [];
+
+        foreach ($connections as $connection) {
+            $mapping = self::DISCORD_CONNECTIONS[$connection['type'] ?? ''] ?? null;
+
+            // `verified` es de Discord, no nuestro: una conexion sin verificar
+            // puede apuntar a una cuenta que no es del jugador.
+            if (! $mapping || ! ($connection['verified'] ?? false) || ($connection['revoked'] ?? false)) {
+                continue;
+            }
+
+            // Si ya hay algo cargado (a mano o de un login anterior) no se toca.
+            // Con dos conexiones del mismo tipo gana la primera.
+            if (filled($siteUser->{$mapping['column']}) || isset($updates[$mapping['column']])) {
+                continue;
+            }
+
+            $value = $connection[$mapping['from']] ?? null;
+
+            if (blank($value)) {
+                continue;
+            }
+
+            $updates[$mapping['column']] = sprintf($mapping['url'], $value);
+        }
+
+        if ($updates) {
+            $siteUser->update($updates);
+        }
     }
 
     /**

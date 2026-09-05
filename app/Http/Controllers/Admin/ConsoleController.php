@@ -11,6 +11,7 @@ use App\Models\ServerResourceSample;
 use App\Services\Cod2RconClient;
 use App\Services\DiscordTeamsNotifier;
 use App\Support\PlayerRankCalculator;
+use App\Support\ServiceUptime;
 use App\Support\TeamBalancer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,7 +48,9 @@ class ConsoleController extends Controller
             }
         }
 
-        return view('admin.console', compact('server', 'status', 'teamBalance', 'mantenerActive'));
+        $serviceStartedAt = ServiceUptime::startedAt($server);
+
+        return view('admin.console', compact('server', 'status', 'teamBalance', 'mantenerActive', 'serviceStartedAt'));
     }
 
     /**

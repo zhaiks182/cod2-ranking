@@ -8,7 +8,16 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h1 class="text-lg font-semibold">{{ $server->name }}</h1>
-            <p class="text-xs text-slate-500">Mapa actual: {{ \App\Support\MapCatalog::mapLabel($status['map'] ?? null) }}</p>
+            <p class="text-xs text-slate-500">
+                Mapa actual: {{ \App\Support\MapCatalog::mapLabel($status['map'] ?? null) }}
+                @isset($serviceStartedAt)
+                    @if($serviceStartedAt)
+                        · <span class="text-emerald-400" title="El servicio {{ $server->systemd_service }} está activo desde {{ $serviceStartedAt->format('d/m/Y H:i') }}">Servicio activo hace {{ $serviceStartedAt->diffForHumans(null, true) }}</span>
+                    @elseif($server->systemd_service)
+                        · <span class="text-red-400">Servicio detenido</span>
+                    @endif
+                @endisset
+            </p>
         </div>
         <div class="flex items-center gap-3">
             @if($server->systemd_service)
