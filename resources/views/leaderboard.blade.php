@@ -117,7 +117,7 @@
                     <th class="px-4 py-2 font-medium text-right">Kills</th>
                     <th class="px-4 py-2 font-medium text-right">{{ __('Muertes') }}</th>
                     <th class="px-4 py-2 font-medium text-right">K/D</th>
-                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Partidas jugadas (partidas ganadas)') }}">{{ __('Partidas') }}</th>
+                    <th class="px-4 py-2 font-medium text-right" title="{{ __('Partidas jugadas — click para ver también las ganadas') }}">{{ __('Partidas') }}</th>
                     <th class="px-4 py-2 font-medium text-right">Headshots</th>
                     <th class="px-4 py-2 font-medium text-right">{{ __('Granadas') }}</th>
                     <th class="px-4 py-2 font-medium text-right" title="{{ __('Duración de las rondas SD en las que participó (tuvo al menos un kill o una muerte)') }}">{{ __('Horas') }}</th>
@@ -151,7 +151,6 @@
                         <td class="px-4 py-2 text-right tabular-nums">{{ $kd }}</td>
                         <td class="px-4 py-2 text-right tabular-nums text-slate-400">
                             <button type="button" data-matches-trigger data-played="{{ $row->matches_played }}" data-won="{{ $row->matches_won }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200" onclick="showMatchesDetail(this)">{{ $row->matches_played }}</button>
-                            <span class="text-emerald-400">({{ $row->matches_won }})</span>
                         </td>
                         <td class="px-4 py-2 text-right tabular-nums">
                             <button type="button" data-headshots-trigger data-player="{{ $row->player->guid }}" data-params="{{ $tkParams }}" class="px-1 py-1.5 -my-1.5 hover:underline hover:text-cyan-200">{{ $row->headshots }}</button>
