@@ -69,7 +69,7 @@
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
             </div>
-            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-6 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.1em] font-semibold items-center min-w-0">
+            <nav class="flex flex-wrap justify-end gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm uppercase tracking-[0.06em] sm:tracking-[0.07em] font-semibold items-center min-w-0">
                 @if ($activeHostedServer ?? null)
                     {{-- Sin esto, alguien que crea un server temporal y navega a otra
                     pagina del sitio no tiene forma de volver -- no hay login, la URL
