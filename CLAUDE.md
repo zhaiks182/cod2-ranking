@@ -787,19 +787,54 @@ El demo se graba **en la PC de cada jugador**, no en el server. Reconstruido ley
 
 ### Cambios en el mod zPAM
 
-**No están en git.** Viven en el VPS en `/root/zpam_test/extract10/` (la copia
-desempaquetada del `.iwd` más reciente — hay `extract`, `extract2`...`extract10` de
-iteraciones previas de desarrollo, `extract10` es la vigente). El `.iwd` final se
-arma con `zip -r -X -D` desde adentro de esa carpeta (sin entradas de directorio
-extra, para calzar con el formato del `.iwd` original) y se copia a:
+**No están en git.**
 
-- `/home/gameserver/1.3/puG/main/zpam408.iwd` (el que carga el server)
-- `/var/www/html/cod2/main/zpam408.iwd` y `/var/www/monitor.4livepro.com/cod2/main/zpam408.iwd`
-  (mirrors de descarga rápida — `sv_wwwBaseURL` en `server.cfg` apunta ahí; si no se
-  actualizan estos dos junto con el del server, los clientes se traban descargando el
-  mod viejo al conectar — pasó una vez, ver conversación del 2026-08-19)
+> **⚠️ Auditado el 2026-09-05 contra el VPS real — esta sección estaba
+> desactualizada desde la migración de VPS del 2026-08-24.** Lo corregido va
+> abajo; lo que decía antes (y ya NO aplica) se aclara en cada punto.
 
-Backups de cada `.iwd` reemplazado en `/root/backups/zpam/`.
+**El último cambio funcional al mod sigue siendo el de la subida de demos del
+2026-08-19** — confirmado: no hubo ninguno después. La fecha del `.iwd`
+(`Aug 24 13:21`) es solo la de la copia durante la migración de VPS, no un
+cambio de contenido.
+
+**Dónde está cada cosa HOY:**
+
+- `/home/gameserver/1.3/puG/main/zpam408.iwd` — el que carga el server. ✅
+- `/var/www/html/cod2/main/zpam408.iwd` — el mirror de descarga rápida. ✅
+  `sv_wwwBaseURL` en `server.cfg` apunta ahí, y **cambió a
+  `http://151.245.32.43/cod2/`** (la IP del VPS nuevo). Si se actualiza el
+  `.iwd` del server sin actualizar este, los clientes se traban descargando el
+  mod viejo al conectar — pasó una vez (2026-08-19).
+- **El mirror `/var/www/monitor.4livepro.com/cod2/main/` YA NO EXISTE.** Ese
+  sitio vivía en el VPS viejo compartido; en el dedicado no hay tal vhost. La
+  versión anterior de esta sección pedía actualizar dos mirrors: hoy es **uno
+  solo**.
+- `/root/backups/zpam/` — existe, pero **solo tiene 1 backup**
+  (`zpam408.iwd.bak-20260824-132019`), no el historial completo que había en
+  el VPS viejo.
+
+**⚠️ Lo más importante: `/root/zpam_test/` ya no existe.** La sección anterior
+daba `/root/zpam_test/extract10/` como la copia de trabajo desempaquetada
+vigente — ese directorio (y todas las iteraciones `extract`..`extract10`) **no
+sobrevivió la migración**. O sea que hoy **la única copia del GSC modificado es
+el binario `.iwd`**: no hay fuente desempaquetada, ni git, ni nada más.
+
+No es una pérdida irrecuperable: **el `.iwd` es un zip normal y se puede leer**
+(verificado el 2026-09-05 — 469 entradas, `maps/mp/gametypes/_record.gsc`
+presente con la URL de subida en su línea 380). Ojo que **`unzip` no está
+instalado en este VPS**; se lee con `ZipArchive` de PHP, que sí está:
+
+```php
+$z = new ZipArchive; $z->open('/home/gameserver/1.3/puG/main/zpam408.iwd');
+echo $z->getFromName('maps/mp/gametypes/_record.gsc');
+```
+
+**Si hay que volver a tocar el mod**, el procedimiento es: extraer el `.iwd`
+a un directorio de trabajo nuevo, editar, y rearmarlo con `zip -r -X -D` desde
+adentro de esa carpeta (sin entradas de directorio extra, para calzar con el
+formato original) — más copiar el resultado al server Y al mirror, y dejar un
+backup del reemplazado en `/root/backups/zpam/`.
 
 Dos archivos tocados dentro de `maps/mp/gametypes/_record.gsc`:
 
@@ -4879,7 +4914,42 @@ comentarios (👁️ N), a pedido del dueño el mismo día. **Solo en video**:
 `views_count` nunca se incrementa para una imagen (ver `registerPlay()`), así
 que mostrarlo ahí sería un "0" fijo y engañoso.
 
+## Nombre de jugador corrompido en tránsito por RCON — una variante más (2026-09-05)
+
+El dueño reportó que su perfil mostraba `destination.zaiks'` en vez de
+`destination.zhaiks'` (le faltaba una `h`). **No es un cambio de nombre real:**
+es la misma familia de corrupción del `status` de RCON ya documentada en la
+bitácora de bugs (guid fuera de rango 2026-08-14, ping ausente 2026-08-19,
+pérdida de color 2026-08-22, guid con 1-2 caracteres alterados 2026-08-28) —
+pero sobre el **nombre**, que no tiene ningún guard.
+
+Confirmado en la base: `player_aliases` tenía las dos versiones con el **mismo
+`last_seen_at` al segundo** — o sea que en una sola corrida del parser entraron
+las dos, y `players.last_name` se quedó con la corrupta por ser la última en
+escribirse. Como el jugador no se reconectó después, quedó congelada así
+(`syncLiveNames()` solo actualiza a quien está conectado en ese momento).
+
+Se corrigió el registro a mano. **No se agregó ningún guard de código**: a
+diferencia del guid (donde un hash FNV-1a hace que "el mismo número menos un
+dígito" sea imposible de generar legítimamente), un nombre al que le falta una
+letra **sí puede ser un cambio de nombre real** que el jugador hizo a
+propósito. Un guard por distancia de edición daría falsos positivos. Si vuelve
+a pasar seguido, la vía sería no pisar `last_name` cuando el nombre entrante
+está a distancia 1 de un alias visto hace segundos Y el jugador sigue
+conectado — pero hoy es un caso aislado y no vale la pena el riesgo.
+
 ## Pendientes / conocido-roto
+
+- **2 archivos huérfanos en el VPS (detectado 2026-09-05, sin borrar todavía).**
+  `app/Models/GallerySave.php` y `resources/views/gallery/saved.blade.php` —
+  restos de la función de "guardados" de la galería que se eliminó del repo
+  (su tabla la borra la migración `2026_09_02_180000_drop_gallery_saves_table`).
+  Nada en git los referencia y el modelo apunta a una tabla que ya no existe,
+  así que son inertes. Es exactamente el problema de "`tar -x` es aditivo"
+  documentado en "Deploy". Encontrados diffeando `git archive HEAD` contra el
+  filesystem del VPS — el resto de `app/`, `resources/`, `routes/`,
+  `database/`, `config/` y `bootstrap/` coincide exacto. **Se le ofreció al
+  dueño borrarlos y quedó pendiente su decisión.**
 
 - **Servidores temporales self-service — activo en producción desde 2026-08-22,
   `max_concurrent=2`.** El VPS tiene poco margen real de RAM/disco (ver sección
@@ -4917,8 +4987,9 @@ que mostrarlo ahí sería un "0" fijo y engañoso.
   combinados") junto con bans persistentes, auditoría de admin, y las variantes de
   mapa combinadas — las cuatro cosas están comiteadas y se despliegan normal vía
   `deploy.sh` desde entonces. Lo único que sigue sin versionar es lo que es
-  inherentemente de sistema, no de código: el mod zPAM (`_record.gsc`, `server.cfg`,
-  vive en `/root/zpam_test/` del VPS sin git) y `/etc/sudoers.d/cod2-panel` (la regla
+  inherentemente de sistema, no de código: el mod zPAM (`_record.gsc`, `server.cfg`
+  — desde la migración de VPS su única copia es el binario `zpam408.iwd`, ver
+  "Cambios en el mod zPAM") y `/etc/sudoers.d/cod2-panel` (la regla
   que le da a `www-data` permiso para reiniciar el servicio) — si el VPS se
   reconstruye desde cero, ambos hay que recrearlos a mano (ver sus secciones
   correspondientes más arriba para el contenido exacto).
