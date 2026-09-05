@@ -181,6 +181,24 @@ class PugTest extends TestCase
     }
 
     /**
+     * Con el pool por defecto (4 mapas) y el default de 3 a jugar, la diferencia
+     * es 1: un capitan banearia una vez y el otro ninguna. El objetivo se baja a 2
+     * para que cada uno banee lo mismo.
+     */
+    public function test_the_veto_always_gives_both_captains_the_same_number_of_bans(): void
+    {
+        [$pug, $captainA, $captainB] = $this->startedPug();
+        PugManager::claimCaptain($pug, $captainA, 'A');
+        PugManager::claimCaptain($pug, $captainB, 'B');
+        $pug->refresh();
+
+        $bansNeeded = count($pug->veto_pool) - $pug->targetMapCount();
+
+        $this->assertSame(0, $bansNeeded % 2, 'El total de baneos tiene que repartirse parejo entre los dos capitanes.');
+        $this->assertGreaterThan(0, $bansNeeded, 'Tiene que haber al menos un baneo por lado.');
+    }
+
+    /**
      * Renderiza el partial en sus tres estados. Se hace sobre la vista y no sobre
      * la ruta /equipos a proposito: esa llama a RCON de verdad. Es el test que
      * faltaba en el bug del contador de la galeria (2026-09-05), donde el endpoint

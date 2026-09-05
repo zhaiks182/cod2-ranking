@@ -93,10 +93,19 @@ class Pug extends Model
      */
     public function targetMapCount(): int
     {
-        return min(
-            max(1, (int) (Setting::current()->pug_maps_count ?? 3)),
-            count($this->veto_pool ?? [])
-        );
+        $poolSize = count($this->veto_pool ?? []);
+        $target = min(max(1, (int) (Setting::current()->pug_maps_count ?? 3)), $poolSize);
+
+        // Guarda de paridad. El panel de admin ya rechaza una config donde
+        // (pool - mapas) sea impar, pero el pool POR DEFECTO (4 mapas) contra el
+        // default de 3 mapas a jugar da 1 -- un capitan banearia una vez y el otro
+        // ninguna. Bajar uno el objetivo es lo unico que mantiene el veto parejo
+        // sin inventarle al admin una config que no eligio.
+        if (($poolSize - $target) % 2 !== 0) {
+            $target = max(1, $target - 1);
+        }
+
+        return $target;
     }
 
     public function vetoIsComplete(): bool
