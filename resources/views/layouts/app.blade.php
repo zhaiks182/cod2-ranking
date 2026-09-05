@@ -69,18 +69,18 @@
                     <span class="font-display text-lg tracking-wide text-slate-200">CoD2 <span class="text-gsaccent">STATS</span></span>
                 </a>
             </div>
-            {{-- Menu hamburguesa (2026-09-05) -- hasta acá el nav solo se apoyaba en
-            flex-wrap para achicarse, y en un celular terminaba ocupando 5 líneas /
-            102px de alto antes de que empezara el contenido real (ver "Auditoría
-            responsive" en CLAUDE.md). Debajo de `lg` el nav entero pasa a ser una
-            columna desplegable; de `lg` para arriba no cambia nada. --}}
-            <button type="button" id="mobile-menu-toggle" aria-controls="main-nav" aria-expanded="false"
-                class="lg:hidden p-2 -mr-2 rounded-lg text-slate-300 hover:text-gsaccent transition-colors">
-                <span class="sr-only">{{ __('Abrir menú') }}</span>
-                <svg id="mobile-menu-icon-open" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                <svg id="mobile-menu-icon-close" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-            <nav id="main-nav" class="hidden w-full order-last flex-col items-start gap-y-3 pt-3 text-sm uppercase tracking-[0.07em] font-semibold min-w-0 lg:flex lg:w-auto lg:order-none lg:flex-row lg:flex-wrap lg:items-center lg:justify-end lg:gap-x-4 lg:gap-y-1 lg:pt-0">
+            {{-- Menu de celular (2026-09-05): el nav completo se convierte en un panel
+            flotante anclado abajo a la derecha, sobre el boton circular que esta
+            despues del </header>. Antes el nav solo se apoyaba en flex-wrap y en un
+            celular ocupaba 5 lineas / 102px de alto antes de que empezara el
+            contenido (ver "Auditoría responsive" en CLAUDE.md); despues fue un
+            desplegable en el propio header, y termino abajo a pedido del dueño --
+            ahi cae bajo el pulgar, que es la zona comoda de una pantalla de telefono.
+            De `lg` para arriba nada de esto aplica: vuelve a ser el nav horizontal
+            de siempre (todos los `lg:` de abajo son resets). --}}
+            <nav id="main-nav" class="hidden flex-col items-start gap-y-3 text-sm uppercase tracking-[0.07em] font-semibold
+                fixed bottom-24 right-4 z-40 w-64 max-w-[calc(100vw-2rem)] max-h-[65vh] overflow-y-auto rounded-xl border border-slate-800 bg-panel shadow-2xl p-4
+                lg:static lg:flex lg:w-auto lg:max-w-none lg:max-h-none lg:overflow-visible lg:flex-row lg:flex-wrap lg:items-center lg:justify-end lg:gap-x-4 lg:gap-y-1 lg:min-w-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none lg:p-0 lg:z-auto">
                 @if ($activeHostedServer ?? null)
                     {{-- Sin esto, alguien que crea un server temporal y navega a otra
                     pagina del sitio no tiene forma de volver -- no hay login, la URL
@@ -140,7 +140,7 @@
                         LEADERBOARDS
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="ranking-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-48 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="ranking-dropdown" class="hidden static lg:absolute lg:right-0 mt-2 shadow-none lg:shadow-xl w-full lg:w-48 lg:max-w-[calc(100vw-2rem)] bg-panel py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('leaderboard') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🏆 {{ __('Estadísticas') }}</a>
                         <a href="{{ route('matches.index') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎮 {{ __('Partidas') }}</a>
                         <a href="{{ route('rango') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎖️ {{ __('Rangos') }}</a>
@@ -153,7 +153,7 @@
                         {{ __('ESPECIALISTA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="specialties-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] max-h-[80vh] overflow-y-auto bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="specialties-dropdown" class="hidden static lg:absolute lg:right-0 mt-2 shadow-none lg:shadow-xl w-full lg:w-64 lg:max-w-[calc(100vw-2rem)] max-h-56 lg:max-h-[80vh] overflow-y-auto bg-panel py-1 z-50 normal-case tracking-normal font-normal">
                         @php
                             $specialtyGroups = [
                                 __('Combate') => [
@@ -229,7 +229,7 @@
                         {{ __('AYUDA') }}
                         <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="help-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="help-dropdown" class="hidden static lg:absolute lg:right-0 mt-2 shadow-none lg:shadow-xl w-full lg:w-56 lg:max-w-[calc(100vw-2rem)] bg-panel py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('faq') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">❓ {{ __('Preguntas frecuentes') }}</a>
                         <a href="{{ route('help.rank-explained') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">🎖️ {{ __('Cómo funciona el rango') }}</a>
                         <a href="{{ route('downloads') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">⬇️ {{ __('Descargas') }}</a>
@@ -254,7 +254,7 @@
                                 @endif
                                 {{ auth('site')->user()->discord_username }}
                             </button>
-                            <div id="account-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-44 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                            <div id="account-dropdown" class="hidden static lg:absolute lg:right-0 mt-2 shadow-none lg:shadow-xl w-full lg:w-44 lg:max-w-[calc(100vw-2rem)] bg-panel py-1 z-50 normal-case tracking-normal font-normal">
                                 <a href="{{ route('account.show') }}" class="block px-3 py-2 text-sm text-slate-300 hover:bg-gsprimary/20 hover:text-gsaccent">{{ __('Mi cuenta') }}</a>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
@@ -280,7 +280,7 @@
                         {!! \App\Services\GeoIp::flagIconHtml(app()->getLocale() === 'en' ? 'us' : 'es', 20, 14) !!}
                         <svg class="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" /></svg>
                     </button>
-                    <div id="lang-dropdown" class="hidden absolute left-0 lg:left-auto lg:right-0 mt-2 w-36 max-w-[calc(100vw-2rem)] bg-panel shadow-xl py-1 z-50 normal-case tracking-normal font-normal">
+                    <div id="lang-dropdown" class="hidden static lg:absolute lg:right-0 mt-2 shadow-none lg:shadow-xl w-full lg:w-36 lg:max-w-[calc(100vw-2rem)] bg-panel py-1 z-50 normal-case tracking-normal font-normal">
                         <a href="{{ route('locale.switch', 'es') }}" class="flex items-center gap-2 px-3 py-2 text-sm {{ app()->getLocale() === 'es' ? 'text-gsaccent' : 'text-slate-300' }} hover:bg-gsprimary/20 hover:text-gsaccent">
                             {!! \App\Services\GeoIp::flagIconHtml('es', 18, 13) !!} Español
                         </a>
@@ -292,6 +292,16 @@
             </nav>
         </div>
     </header>
+
+    {{-- Boton flotante que abre el nav de arriba. Va fuera del <header> a
+    proposito: es `fixed`, asi que su posicion no depende de donde este en el
+    DOM, y aca no hereda ningun contenedor con overflow que pueda recortarlo. --}}
+    <button type="button" id="mobile-menu-toggle" aria-controls="main-nav" aria-expanded="false"
+        class="lg:hidden fixed bottom-6 right-4 z-50 w-14 h-14 flex items-center justify-center rounded-full bg-panel border border-slate-700 text-slate-200 shadow-2xl hover:text-gsaccent hover:border-gsaccent transition-colors">
+        <span class="sr-only">{{ __('Abrir menú') }}</span>
+        <svg id="mobile-menu-icon-open" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg id="mobile-menu-icon-close" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
 
     <main class="max-w-6xl mx-auto px-4 py-6">
         {{-- Banner global de status/error (2026-09-01) -- antes solo /mi-cuenta
@@ -346,12 +356,33 @@
             var iconOpen = document.getElementById('mobile-menu-icon-open');
             var iconClose = document.getElementById('mobile-menu-icon-close');
 
-            btn.addEventListener('click', function () {
-                var isOpen = nav.style.display === 'flex';
-                nav.style.display = isOpen ? '' : 'flex';
-                btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-                iconOpen.classList.toggle('hidden', !isOpen);
-                iconClose.classList.toggle('hidden', isOpen);
+            function isOpen() {
+                return nav.style.display === 'flex';
+            }
+
+            function setOpen(open) {
+                nav.style.display = open ? 'flex' : '';
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                iconOpen.classList.toggle('hidden', open);
+                iconClose.classList.toggle('hidden', !open);
+            }
+
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                setOpen(!isOpen());
+            });
+
+            // Panel flotante: tocar fuera lo cierra, como cualquier menu de celular.
+            // Se ignora arriba de `lg` porque ahi el nav es el header normal y no
+            // debe cerrarse nunca (el boton ni siquiera se ve).
+            document.addEventListener('click', function (e) {
+                if (!isOpen() || window.matchMedia('(min-width: 1024px)').matches) return;
+                if (nav.contains(e.target)) return;
+                setOpen(false);
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && isOpen()) setOpen(false);
             });
         })();
 

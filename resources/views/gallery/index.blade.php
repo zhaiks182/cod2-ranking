@@ -75,6 +75,12 @@
                         <div class="text-[11px] text-slate-500 mt-1.5 flex items-center gap-3">
                             <span>❤️ {{ $item->likes_count }}</span>
                             <span>💬 {{ $item->comments_count }}</span>
+                            {{-- Solo en video: views_count nunca se incrementa para una
+                            imagen (ver GalleryController::registerPlay), asi que
+                            mostrarlo ahi seria un "0" fijo y engañoso. --}}
+                            @if($item->type === 'video')
+                                <span title="{{ __('Reproducciones') }}">👁️ {{ number_format($item->views_count) }}</span>
+                            @endif
                         </div>
                     </div>
                 </a>
